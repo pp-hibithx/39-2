@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SHARE | 39*2</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+.share-box{display:grid;gap:10px}
+.share-url{width:100%;min-height:78px;resize:vertical}
+.share-card{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--panel)}
+.share-links{display:grid;gap:7px;margin-top:10px}
+.share-cover{max-width:100%;max-height:420px;border-radius:9px}
+</style>
+</head>
+<body>
+<header class="site-header"><div class="wrap">
+<h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
+<div class="tagline">TRPG Scenario &amp; Tools</div>
+<nav class="nav"><a href="../">HOME</a><a href="../scenario/">SCENARIO</a><a href="../calendar/">CALENDAR</a><a href="../library/">LIBRARY</a><a href="../tools/">TOOLS</a><a href="../backup/">BACKUP</a><a href="../about/">ABOUT</a></nav>
+</div></header>
+<main><div class="wrap">
+<div class="hero"><h2>SHARE</h2><p>39*2で作成された共有ページです。</p></div>
+<section class="panel" id="shareView"><div class="empty">共有データがありません。</div></section>
+</div></main>
+<footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
+<script src="../assets/js/main.js"></script>
+<script>
+(()=>{"use strict";
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const q=id=>document.getElementById(id);
+function decode(){
+ const raw=location.hash.slice(1);
+ if(!raw)return null;
+ try{
+   const bin=atob(raw.replace(/-/g,"+").replace(/_/g,"/"));
+   const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
+   return JSON.parse(new TextDecoder().decode(bytes));
+ }catch{return null}
+}
+function render(){
+ const x=decode(); if(!x)return;
+ if(x.kind==="album"){
+   const links=(x.externalLinks||[]).map(l=>l.spoiler
+    ? `<details class="spoiler"><summary>⚠ ${esc(l.label||"ネタバレリンク")}</summary><div class="spoiler-body"><a class="link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">リンクを開く</a></div></details>`
+    : `<div><a class="link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label||"外部リンク")}</a></div>`).join("");
+   q("shareView").innerHTML=`<article class="share-card">
+    ${(x.imageUrls||[])[0]?`<img class="share-cover" src="${esc(x.imageUrls[0])}" alt="">`:""}
+    <h2>${esc(x.title||"卓の記録")}</h2>
+    <div class="album-meta">${x.date?`<span class="badge">${esc(x.date)}</span>`:""}${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${x.role?`<span class="badge">${esc(x.role)}</span>`:""}</div>
+    ${x.pcName?`<p>PC：${esc(x.pcName)}</p>`:""}
+    ${(x.participants||[]).length?`<p>一緒に遊んだ人：${esc(x.participants.join(" / "))}</p>`:""}
+    ${x.comment?`<p>${esc(x.comment)}</p>`:""}
+    ${links?`<div class="share-links"><b>外部リンク</b>${links}</div>`:""}
+    ${x.spoiler?`<details class="spoiler"><summary>⚠ ネタバレを表示</summary><div class="spoiler-body">${esc(x.spoiler)}</div></details>`:""}
+   </article>`;
+ } else if(x.kind==="scenario-list"){
+   const items=(x.items||[]).map(s=>`<article class="share-card"><h3>${esc(s.title)}</h3><div>${s.system?`<span class="badge">${esc(s.system)}</span>`:""}${(s.labels||[]).map(v=>`<span class="badge">${esc(v)}</span>`).join("")}</div>${s.author?`<p class="small">作者・サークル：${esc(s.author)}</p>`:""}${s.url?`<a class="link" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">配布・販売ページ</a>`:""}</article>`).join("");
+   q("shareView").innerHTML=`<h2>${esc(x.title||"シナリオ一覧")}</h2><div class="share-box">${items||'<div class="empty">シナリオがありません。</div>'}</div>`;
+ }
+}
+render();
+})();
+</script>
+</body></html>

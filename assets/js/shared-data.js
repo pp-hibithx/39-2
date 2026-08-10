@@ -71,7 +71,25 @@
     };
   }
 
-  window.TRPG39 = {
+  
+  function encodeShare(data) {
+    const bytes = new TextEncoder().encode(JSON.stringify(data));
+    let bin = "";
+    bytes.forEach(b => bin += String.fromCharCode(b));
+    return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
+
+  function makeShareUrl(data) {
+    const here = new URL(location.href);
+    let base;
+    if (here.pathname.includes("/scenario/")) base = new URL("../share/", here);
+    else if (here.pathname.includes("/library/")) base = new URL("../share/", here);
+    else base = new URL("share/", new URL("../", here));
+    base.hash = encodeShare(data);
+    return base.href;
+  }
+
+window.TRPG39 = {
     KEYS,
     uuid,
     loadScenarios: () => load(KEYS.scenarios),
@@ -81,6 +99,8 @@
     loadAlbum: () => load(KEYS.album),
     saveAlbum: v => save(KEYS.album, v),
     normalizeEvent,
-    normalizeAlbum
+    normalizeAlbum,
+    encodeShare,
+    makeShareUrl
   };
 })();

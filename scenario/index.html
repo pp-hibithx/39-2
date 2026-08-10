@@ -76,13 +76,24 @@ function schedule(id){
  list.push(e);TRPG39.saveEvents(list);location.href="../calendar/";
 }
 
+
+function showShareUrl(url,message){
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(url)
+      .then(()=>prompt(message+"\\n\\nコピー済みです。必要なら下のURLも確認できます。",url))
+      .catch(()=>prompt(message+"\\n\\n下のURLをコピーしてください。",url));
+  }else{
+    prompt(message+"\\n\\n下のURLをコピーしてください。",url);
+  }
+}
+
 function shareScenarioList(){
  const term=q("search").value.trim().toLowerCase(),f=q("filter").value;
  const xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term)));
  const items=xs.map(x=>({title:x.title,system:x.system||"",author:x.author||"",url:x.url||"",labels:Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>v)}));
  const payload={kind:"scenario-list",version:1,title:"シナリオ一覧",items};
  const url=TRPG39.makeShareUrl(payload);
- navigator.clipboard?.writeText(url).then(()=>alert("共有URLをコピーしました。\\n現在表示しているシナリオ一覧を共有できます。")).catch(()=>prompt("このURLをコピーしてください。",url));
+ showShareUrl(url,"共有URLを作成しました。現在表示しているシナリオ一覧を共有できます。");
 }
 
 function render(){let term=q("search").value.trim().toLowerCase(),f=q("filter").value;let xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term)));q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件`;q("list").innerHTML=xs.length?xs.map(x=>`<article class="sc-card"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}</div>${x.author?`<div class="small">作者・サークル：${esc(x.author)}</div>`:""}${x.url?`<div><a class="link" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・販売ページ</a></div>`:""}<div class="sc-actions"><button data-schedule="${x.id}">卓予定を作る</button><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div></article>`).join(""):'<div class="empty">まだ登録されていません。</div>';document.querySelectorAll("[data-schedule]").forEach(b=>b.onclick=()=>schedule(b.dataset.schedule));document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>del(b.dataset.del))}

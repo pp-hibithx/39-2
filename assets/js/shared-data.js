@@ -81,10 +81,10 @@
 
   function makeShareUrl(data) {
     const here = new URL(location.href);
-    let base;
-    if (here.pathname.includes("/scenario/")) base = new URL("../share/", here);
-    else if (here.pathname.includes("/library/")) base = new URL("../share/", here);
-    else base = new URL("share/", new URL("../", here));
+    const marker = "/TRPGTHX/";
+    const pos = here.pathname.indexOf(marker);
+    const rootPath = pos >= 0 ? here.pathname.slice(0, pos + marker.length) : "/";
+    const base = new URL(rootPath + "share/", here.origin);
     base.hash = encodeShare(data);
     return base.href;
   }

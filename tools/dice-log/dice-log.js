@@ -3,31 +3,19 @@
   const state = { rows: [], speakers: [] };
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-  function htmlToText(html) {
-    try {
-      const doc = new DOMParser().parseFromString(html, "text/html");
-      return doc.body ? doc.body.innerText : html;
-    } catch { return html; }
-  }
-
   function normalize(text) {
     return String(text || "").replace(/\r\n?/g, "\n").replace(/\u00a0/g, " ").replace(/[ \t]+$/gm, "").trim();
-  }
-
-  function isSpeakerLine(line) {
-    const m = line.match(/^(.+?)\s+-\s+(?:(?:今日|昨日|\d{4}[\/.-]\d{1,2}[\/.-]\d{1,2})\s+)?\d{1,2}:\d{2}(?::\d{2})?\s*$/);
-    return m ? m[1].trim() : null;
   }
 
   function getSkill(line) {
     const bracket = line.match(/[【\[]\s*([^】\]]+?)\s*[】\]]/);
     if (bracket) return bracket[1].trim();
-    const plain = line.match(/\bCC(?:B)?\s*<=?\s*\d+\s+([^（(＞>]+)/i);
+    const plain = line.match(/\bCC(?:B)?\s*<=?\s*\d+(?:-\d+)?\s+([^（(＞>]+)/i);
     return plain ? plain[1].trim() : "";
   }
 
   function getTarget(line) {
-    const m = line.match(/(?:CCB?|1D100)\s*<=?\s*(\d{1,3})/i);
+    const m = line.match(/(?:CCB?|1D100)\s*<=?\s*(\d{1,3})(?:-\d+)?/i);
     return m ? Number(m[1]) : null;
   }
 
@@ -46,8 +34,6 @@
     let critical = /決定的成功|クリティカル/i.test(line);
     let fumble = /致命的失敗|ファンブル/i.test(line);
     let special = /スペシャル/i.test(line);
-
-    // 表記がないログへの補助（CoC6系）
     for (const r of rolls) {
       if (r <= 5) critical = true;
       if (r >= 96) fumble = true;
@@ -56,25 +42,80 @@
     return { critical, fumble, special };
   }
 
-  function parse(text) {
+  function rowFrom(speaker, line) {
+    if (!/\b(?:CCB?|1D100)\s*<?=/i.test(line)) return null;
+    const skill = getSkill(line);
+    if (!skill) return null;
+    const target = getTarget(line);
+    const rolls = getRolls(line);
+    const f = flags(line, target, rolls);
+    return { speaker: speaker || "発言者不明", skill, target, rolls, ...f, raw: line };
+  }
+
+  // ココフォリアHTMLは <p><span>[main]</span><span>発言者</span>:<span>判定</span></p>
+  // という構造なので、テキスト化する前にHTMLから発言者を直接拾う。
+  function parseCocofoliaHtml(raw) {
+    const doc = new DOMParser().parseFromString(raw, "text/html");
+    const rows = [];
+
+    for (const p of doc.querySelectorAll("p")) {
+      const spans = [...p.querySelectorAll(":scope > span")];
+      if (spans.length < 2) continue;
+
+      const speaker = normalize(spans[1].textContent);
+      const line = normalize(p.textContent);
+
+      const row = rowFrom(speaker, line);
+      if (row) rows.push(row);
+    }
+    return rows;
+  }
+
+  function isSpeakerLine(line) {
+    const m = line.match(/^(.+?)\s+-\s+(?:(?:今日|昨日|\d{4}[\/.-]\d{1,2}[\/.-]\d{1,2})\s+)?\d{1,2}:\d{2}(?::\d{2})?\s*$/);
+    return m ? m[1].trim() : null;
+  }
+
+  function parsePlainText(text) {
     const lines = normalize(text).split("\n").map(x => x.trim()).filter(Boolean);
     const rows = [];
     let speaker = "";
 
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
       const sp = isSpeakerLine(line);
-      if (sp) { speaker = sp; continue; }
-      if (!/\b(?:CCB?|1D100)\s*<?=/i.test(line)) continue;
+      if (sp) {
+        speaker = sp;
+        continue;
+      }
 
-      const skill = getSkill(line);
-      if (!skill) continue;
+      // ココフォリアのHTMLをコピーした際など、発言者が判定の直前行に分離される形式も拾う。
+      if (!/\b(?:CCB?|1D100)\s*<?=/i.test(line)) {
+        if (i + 1 < lines.length &&
+            /\b(?:CCB?|1D100)\s*<?=/i.test(lines[i + 1]) &&
+            !/^(?:KP|system|システム|\[.*\]|:|：)$/i.test(line) &&
+            line.length < 100) {
+          speaker = line.replace(/\s+-.*$/, "").trim();
+        }
+        continue;
+      }
 
-      const target = getTarget(line);
-      const rolls = getRolls(line);
-      const f = flags(line, target, rolls);
-      rows.push({ speaker: speaker || "発言者不明", skill, target, rolls, ...f, raw: line });
+      const row = rowFrom(speaker, line);
+      if (row) rows.push(row);
     }
     return rows;
+  }
+
+  function parseSource(raw, isHtml) {
+    if (isHtml || /<html|<p[\s>]/i.test(raw)) {
+      const rows = parseCocofoliaHtml(raw);
+      if (rows.length) return rows;
+
+      const doc = new DOMParser().parseFromString(raw, "text/html");
+      return parsePlainText(doc.body?.textContent || raw);
+    }
+    return parsePlainText(raw);
   }
 
   function renderCharacters() {
@@ -139,21 +180,24 @@
     $("summary").textContent = `${rows.length}件`;
   }
 
-  async function getSourceText() {
+  async function getSource() {
     const file = $("logFile").files && $("logFile").files[0];
     if (file) {
-      const raw = await file.text();
-      return /\.html?$/i.test(file.name) || /html/i.test(file.type) ? htmlToText(raw) : raw;
+      return {
+        raw: await file.text(),
+        isHtml: /\.html?$/i.test(file.name) || /html/i.test(file.type)
+      };
     }
-    return $("logText").value;
+    return { raw: $("logText").value, isHtml: false };
   }
 
   $("analyze").addEventListener("click", async () => {
     try {
-      const text = await getSourceText();
-      if (!text.trim()) return alert("ログファイルを選ぶか、ログを貼り付けてください。");
+      const src = await getSource();
+      if (!src.raw.trim()) return alert("ログファイルを選ぶか、ログを貼り付けてください。");
 
-      state.rows = parse(text);
+      state.rows = parseSource(src.raw, src.isHtml);
+
       if (!state.rows.length) {
         $("loadStatus").textContent = "技能判定を見つけられませんでした。ログ形式を確認してください。";
         $("characterPanel").hidden = true;

@@ -33,3 +33,41 @@ button.danger,.danger{background:transparent;border:1px solid #a85f65;color:#e8a
 .link{color:var(--accent);overflow-wrap:anywhere}
 .empty{padding:16px;text-align:center;border:1px dashed var(--line);border-radius:9px;color:var(--muted)}
 button.danger,.danger{background:transparent;border:1px solid #a85f65;color:#e8a5aa}
+
+
+/* v0.1.3: 日本語の不自然な折り返しを調整 */
+.hero p,
+.card p,
+.panel p,
+.notice,
+.small,
+.muted{
+  line-break: strict;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* TOPの説明文を途中で切れにくくする */
+.hero p{
+  max-width: none;
+}
+
+/* TOPカードは3列固定ではなく、十分な横幅を確保して自動配置 */
+.grid{
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+/* カード内の本文が極端に細くならないようにする */
+.card{
+  min-width: 0;
+}
+.card p{
+  max-width: 34em;
+}
+
+/* 狭い画面では自然に1列へ */
+@media (max-width: 720px){
+  .grid{
+    grid-template-columns: 1fr;
+  }
+}

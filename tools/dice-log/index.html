@@ -65,15 +65,13 @@
 <h3>3. 抽出条件</h3>
 
 <div class="dl-field dl-house">
-<label for="houseRule">成長候補のハウスルール</label>
-<select id="houseRule">
-  <option value="cf">クリティカル＋ファンブル</option>
-  <option value="csf">クリティカル＋スペシャル＋ファンブル</option>
-  <option value="critical">クリティカルのみ</option>
-  <option value="success">成功した技能</option>
-  <option value="all">判定した技能すべて</option>
-</select>
-<small>クリファン回数の集計はこの設定に関係なく、実際のログ結果を数えます。</small>
+<label>この卓の成長候補ルール</label>
+<label><input class="growthRule" type="checkbox" value="critical" checked> 決定的成功</label>
+<label><input class="growthRule" type="checkbox" value="special" checked> スペシャル</label>
+<label><input class="growthRule" type="checkbox" value="success" checked> 成功</label>
+<label><input class="growthRule" type="checkbox" value="failure"> 失敗</label>
+<label><input class="growthRule" type="checkbox" value="fumble" checked> 致命的失敗</label>
+<small>成長候補だけに使う設定です。クリファン回数の集計には影響しません。</small>
 </div>
 
 <label><input id="uniqueSkills" type="checkbox" checked> 同じキャラクターの同じ技能をまとめる</label>
@@ -271,13 +269,24 @@ function renderStats(){
   q("characterStats").innerHTML=html || '<div class="dl-muted">キャラクターを選んでください。</div>';
 }
 
+function growthRules(){
+  var rules={};
+  var els=document.getElementsByClassName("growthRule");
+  for(var i=0;i<els.length;i++) if(els[i].checked) rules[els[i].value]=true;
+  return rules;
+}
+
+function resultKind(r){
+  if(r.fumble) return "fumble";
+  if(r.critical) return "critical";
+  if(r.special) return "special";
+  if(r.success) return "success";
+  return "failure";
+}
+
 function isGrowthCandidate(r){
-  var rule=q("houseRule").value;
-  if(rule==="critical") return r.critical;
-  if(rule==="cf") return r.critical||r.fumble;
-  if(rule==="csf") return r.critical||r.special||r.fumble;
-  if(rule==="success") return r.success;
-  return true;
+  var rules=growthRules();
+  return !!rules[resultKind(r)];
 }
 
 function candidateLabel(r){
@@ -394,7 +403,8 @@ q("selectNone").onclick=function(){
   renderAll();
 };
 
-q("houseRule").onchange=renderResults;
+var growthEls=document.getElementsByClassName("growthRule");
+for(var gi=0;gi<growthEls.length;gi++) growthEls[gi].onchange=renderResults;
 q("uniqueSkills").onchange=renderResults;
 
 q("copy").onclick=function(){

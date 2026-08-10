@@ -19,11 +19,11 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
 <div class="tagline">TRPG Scenario &amp; Tools</div>
-<nav class="nav"><a href="../">HOME</a><a href="../scenario/">SCENARIO</a><a href="./" aria-current="page">LIBRARY</a><a href="../tools/">TOOLS</a><a href="../about/">ABOUT</a></nav>
+<nav class="nav"><a href="../">HOME</a><a href="../scenario/">SCENARIO</a><a href="../library/" aria-current="page">LIBRARY</a><a href="../tools/">TOOLS</a><a href="../backup/">BACKUP</a><a href="../about/">ABOUT</a></nav>
 </div></header>
 <main><div class="wrap">
-<div class="hero"><h2>LIBRARY</h2><p>友達と遊んだTRPGを残しておく、自分だけのアルバム。</p></div>
-<div class="notice small">v0.1はブラウザ内保存です。共有・コメント機能は将来追加できるよう、公開範囲の情報を記録できます。</div>
+<div class="hero"><h2>LIBRARY</h2><p>友達と遊んだTRPGの記録を、アルバムとして残せます。</p></div>
+<div class="notice small">記録は、お使いのブラウザ内に保存されます。現在、他の利用者とのオンライン共有には対応していません。</div>
 <div class="album-grid">
 <section class="album-panel">
 <h2 id="formHeading">卓の記録を追加</h2><input id="editId" type="hidden">
@@ -32,7 +32,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 <div class="album-row"><div><label>自分の役割</label><select id="role"><option>PL</option><option>KP</option><option>SKP</option><option>その他</option></select></div><div><label>PC名</label><input id="pc"></div></div>
 <label>一緒に遊んだ人</label><input id="people" placeholder="名前をカンマ区切り">
 <label>スクリーンショットURL</label><input id="image" type="url" placeholder="https://...">
-<label>公開範囲（将来の共有用）</label><select id="visibility"><option value="private">自分のみ</option><option value="table">同卓者のみ</option><option value="link">リンク限定</option><option value="public">公開</option></select>
+<label>公開範囲</label><select id="visibility"><option value="private">自分のみ</option><option value="table">同卓者のみ</option><option value="link">リンク限定</option><option value="public">公開</option></select>
 <label>ひとこと</label><textarea id="comment" placeholder="楽しかった！ など、ネタバレなしの思い出"></textarea>
 <label>⚠ ネタバレ枠</label><textarea id="spoiler" placeholder="シナリオ内容に触れる感想はこちら"></textarea>
 <div class="album-actions"><button id="save" class="primary" type="button">アルバムに残す</button><button id="cancel" type="button" hidden>編集をやめる</button></div>

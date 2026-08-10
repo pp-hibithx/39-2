@@ -2,11 +2,15 @@
 "use strict";
 
 const cfg = window.SUPABASE_CONFIG || {};
+if (cfg.projectUrl) cfg.projectUrl = String(cfg.projectUrl).trim();
+if (cfg.publishableKey) cfg.publishableKey = String(cfg.publishableKey).trim();
 const SYNC_KEY = "39x2_cloud_sync_id_v1";
 
 function configured() {
-  return /^https:\/\/.+\.supabase\.co$/i.test(cfg.projectUrl || "") &&
-    /^sb_publishable_/i.test(cfg.publishableKey || "");
+  const url = String(cfg.projectUrl || "").trim();
+  const key = String(cfg.publishableKey || "").trim();
+  const placeholder = !key || /PASTE_YOUR_|YOUR_SUPABASE|ここに/i.test(key);
+  return /^https:\/\/.+\.supabase\.co$/i.test(url) && !placeholder && key.length >= 20;
 }
 function headers() { return {"apikey": cfg.publishableKey, "Content-Type":"application/json"}; }
 function randomId(len=24) {

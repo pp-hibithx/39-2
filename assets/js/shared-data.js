@@ -80,13 +80,14 @@
   }
 
   function makeShareUrl(data) {
-    const here = new URL(location.href);
-    const marker = "/TRPGTHX/";
-    const pos = here.pathname.indexOf(marker);
-    const rootPath = pos >= 0 ? here.pathname.slice(0, pos + marker.length) : "/";
-    const base = new URL(rootPath + "share/", here.origin);
+    const base = new URL("../share/", location.href);
     base.hash = encodeShare(data);
     return base.href;
+  }
+
+
+  function makeShortShareUrl(id) {
+    return new URL("../share/?id=" + encodeURIComponent(id), location.href).href;
   }
 
 window.TRPG39 = {
@@ -101,6 +102,7 @@ window.TRPG39 = {
     normalizeEvent,
     normalizeAlbum,
     encodeShare,
-    makeShareUrl
+    makeShareUrl,
+    makeShortShareUrl
   };
 })();

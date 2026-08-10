@@ -25,6 +25,8 @@
 </div></main>
 <footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
 <script src="../assets/js/main.js"></script>
+<script src="../assets/js/supabase-config.js"></script>
+<script src="../assets/js/supabase-share.js"></script>
 <script>
 (()=>{"use strict";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -38,8 +40,8 @@ function decode(){
    return JSON.parse(new TextDecoder().decode(bytes));
  }catch{return null}
 }
-function render(){
- const x=decode(); if(!x)return;
+function renderPayload(x){
+ if(!x)return;
  if(x.kind==="album"){
    const links=(x.externalLinks||[]).map(l=>l.spoiler
     ? `<details class="spoiler"><summary>⚠ ${esc(l.label||"ネタバレリンク")}</summary><div class="spoiler-body"><a class="link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">リンクを開く</a></div></details>`
@@ -59,7 +61,24 @@ function render(){
    q("shareView").innerHTML=`<h2>${esc(x.title||"シナリオ一覧")}</h2><div class="share-box">${items||'<div class="empty">シナリオがありません。</div>'}</div>`;
  }
 }
-render();
+async function start(){
+ const id=new URL(location.href).searchParams.get("id");
+ if(id){
+   q("shareView").innerHTML='<div class="empty">読み込み中…</div>';
+   try{
+     const x=await TRPG39Cloud.getSharedPage(id);
+     if(!x){q("shareView").innerHTML='<div class="empty">共有ページが見つかりません。</div>';return}
+     renderPayload(x);
+   }catch(e){
+     console.error(e);
+     q("shareView").innerHTML='<div class="empty">'+esc(e.message)+'</div>';
+   }
+   return;
+ }
+ const legacy=decode();
+ if(legacy)renderPayload(legacy);
+}
+start();
 })();
 </script>
 </body></html>

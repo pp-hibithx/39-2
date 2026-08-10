@@ -60,6 +60,8 @@ label{display:block;margin:7px 0 3px}
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/migrate-v02.js"></script>
 <script src="../assets/js/shared-data.js"></script>
+<script src="../assets/js/supabase-config.js"></script>
+<script src="../assets/js/supabase-share.js"></script>
 <script>
 (()=>{"use strict";
 const q=id=>document.getElementById(id),flags={owned:"所持",played:"通過済み",planned:"通過予定",kpDone:"KP済み",kpPlanned:"KP予定",wish:"気になる"};
@@ -87,11 +89,24 @@ function showShareUrl(url,message){
   }
 }
 
-function shareScenarioList(){
+async function shareScenarioList(){
  const term=q("search").value.trim().toLowerCase(),f=q("filter").value;
  const xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term)));
  const items=xs.map(x=>({title:x.title,system:x.system||"",author:x.author||"",url:x.url||"",labels:Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>v)}));
  const payload={kind:"scenario-list",version:1,title:"シナリオ一覧",items};
+
+ try{
+   if(TRPG39Cloud && TRPG39Cloud.configured()){
+     const shareId=await TRPG39Cloud.createSharedPage(payload);
+     const url=TRPG39.makeShortShareUrl(shareId);
+     showShareUrl(url,"短い共有URLを作成しました。現在表示しているシナリオ一覧を共有できます。");
+     return;
+   }
+ }catch(e){
+   console.error(e);
+   alert(e.message+"\n長いURL方式で共有します。");
+ }
+
  const url=TRPG39.makeShareUrl(payload);
  showShareUrl(url,"共有URLを作成しました。現在表示しているシナリオ一覧を共有できます。");
 }

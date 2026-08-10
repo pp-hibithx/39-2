@@ -52,6 +52,8 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/migrate-v02.js"></script>
 <script src="../assets/js/shared-data.js"></script>
+<script src="../assets/js/supabase-config.js"></script>
+<script src="../assets/js/supabase-share.js"></script>
 <script>
 (()=>{"use strict";
 const q=id=>document.getElementById(id),vis={private:"自分のみ",table:"同卓者のみ",link:"リンク限定",public:"公開"};
@@ -81,9 +83,22 @@ function showShareUrl(url,message){
   }
 }
 
-function shareAlbum(id){
+async function shareAlbum(id){
  const x=data.find(v=>v.id===id);if(!x)return;
  const payload={kind:"album",version:1,title:x.title,date:x.date,system:x.system,role:x.role,pcName:x.pcName,participants:x.participants||[],imageUrls:x.imageUrls||[],comment:x.comment||"",spoiler:x.spoiler||"",externalLinks:x.externalLinks||[]};
+
+ try{
+   if(TRPG39Cloud && TRPG39Cloud.configured()){
+     const shareId=await TRPG39Cloud.createSharedPage(payload);
+     const url=TRPG39.makeShortShareUrl(shareId);
+     showShareUrl(url,"短い共有URLを作成しました。URLを知っている人はこの卓記録を閲覧できます。");
+     return;
+   }
+ }catch(e){
+   console.error(e);
+   alert(e.message+"\n長いURL方式で共有します。");
+ }
+
  const url=TRPG39.makeShareUrl(payload);
  showShareUrl(url,"共有URLを作成しました。URLを知っている人はこの卓記録を閲覧できます。");
 }

@@ -26,7 +26,7 @@ label{display:block;margin:7px 0 3px}
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
 <div class="tagline">TRPG Scenario &amp; Tools</div>
-<nav class="nav"><a href="../">HOME</a><a href="../scenario/" aria-current="page">SCENARIO</a><a href="../library/">LIBRARY</a><a href="../tools/">TOOLS</a><a href="../backup/">BACKUP</a><a href="../about/">ABOUT</a></nav>
+<nav class="nav"><a href="../">HOME</a><a href="./" aria-current="page">SCENARIO</a><a href="../calendar/">CALENDAR</a><a href="../library/">LIBRARY</a><a href="../tools/">TOOLS</a><a href="../backup/">BACKUP</a><a href="../about/">ABOUT</a></nav>
 </div></header>
 <main><div class="wrap">
 <div class="hero"><h2>SCENARIO</h2><p>所持・通過済み・通過予定・KP予定など、 シナリオの状況をまとめて管理できます。</p></div>
@@ -56,18 +56,26 @@ label{display:block;margin:7px 0 3px}
 </div>
 </div></main>
 <footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
+
 <script src="../assets/js/main.js"></script>
+<script src="../assets/js/migrate-v02.js"></script>
+<script src="../assets/js/shared-data.js"></script>
 <script>
 (()=>{"use strict";
-const KEY="39x2_scenarios_v2",q=id=>document.getElementById(id),flags={owned:"所持",played:"通過済み",planned:"通過予定",kpDone:"KP済み",kpPlanned:"KP予定",wish:"気になる"};
+const q=id=>document.getElementById(id),flags={owned:"所持",played:"通過済み",planned:"通過予定",kpDone:"KP済み",kpPlanned:"KP予定",wish:"気になる"};
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let data=(()=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return[]}})();
-const persist=()=>localStorage.setItem(KEY,JSON.stringify(data));
+let data=TRPG39.loadScenarios();
+const persist=()=>TRPG39.saveScenarios(data);
 function reset(){q("editId").value="";["title","system","author","url"].forEach(x=>q(x).value="");document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true}
-function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");let id=q("editId").value||Date.now().toString(36)+Math.random().toString(36).slice(2,6);let item={id,title,system:q("system").value.trim(),author:q("author").value.trim(),url:q("url").value.trim(),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),updatedAt:Date.now()};let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);persist();reset();render()}
+function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");let id=q("editId").value||TRPG39.uuid();let item={id,title,system:q("system").value.trim(),author:q("author").value.trim(),url:q("url").value.trim(),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),updatedAt:new Date().toISOString()};let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);persist();reset();render()}
 function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("editId").value=x.id;q("title").value=x.title||"";q("system").value=x.system||"";q("author").value=x.author||"";q("url").value=x.url||"";document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;scrollTo({top:0,behavior:"smooth"})}
 function del(id){if(confirm("このシナリオを削除しますか？")){data=data.filter(x=>x.id!==id);persist();render()}}
-function render(){let term=q("search").value.trim().toLowerCase(),f=q("filter").value;let xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term)));q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件`;q("list").innerHTML=xs.length?xs.map(x=>`<article class="sc-card"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}</div>${x.author?`<div class="small">作者・サークル：${esc(x.author)}</div>`:""}${x.url?`<div><a class="link" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・販売ページ</a></div>`:""}<div class="sc-actions"><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div></article>`).join(""):'<div class="empty">まだ登録されていません。</div>';document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>del(b.dataset.del))}
+function schedule(id){
+ const x=data.find(v=>v.id===id);if(!x)return;
+ const list=TRPG39.loadEvents(),e=TRPG39.normalizeEvent({scenarioId:x.id,title:x.title,scenarioTitle:x.title,system:x.system,status:"planned"});
+ list.push(e);TRPG39.saveEvents(list);location.href="../calendar/";
+}
+function render(){let term=q("search").value.trim().toLowerCase(),f=q("filter").value;let xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term)));q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件`;q("list").innerHTML=xs.length?xs.map(x=>`<article class="sc-card"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}</div>${x.author?`<div class="small">作者・サークル：${esc(x.author)}</div>`:""}${x.url?`<div><a class="link" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・販売ページ</a></div>`:""}<div class="sc-actions"><button data-schedule="${x.id}">卓予定を作る</button><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div></article>`).join(""):'<div class="empty">まだ登録されていません。</div>';document.querySelectorAll("[data-schedule]").forEach(b=>b.onclick=()=>schedule(b.dataset.schedule));document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>del(b.dataset.del))}
 q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;render();
 })();
 </script>

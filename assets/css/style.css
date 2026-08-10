@@ -149,3 +149,5 @@ html{
     max-width: none;
   }
 }
+
+button.success,.success{background:#244735;color:#dcffe6;border:1px solid #3e6c52}

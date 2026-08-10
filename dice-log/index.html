@@ -15,10 +15,10 @@
 <main><div class="wrap">
 <div class="hero">
   <h2>ダイスログ抽出</h2>
-  <p>セッションログから、選んだキャラクターの技能を抜き出します。</p>
+  <p>ココフォリア等のセッションログから、キャラクターごとの技能判定・クリティカル・ファンブル・成長候補を整理します。</p>
 </div>
 
-<section><div class="note">ログは外部へ送信しません。解析はこのブラウザ内だけで行います。</div></section>
+<section><div class="note">読み込んだログはサーバーへ送信しません。解析はこのブラウザ内だけで行います。</div></section>
 
 <section class="toolbox">
   <div class="tool-panel">
@@ -45,27 +45,24 @@
   <div id="optionPanel" class="tool-panel" hidden>
     <h3>3. 抽出条件</h3>
     <div class="option-grid">
-      <label class="check-card"><input id="specialOnly" type="checkbox" checked> スペシャル以上だけ</label>
-      <label class="check-card"><input id="uniqueSkills" type="checkbox" checked> 同じ技能をまとめる</label>
+      <label class="check-card"><input id="includeSuccess" type="checkbox" checked> 成功・スペシャルを含める</label>
+      <label class="check-card"><input id="includeFailure" type="checkbox"> 通常失敗も含める</label>
+      <label class="check-card"><input id="growthOnly" type="checkbox"> 成長候補だけ表示</label>
+      <label class="check-card"><input id="uniqueSkills" type="checkbox"> 同じ技能を1行にまとめる</label>
     </div>
-    <div class="field inline-field">
-      <label for="keyword">技能名フィルター</label>
-      <input id="keyword" type="search" placeholder="例：心理学（空欄ならすべて）">
-    </div>
+    <div class="field inline-field"><label for="keyword">技能名フィルター</label><input id="keyword" type="search" placeholder="例：心理学（空欄ならすべて）"></div>
   </div>
 
   <div id="resultPanel" class="tool-panel" hidden>
-    <div class="result-head">
-      <div><h3>4. 抽出結果</h3><div id="summary" class="muted small"></div></div>
-      <button id="copyResult" class="compact">結果をコピー</button>
-    </div>
+    <div class="result-head"><div><h3>4. 抽出結果</h3><div id="summary" class="muted small"></div></div><button id="copyResult" class="compact">結果をコピー</button></div>
+    <div id="specialSummary" class="special-summary"></div>
     <pre id="result" class="result"></pre>
   </div>
 </section>
 
 <section>
-  <details class="help"><summary>表示について</summary>
-    <p>通常は「キャラクター名：技能名」だけを表示します。クリティカル／ファンブルが含まれる技能だけ、該当する出目も表示します。</p>
+  <details class="help"><summary>対応しているログについて</summary>
+    <p>「CCB&lt;=」「CC&lt;=」などの1D100技能判定を中心に解析します。技能名が【 】内にあるログを優先して拾います。ログ形式によっては一部の判定を認識できない場合があります。</p>
   </details>
 </section>
 </div></main>

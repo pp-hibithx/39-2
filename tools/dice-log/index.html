@@ -5,71 +5,291 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ダイスログ抽出 | TRPGTHX</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
+<style>
+.dl-wrap{display:grid;gap:16px}.dl-panel{border:1px solid var(--line,#30343d);border-radius:12px;padding:18px;background:var(--panel,#181b21)}
+.dl-panel h3{margin-top:0}.dl-field{margin:12px 0}.dl-field label{display:block;margin-bottom:6px}
+.dl-field textarea{width:100%;min-height:180px}.dl-actions,.dl-subactions{display:flex;gap:8px;flex-wrap:wrap}
+.dl-characters{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-top:12px}
+.dl-character{display:flex;gap:8px;align-items:center;border:1px solid var(--line,#30343d);border-radius:9px;padding:10px}
+.dl-character input{width:auto}.dl-result{white-space:pre-wrap;word-break:break-word;min-height:80px;padding:14px;border:1px solid var(--line,#30343d);border-radius:9px;background:rgba(0,0,0,.16)}
+.dl-muted{opacity:.72;font-size:.9rem}.dl-note{padding:12px;border-left:3px solid currentColor;opacity:.85}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
-<h1 class="brand">TRPGTHX</h1><div class="tagline">TRPG Scenario & Tools</div>
+<h1 class="brand">TRPGTHX</h1><div class="tagline">TRPG Scenario &amp; Tools</div>
 <nav class="nav"><a href="../../">HOME</a><a href="../../scenario/">SCENARIO</a><a href="../" aria-current="page">TOOLS</a><a href="../../about/">ABOUT</a></nav>
 </div></header>
 
 <main><div class="wrap">
-<div class="hero">
-  <h2>ダイスログ抽出</h2>
-  <p>セッションログから、選んだキャラクターの技能を抜き出します。</p>
+<div class="hero"><h2>ダイスログ抽出</h2><p>セッションログから、選んだキャラクターの技能を抜き出します。</p></div>
+
+<section class="dl-note">ログは外部へ送信しません。解析はこのブラウザ内だけで行います。</section>
+
+<section class="dl-wrap">
+<div class="dl-panel">
+<h3>1. ログを読み込む</h3>
+<div class="dl-field">
+<label for="logFile">ココフォリア HTML / TXT</label>
+<input id="logFile" type="file" accept=".html,.htm,.txt,text/html,text/plain">
+</div>
+<div class="dl-field">
+<label for="logText">またはログを貼り付け</label>
+<textarea id="logText" placeholder="ログ本文をここに貼り付け"></textarea>
+</div>
+<div class="dl-actions">
+<button id="analyze" class="primary" type="button">ログを解析</button>
+<button id="clear" type="button">クリア</button>
+</div>
+<div id="status" class="dl-muted" style="margin-top:8px"></div>
 </div>
 
-<section><div class="note">ログは外部へ送信しません。解析はこのブラウザ内だけで行います。</div></section>
+<div id="charactersPanel" class="dl-panel" hidden>
+<h3>2. キャラクターを選ぶ</h3>
+<div class="dl-subactions">
+<button id="selectAll" type="button">全選択</button>
+<button id="selectNone" type="button">全解除</button>
+</div>
+<div id="characters" class="dl-characters"></div>
+</div>
 
-<section class="toolbox">
-  <div class="tool-panel">
-    <h3>1. ログを読み込む</h3>
-    <div class="field">
-      <label for="logFile">HTML / TXTファイル</label>
-      <input id="logFile" type="file" accept=".html,.htm,.txt,text/html,text/plain">
-    </div>
-    <div class="or">または</div>
-    <div class="field">
-      <label for="logText">ログを貼り付け</label>
-      <textarea id="logText" placeholder="ココフォリアのログをここに貼り付けても使えます。"></textarea>
-    </div>
-    <div class="button-row"><button id="analyze" class="primary">ログを解析</button><button id="clear">クリア</button></div>
-    <div id="loadStatus" class="muted small"></div>
-  </div>
+<div id="optionsPanel" class="dl-panel" hidden>
+<h3>3. 抽出条件</h3>
+<label><input id="specialOnly" type="checkbox" checked> スペシャル・クリティカル・ファンブルだけ</label><br>
+<label><input id="uniqueSkills" type="checkbox" checked> 同じキャラクターの同じ技能をまとめる</label>
+</div>
 
-  <div id="characterPanel" class="tool-panel" hidden>
-    <h3>2. キャラクターを選ぶ</h3>
-    <div class="subrow"><button id="selectAll" class="compact">全選択</button><button id="selectNone" class="compact">全解除</button></div>
-    <div id="characterList" class="check-grid"></div>
-  </div>
-
-  <div id="optionPanel" class="tool-panel" hidden>
-    <h3>3. 抽出条件</h3>
-    <div class="option-grid">
-      <label class="check-card"><input id="specialOnly" type="checkbox" checked> スペシャル以上だけ</label>
-      <label class="check-card"><input id="uniqueSkills" type="checkbox" checked> 同じ技能をまとめる</label>
-    </div>
-    <div class="field inline-field">
-      <label for="keyword">技能名フィルター</label>
-      <input id="keyword" type="search" placeholder="例：心理学（空欄ならすべて）">
-    </div>
-  </div>
-
-  <div id="resultPanel" class="tool-panel" hidden>
-    <div class="result-head">
-      <div><h3>4. 抽出結果</h3><div id="summary" class="muted small"></div></div>
-      <button id="copyResult" class="compact">結果をコピー</button>
-    </div>
-    <pre id="result" class="result"></pre>
-  </div>
-</section>
-
-<section>
-  <details class="help"><summary>表示について</summary>
-    <p>通常は「キャラクター名：技能名」だけを表示します。クリティカル／ファンブルが含まれる技能だけ、該当する出目も表示します。</p>
-  </details>
+<div id="resultsPanel" class="dl-panel" hidden>
+<div class="dl-actions" style="justify-content:space-between;align-items:center">
+<div><h3 style="margin-bottom:4px">4. 抽出結果</h3><div id="count" class="dl-muted"></div></div>
+<button id="copy" type="button">結果をコピー</button>
+</div>
+<pre id="result" class="dl-result"></pre>
+</div>
 </section>
 </div></main>
+
 <footer class="footer"><div class="wrap">© <span data-year></span> TRPGTHX</div></footer>
 <script src="../../assets/js/main.js"></script>
-<script src="./dice-log.js"></script>
-</body></html>
+<script>
+(function(){
+"use strict";
+function q(id){return document.getElementById(id);}
+var rows=[];
+
+function trim(s){return String(s==null?"":s).replace(/\u00a0/g," ").trim();}
+
+function parseMessage(speaker,msg){
+  msg=trim(msg);
+  if(!/(?:CCB?|1D100)\s*&?lt;?=?\s*\d|(?:CCB?|1D100)\s*<=\s*\d/i.test(msg)) return null;
+
+  var skillMatch=msg.match(/【([^】]+)】/);
+  if(!skillMatch) return null;
+
+  var rollMatch=msg.match(/\(1D100\s*(?:<=|&lt;=)\s*\d{1,3}\)\s*[＞>]\s*(\d{1,3})/i);
+  if(!rollMatch) rollMatch=msg.match(/[＞>]\s*(\d{1,3})\s*[＞>]\s*(?:決定的成功|クリティカル|スペシャル|成功|失敗|致命的失敗|ファンブル)/i);
+
+  var roll=rollMatch?Number(rollMatch[1]):null;
+  var critical=/決定的成功|クリティカル/i.test(msg);
+  var fumble=/致命的失敗|ファンブル/i.test(msg);
+  var special=/スペシャル/i.test(msg);
+
+  return {
+    speaker: trim(speaker)||"発言者不明",
+    skill: trim(skillMatch[1]),
+    roll: roll,
+    critical: critical,
+    fumble: fumble,
+    special: special
+  };
+}
+
+function parseHtml(raw){
+  var doc=new DOMParser().parseFromString(raw,"text/html");
+  var out=[];
+  var ps=doc.getElementsByTagName("p");
+  for(var i=0;i<ps.length;i++){
+    var spans=ps[i].getElementsByTagName("span");
+    if(spans.length<3) continue;
+    var speaker=spans[1].textContent;
+    var msg=spans[2].textContent;
+    var r=parseMessage(speaker,msg);
+    if(r) out.push(r);
+  }
+  return out;
+}
+
+function parseText(raw){
+  var out=[];
+  var lines=String(raw||"").replace(/\r\n?/g,"\n").split("\n");
+  var speaker="";
+  for(var i=0;i<lines.length;i++){
+    var line=trim(lines[i]);
+    if(!line) continue;
+
+    var sm=line.match(/^(.+?)\s+-\s+(?:(?:今日|昨日)\s+)?\d{1,2}:\d{2}(?::\d{2})?\s*$/);
+    if(sm){speaker=trim(sm[1]);continue;}
+
+    var r=parseMessage(speaker,line);
+    if(r) out.push(r);
+  }
+  return out;
+}
+
+function readFile(file,done,fail){
+  var fr=new FileReader();
+  fr.onload=function(){done(String(fr.result||""));};
+  fr.onerror=function(){fail(fr.error||new Error("ファイルを読み込めませんでした"));};
+  fr.readAsText(file);
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+
+function renderCharacters(){
+  var names=[];
+  for(var i=0;i<rows.length;i++){
+    if(names.indexOf(rows[i].speaker)===-1) names.push(rows[i].speaker);
+  }
+  var html="";
+  for(var j=0;j<names.length;j++){
+    var name=names[j],n=0;
+    for(var k=0;k<rows.length;k++) if(rows[k].speaker===name)n++;
+    html+='<label class="dl-character"><input class="charCheck" type="checkbox" value="'+escapeHtml(name)+'"><span>'+escapeHtml(name)+' <small>('+n+'件)</small></span></label>';
+  }
+  q("characters").innerHTML=html;
+  var checks=document.getElementsByClassName("charCheck");
+  for(var x=0;x<checks.length;x++) checks[x].onchange=renderResults;
+}
+
+function selected(){
+  var a=[],checks=document.getElementsByClassName("charCheck");
+  for(var i=0;i<checks.length;i++) if(checks[i].checked)a.push(checks[i].value);
+  return a;
+}
+
+function displayLine(r){
+  var extra=[];
+  if(r.critical) extra.push("クリティカル"+(r.roll!=null?"："+r.roll:""));
+  if(r.fumble) extra.push("ファンブル"+(r.roll!=null?"："+r.roll:""));
+  return r.speaker+"："+r.skill+(extra.length?"（"+extra.join("／")+"）":"");
+}
+
+function renderResults(){
+  var chosen=selected();
+  var filtered=[];
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    if(chosen.indexOf(r.speaker)===-1) continue;
+    if(q("specialOnly").checked && !(r.special||r.critical||r.fumble)) continue;
+    filtered.push(r);
+  }
+
+  if(q("uniqueSkills").checked){
+    var seen={},merged=[];
+    for(var j=0;j<filtered.length;j++){
+      var x=filtered[j],key=x.speaker+"\n"+x.skill;
+      if(!seen[key]){
+        seen[key]={speaker:x.speaker,skill:x.skill,roll:x.roll,critical:x.critical,fumble:x.fumble,special:x.special};
+        merged.push(seen[key]);
+      }else{
+        seen[key].critical=seen[key].critical||x.critical;
+        seen[key].fumble=seen[key].fumble||x.fumble;
+        seen[key].special=seen[key].special||x.special;
+        if((x.critical||x.fumble)&&x.roll!=null) seen[key].roll=x.roll;
+      }
+    }
+    filtered=merged;
+  }
+
+  var lines=[];
+  for(var k=0;k<filtered.length;k++) lines.push(displayLine(filtered[k]));
+  q("result").textContent=lines.length?lines.join("\n"):"条件に一致する技能はありません。";
+  q("count").textContent=filtered.length+"件";
+}
+
+function finish(raw,isHtml){
+  try{
+    rows=isHtml?parseHtml(raw):parseText(raw);
+    if(!rows.length && isHtml) rows=parseText(new DOMParser().parseFromString(raw,"text/html").body.textContent);
+
+    if(!rows.length){
+      q("status").textContent="技能判定を見つけられませんでした。";
+      q("charactersPanel").hidden=true;
+      q("optionsPanel").hidden=true;
+      q("resultsPanel").hidden=true;
+      return;
+    }
+
+    renderCharacters();
+    q("charactersPanel").hidden=false;
+    q("optionsPanel").hidden=false;
+    q("resultsPanel").hidden=false;
+    q("status").textContent="技能判定 "+rows.length+"件を読み込みました。";
+    renderResults();
+  }catch(e){
+    console.error(e);
+    q("status").textContent="解析エラー："+(e&&e.message?e.message:String(e));
+  }
+}
+
+q("analyze").onclick=function(){
+  var f=q("logFile").files&&q("logFile").files[0];
+  var pasted=q("logText").value;
+  q("status").textContent="読み込み中…";
+
+  if(f){
+    readFile(f,function(raw){
+      finish(raw,/\.html?$/i.test(f.name)||/html/i.test(f.type));
+    },function(e){
+      q("status").textContent="ファイル読み込みエラー："+(e&&e.message?e.message:String(e));
+    });
+  }else if(trim(pasted)){
+    finish(pasted,/<p[\s>]/i.test(pasted)||/<html/i.test(pasted));
+  }else{
+    q("status").textContent="HTML/TXTファイルを選ぶか、ログを貼り付けてください。";
+  }
+};
+
+q("clear").onclick=function(){
+  q("logFile").value="";
+  q("logText").value="";
+  q("status").textContent="";
+  rows=[];
+  q("charactersPanel").hidden=true;
+  q("optionsPanel").hidden=true;
+  q("resultsPanel").hidden=true;
+};
+
+q("selectAll").onclick=function(){
+  var c=document.getElementsByClassName("charCheck");
+  for(var i=0;i<c.length;i++)c[i].checked=true;
+  renderResults();
+};
+q("selectNone").onclick=function(){
+  var c=document.getElementsByClassName("charCheck");
+  for(var i=0;i<c.length;i++)c[i].checked=false;
+  renderResults();
+};
+q("specialOnly").onchange=renderResults;
+q("uniqueSkills").onchange=renderResults;
+
+q("copy").onclick=function(){
+  var text=q("result").textContent;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){
+      q("copy").textContent="コピーしました";
+      setTimeout(function(){q("copy").textContent="結果をコピー";},1200);
+    });
+  }
+};
+
+var y=document.querySelector("[data-year]");
+if(y&&!y.textContent)y.textContent=new Date().getFullYear();
+})();
+</script>
+</body>
+</html>

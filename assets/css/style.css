@@ -71,3 +71,12 @@ button.danger,.danger{background:transparent;border:1px solid #a85f65;color:#e8a
     grid-template-columns: 1fr;
   }
 }
+
+
+/* v0.1.4: 説明文の意味単位での改行 */
+.hero p,
+.card p,
+.panel p,
+.notice{
+  line-height:1.65;
+}

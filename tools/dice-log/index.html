@@ -8,11 +8,19 @@
 <style>
 .dl-wrap{display:grid;gap:16px}.dl-panel{border:1px solid var(--line,#30343d);border-radius:12px;padding:18px;background:var(--panel,#181b21)}
 .dl-panel h3{margin-top:0}.dl-field{margin:12px 0}.dl-field label{display:block;margin-bottom:6px}
-.dl-field textarea{width:100%;min-height:180px}.dl-actions,.dl-subactions{display:flex;gap:8px;flex-wrap:wrap}
+.dl-field textarea{width:100%;min-height:180px}.dl-field select,.dl-field input[type="search"]{width:100%}
+.dl-actions,.dl-subactions{display:flex;gap:8px;flex-wrap:wrap}
 .dl-characters{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-top:12px}
 .dl-character{display:flex;gap:8px;align-items:center;border:1px solid var(--line,#30343d);border-radius:9px;padding:10px}
 .dl-character input{width:auto}.dl-result{white-space:pre-wrap;word-break:break-word;min-height:80px;padding:14px;border:1px solid var(--line,#30343d);border-radius:9px;background:rgba(0,0,0,.16)}
 .dl-muted{opacity:.72;font-size:.9rem}.dl-note{padding:12px;border-left:3px solid currentColor;opacity:.85}
+.dl-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+.dl-stat{border:1px solid var(--line,#30343d);border-radius:10px;padding:12px}
+.dl-stat b{display:block;font-size:1.35rem;margin-top:4px}
+.dl-charstat{border-top:1px solid var(--line,#30343d);padding:14px 0}
+.dl-charstat:first-child{border-top:0;padding-top:0}
+.dl-detail{margin:8px 0 0 18px}.dl-detail li{margin:3px 0}
+.dl-house{display:grid;gap:8px}.dl-house small{opacity:.72}
 </style>
 </head>
 <body>
@@ -55,13 +63,31 @@
 
 <div id="optionsPanel" class="dl-panel" hidden>
 <h3>3. 抽出条件</h3>
-<label><input id="specialOnly" type="checkbox" checked> スペシャル・クリティカル・ファンブルだけ</label><br>
+
+<div class="dl-field dl-house">
+<label for="houseRule">成長候補のハウスルール</label>
+<select id="houseRule">
+  <option value="cf">クリティカル＋ファンブル</option>
+  <option value="csf">クリティカル＋スペシャル＋ファンブル</option>
+  <option value="critical">クリティカルのみ</option>
+  <option value="success">成功した技能</option>
+  <option value="all">判定した技能すべて</option>
+</select>
+<small>クリファン回数の集計はこの設定に関係なく、実際のログ結果を数えます。</small>
+</div>
+
 <label><input id="uniqueSkills" type="checkbox" checked> 同じキャラクターの同じ技能をまとめる</label>
+</div>
+
+<div id="statsPanel" class="dl-panel" hidden>
+<h3>4. セッション集計</h3>
+<div id="sessionStats" class="dl-stats"></div>
+<div id="characterStats" style="margin-top:16px"></div>
 </div>
 
 <div id="resultsPanel" class="dl-panel" hidden>
 <div class="dl-actions" style="justify-content:space-between;align-items:center">
-<div><h3 style="margin-bottom:4px">4. 抽出結果</h3><div id="count" class="dl-muted"></div></div>
+<div><h3 style="margin-bottom:4px">5. 成長候補</h3><div id="count" class="dl-muted"></div></div>
 <button id="copy" type="button">結果をコピー</button>
 </div>
 <pre id="result" class="dl-result"></pre>
@@ -81,26 +107,41 @@ function trim(s){return String(s==null?"":s).replace(/\u00a0/g," ").trim();}
 
 function parseMessage(speaker,msg){
   msg=trim(msg);
-  if(!/(?:CCB?|1D100)\s*&?lt;?=?\s*\d|(?:CCB?|1D100)\s*<=\s*\d/i.test(msg)) return null;
+  if(!/(?:CCB?|1D100)\s*(?:<=|&lt;=)\s*\d/i.test(msg)) return null;
 
   var skillMatch=msg.match(/【([^】]+)】/);
   if(!skillMatch) return null;
 
+  var targetMatch=msg.match(/\(1D100\s*(?:<=|&lt;=)\s*(\d{1,3})\)/i) ||
+                  msg.match(/(?:CCB?|1D100)\s*(?:<=|&lt;=)\s*(\d{1,3})/i);
+  var target=targetMatch?Number(targetMatch[1]):null;
+
   var rollMatch=msg.match(/\(1D100\s*(?:<=|&lt;=)\s*\d{1,3}\)\s*[＞>]\s*(\d{1,3})/i);
   if(!rollMatch) rollMatch=msg.match(/[＞>]\s*(\d{1,3})\s*[＞>]\s*(?:決定的成功|クリティカル|スペシャル|成功|失敗|致命的失敗|ファンブル)/i);
-
   var roll=rollMatch?Number(rollMatch[1]):null;
+
   var critical=/決定的成功|クリティカル/i.test(msg);
   var fumble=/致命的失敗|ファンブル/i.test(msg);
   var special=/スペシャル/i.test(msg);
+  var success=/決定的成功|クリティカル|スペシャル|成功/i.test(msg) && !/失敗|致命的失敗|ファンブル/i.test(msg);
+
+  // 表記のないログへの補助
+  if(roll!=null){
+    if(roll<=5) critical=true;
+    if(roll>=96) fumble=true;
+    if(target!=null && roll<=Math.floor(target/5)) special=true;
+    if(target!=null && roll<=target && !fumble) success=true;
+  }
 
   return {
     speaker: trim(speaker)||"発言者不明",
     skill: trim(skillMatch[1]),
+    target: target,
     roll: roll,
     critical: critical,
     fumble: fumble,
-    special: special
+    special: special,
+    success: success
   };
 }
 
@@ -111,9 +152,7 @@ function parseHtml(raw){
   for(var i=0;i<ps.length;i++){
     var spans=ps[i].getElementsByTagName("span");
     if(spans.length<3) continue;
-    var speaker=spans[1].textContent;
-    var msg=spans[2].textContent;
-    var r=parseMessage(speaker,msg);
+    var r=parseMessage(spans[1].textContent,spans[2].textContent);
     if(r) out.push(r);
   }
   return out;
@@ -126,10 +165,8 @@ function parseText(raw){
   for(var i=0;i<lines.length;i++){
     var line=trim(lines[i]);
     if(!line) continue;
-
     var sm=line.match(/^(.+?)\s+-\s+(?:(?:今日|昨日)\s+)?\d{1,2}:\d{2}(?::\d{2})?\s*$/);
     if(sm){speaker=trim(sm[1]);continue;}
-
     var r=parseMessage(speaker,line);
     if(r) out.push(r);
   }
@@ -151,9 +188,8 @@ function escapeHtml(s){
 
 function renderCharacters(){
   var names=[];
-  for(var i=0;i<rows.length;i++){
-    if(names.indexOf(rows[i].speaker)===-1) names.push(rows[i].speaker);
-  }
+  for(var i=0;i<rows.length;i++) if(names.indexOf(rows[i].speaker)===-1) names.push(rows[i].speaker);
+
   var html="";
   for(var j=0;j<names.length;j++){
     var name=names[j],n=0;
@@ -162,7 +198,7 @@ function renderCharacters(){
   }
   q("characters").innerHTML=html;
   var checks=document.getElementsByClassName("charCheck");
-  for(var x=0;x<checks.length;x++) checks[x].onchange=renderResults;
+  for(var x=0;x<checks.length;x++) checks[x].onchange=renderAll;
 }
 
 function selected(){
@@ -171,55 +207,136 @@ function selected(){
   return a;
 }
 
-function displayLine(r){
-  var extra=[];
-  if(r.critical) extra.push("クリティカル"+(r.roll!=null?"："+r.roll:""));
-  if(r.fumble) extra.push("ファンブル"+(r.roll!=null?"："+r.roll:""));
-  return r.speaker+"："+r.skill+(extra.length?"（"+extra.join("／")+"）":"");
+function selectedRows(){
+  var chosen=selected(),out=[];
+  for(var i=0;i<rows.length;i++) if(chosen.indexOf(rows[i].speaker)!==-1) out.push(rows[i]);
+  return out;
+}
+
+function groupSkillRolls(list,flag){
+  var map={};
+  for(var i=0;i<list.length;i++){
+    var r=list[i];
+    if(!r[flag]) continue;
+    if(!map[r.skill]) map[r.skill]=[];
+    if(r.roll!=null) map[r.skill].push(r.roll);
+  }
+  return map;
+}
+
+function detailList(map){
+  var keys=Object.keys(map);
+  if(!keys.length) return '<div class="dl-muted">なし</div>';
+  var html='<ul class="dl-detail">';
+  for(var i=0;i<keys.length;i++){
+    var vals=map[keys[i]];
+    html+='<li>'+escapeHtml(keys[i])+(vals.length?'　'+escapeHtml(vals.join(", ")):"")+'</li>';
+  }
+  return html+'</ul>';
+}
+
+function renderStats(){
+  var list=selectedRows();
+  var c=0,f=0,s=0;
+  for(var i=0;i<list.length;i++){
+    if(list[i].critical)c++;
+    if(list[i].fumble)f++;
+    if(list[i].special)s++;
+  }
+
+  q("sessionStats").innerHTML=
+    '<div class="dl-stat">クリティカル<b>'+c+'回</b></div>'+
+    '<div class="dl-stat">ファンブル<b>'+f+'回</b></div>'+
+    '<div class="dl-stat">スペシャル<b>'+s+'回</b></div>';
+
+  var names=selected();
+  var html="";
+  for(var n=0;n<names.length;n++){
+    var name=names[n],part=[];
+    for(var j=0;j<list.length;j++) if(list[j].speaker===name) part.push(list[j]);
+
+    var cc=0,ff=0,ss=0;
+    for(var k=0;k<part.length;k++){
+      if(part[k].critical)cc++;
+      if(part[k].fumble)ff++;
+      if(part[k].special)ss++;
+    }
+
+    html+='<div class="dl-charstat"><strong>'+escapeHtml(name)+'</strong>';
+    html+='<div class="dl-muted">クリティカル '+cc+'回 ／ ファンブル '+ff+'回 ／ スペシャル '+ss+'回</div>';
+    html+='<div style="margin-top:10px"><b>クリティカル</b>'+detailList(groupSkillRolls(part,"critical"))+'</div>';
+    html+='<div style="margin-top:10px"><b>ファンブル</b>'+detailList(groupSkillRolls(part,"fumble"))+'</div>';
+    html+='</div>';
+  }
+  q("characterStats").innerHTML=html || '<div class="dl-muted">キャラクターを選んでください。</div>';
+}
+
+function isGrowthCandidate(r){
+  var rule=q("houseRule").value;
+  if(rule==="critical") return r.critical;
+  if(rule==="cf") return r.critical||r.fumble;
+  if(rule==="csf") return r.critical||r.special||r.fumble;
+  if(rule==="success") return r.success;
+  return true;
+}
+
+function candidateLabel(r){
+  var notes=[];
+  if(r.critical) notes.push("クリティカル"+(r.roll!=null?"："+r.roll:""));
+  if(r.fumble) notes.push("ファンブル"+(r.roll!=null?"："+r.roll:""));
+  if(r.special && !r.critical) notes.push("スペシャル"+(r.roll!=null?"："+r.roll:""));
+  return r.speaker+"："+r.skill+(notes.length?"（"+notes.join("／")+"）":"");
 }
 
 function renderResults(){
-  var chosen=selected();
-  var filtered=[];
-  for(var i=0;i<rows.length;i++){
-    var r=rows[i];
-    if(chosen.indexOf(r.speaker)===-1) continue;
-    if(q("specialOnly").checked && !(r.special||r.critical||r.fumble)) continue;
-    filtered.push(r);
-  }
+  var list=selectedRows(),filtered=[];
+  for(var i=0;i<list.length;i++) if(isGrowthCandidate(list[i])) filtered.push(list[i]);
 
   if(q("uniqueSkills").checked){
     var seen={},merged=[];
     for(var j=0;j<filtered.length;j++){
       var x=filtered[j],key=x.speaker+"\n"+x.skill;
       if(!seen[key]){
-        seen[key]={speaker:x.speaker,skill:x.skill,roll:x.roll,critical:x.critical,fumble:x.fumble,special:x.special};
+        seen[key]={
+          speaker:x.speaker,skill:x.skill,roll:x.roll,
+          critical:x.critical,fumble:x.fumble,special:x.special,success:x.success
+        };
         merged.push(seen[key]);
       }else{
         seen[key].critical=seen[key].critical||x.critical;
         seen[key].fumble=seen[key].fumble||x.fumble;
         seen[key].special=seen[key].special||x.special;
-        if((x.critical||x.fumble)&&x.roll!=null) seen[key].roll=x.roll;
+        seen[key].success=seen[key].success||x.success;
+        if((x.critical||x.fumble||x.special)&&x.roll!=null) seen[key].roll=x.roll;
       }
     }
     filtered=merged;
   }
 
   var lines=[];
-  for(var k=0;k<filtered.length;k++) lines.push(displayLine(filtered[k]));
-  q("result").textContent=lines.length?lines.join("\n"):"条件に一致する技能はありません。";
+  for(var k=0;k<filtered.length;k++) lines.push(candidateLabel(filtered[k]));
+  q("result").textContent=lines.length?lines.join("\n"):"条件に一致する成長候補はありません。";
   q("count").textContent=filtered.length+"件";
+}
+
+function renderAll(){
+  renderStats();
+  renderResults();
 }
 
 function finish(raw,isHtml){
   try{
     rows=isHtml?parseHtml(raw):parseText(raw);
-    if(!rows.length && isHtml) rows=parseText(new DOMParser().parseFromString(raw,"text/html").body.textContent);
+    if(!rows.length && isHtml){
+      var doc=new DOMParser().parseFromString(raw,"text/html");
+      rows=parseText(doc.body?doc.body.textContent:raw);
+    }
 
     if(!rows.length){
       q("status").textContent="技能判定を見つけられませんでした。";
       q("charactersPanel").hidden=true;
       q("optionsPanel").hidden=true;
+      q("statsPanel").hidden=true;
       q("resultsPanel").hidden=true;
       return;
     }
@@ -227,9 +344,10 @@ function finish(raw,isHtml){
     renderCharacters();
     q("charactersPanel").hidden=false;
     q("optionsPanel").hidden=false;
+    q("statsPanel").hidden=false;
     q("resultsPanel").hidden=false;
     q("status").textContent="技能判定 "+rows.length+"件を読み込みました。";
-    renderResults();
+    renderAll();
   }catch(e){
     console.error(e);
     q("status").textContent="解析エラー："+(e&&e.message?e.message:String(e));
@@ -261,20 +379,22 @@ q("clear").onclick=function(){
   rows=[];
   q("charactersPanel").hidden=true;
   q("optionsPanel").hidden=true;
+  q("statsPanel").hidden=true;
   q("resultsPanel").hidden=true;
 };
 
 q("selectAll").onclick=function(){
   var c=document.getElementsByClassName("charCheck");
-  for(var i=0;i<c.length;i++)c[i].checked=true;
-  renderResults();
+  for(var i=0;i<c.length;i++) c[i].checked=true;
+  renderAll();
 };
 q("selectNone").onclick=function(){
   var c=document.getElementsByClassName("charCheck");
-  for(var i=0;i<c.length;i++)c[i].checked=false;
-  renderResults();
+  for(var i=0;i<c.length;i++) c[i].checked=false;
+  renderAll();
 };
-q("specialOnly").onchange=renderResults;
+
+q("houseRule").onchange=renderResults;
 q("uniqueSkills").onchange=renderResults;
 
 q("copy").onclick=function(){

@@ -5,29 +5,24 @@
 <title>SCENARIO | 39*2</title>
 <link rel="stylesheet" href="../assets/css/style.css">
 <style>
-.sc-grid{display:grid;grid-template-columns:350px minmax(0,1fr);gap:14px;align-items:start}
-.sc-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}
-.sc-panel h2{margin-top:0}
-.sc-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.sc-checks{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
-.sc-checks label{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:5px 8px;margin:0}
-.sc-checks input{width:auto}
-.sc-tools,.sc-actions{display:flex;gap:6px;flex-wrap:wrap}
-.sc-list{display:grid;gap:8px;margin-top:10px}
-.sc-card{border:1px solid var(--line);border-radius:9px;padding:11px;display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px;align-items:start}
-.sc-card.no-thumb{grid-template-columns:1fr}
-.sc-thumb{width:140px;aspect-ratio:16/10;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:#0c0f13}
-.sc-body{min-width:0}
-.sc-preview{display:flex;gap:10px;align-items:flex-start;margin-top:8px}
-.sc-preview img{width:120px;aspect-ratio:16/10;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
-.sc-preview-meta{min-width:0}
-.sc-inline{display:flex;gap:7px;align-items:center}.sc-inline input{flex:1}.sc-inline button{width:auto;white-space:nowrap}
-@media(max-width:560px){.sc-card{grid-template-columns:100px minmax(0,1fr)}.sc-thumb{width:100px}.sc-inline{align-items:stretch;flex-direction:column}.sc-inline button{width:100%}}
-.sc-head{display:flex;justify-content:space-between;gap:10px}
-.sc-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
-input,select{width:100%}
-label{display:block;margin:7px 0 3px}
-@media(max-width:820px){.sc-grid{grid-template-columns:1fr}.sc-row{grid-template-columns:1fr}}
+.sc-layout{display:grid;gap:16px}
+.sc-panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.sc-form{display:none;max-width:760px;margin:0 auto}.sc-form.open{display:block}
+.sc-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sc-checks{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}.sc-checks label{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:5px 8px;margin:0}.sc-checks input{width:auto}
+.sc-tools{display:flex;gap:6px;flex-wrap:wrap}.sc-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap}.sc-toolbar-main{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.sc-toolbar-main>div{min-width:180px}.sc-toolbar button{width:auto}
+.sc-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:16px}
+.sc-card{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel);min-width:0;transition:transform .12s ease,border-color .12s ease,box-shadow .12s ease;cursor:pointer}
+.sc-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.16)}
+.sc-thumb-wrap{aspect-ratio:16/10;background:linear-gradient(135deg,rgba(255,255,255,.035),rgba(255,255,255,.01));display:flex;align-items:center;justify-content:center;overflow:hidden}
+.sc-thumb{width:100%;height:100%;object-fit:cover;display:block}.sc-placeholder{font-size:34px;opacity:.38}
+.sc-body{padding:12px;min-width:0}.sc-head{display:flex;justify-content:space-between;gap:8px;align-items:start}.sc-head h3{font-size:1rem;line-height:1.45;margin:0;overflow-wrap:anywhere}.sc-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.sc-author{margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-menu-wrap{position:absolute;right:8px;top:8px;z-index:3}.sc-menu-btn{width:32px!important;height:32px;padding:0!important;border-radius:8px!important;background:rgba(15,18,22,.82)!important;backdrop-filter:blur(5px);font-size:20px;line-height:1}.sc-menu{position:absolute;right:0;top:36px;min-width:135px;padding:5px;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.28);display:none}.sc-menu.open{display:grid}.sc-menu button,.sc-menu a{display:block;width:100%;text-align:left;padding:7px 9px;border:0;background:transparent;color:inherit;text-decoration:none;border-radius:6px;font:inherit}.sc-menu button:hover,.sc-menu a:hover{background:rgba(255,255,255,.06)}.sc-menu .danger{color:#ff9b9b}
+.sc-add-card{min-height:210px;border:1px dashed var(--line);border-radius:12px;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer}.sc-add-card:hover{background:rgba(255,255,255,.025);color:inherit}.sc-add-plus{font-size:30px;font-weight:300}
+.sc-preview{display:flex;gap:10px;align-items:flex-start;margin-top:8px}.sc-preview img{width:120px;aspect-ratio:16/10;object-fit:cover;border-radius:8px;border:1px solid var(--line)}.sc-preview-meta{min-width:0}.sc-inline{display:flex;gap:7px;align-items:center}.sc-inline input{flex:1}.sc-inline button{width:auto;white-space:nowrap}
+.sc-detail{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:inherit;padding:0;max-width:620px;width:calc(100% - 28px);box-shadow:0 20px 60px rgba(0,0,0,.4)}.sc-detail::backdrop{background:rgba(0,0,0,.55)}.sc-detail-img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;border-radius:14px 14px 0 0}.sc-detail-body{padding:18px}.sc-detail-top{display:flex;justify-content:space-between;gap:12px;align-items:start}.sc-detail-top h2{margin:0}.sc-detail-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:16px}.sc-detail-close{width:auto!important;padding:5px 9px!important}
+input,select{width:100%}label{display:block;margin:7px 0 3px}
+@media(max-width:620px){.sc-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.sc-body{padding:9px}.sc-head h3{font-size:.92rem}.sc-author{display:none}.sc-inline{align-items:stretch;flex-direction:column}.sc-inline button{width:100%}.sc-row{grid-template-columns:1fr}.sc-toolbar-main{width:100%}.sc-toolbar-main>div{min-width:0;flex:1}.sc-add-card{min-height:160px}}
+@media(max-width:390px){.sc-list{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -39,8 +34,8 @@ label{display:block;margin:7px 0 3px}
 <main><div class="wrap">
 <div class="hero"><h2>SCENARIO</h2><p>所持・通過済み・通過予定・KP予定など、 シナリオの状況をまとめて管理できます。</p></div>
 <div class="notice small">登録内容は、お使いのブラウザ内に保存されます。 他の利用者には共有されません。</div>
-<div class="sc-grid">
-<section class="sc-panel">
+<div class="sc-layout">
+<section id="scenarioForm" class="sc-panel sc-form">
 <h2 id="formHeading">シナリオを登録</h2><input id="editId" type="hidden">
 <label>シナリオ名</label><input id="title">
 <div class="sc-row"><div><label>システム</label><input id="system" placeholder="CoC6版 など"></div><div><label>作者・サークル</label><input id="author"></div></div>
@@ -60,21 +55,21 @@ label{display:block;margin:7px 0 3px}
 </div>
 <div class="sc-tools"><button id="save" class="primary" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-<section class="sc-panel">
-<div class="sc-head"><div><h2>シナリオ一覧</h2><div id="summary" class="small"></div><button id="shareScenarioList" type="button">表示中の一覧を共有</button></div></div>
-<div class="sc-row"><div><label>検索</label><input id="search" type="search"></div><div><label>絞り込み</label><select id="filter"><option value="">すべて</option><option value="owned">所持</option><option value="played">通過済み</option><option value="planned">通過予定</option><option value="kpDone">KP済み</option><option value="kpPlanned">KP予定</option><option value="wish">気になる</option></select></div></div>
+<section>
+<div class="sc-toolbar"><div class="sc-toolbar-main"><div><label>検索</label><input id="search" type="search" placeholder="シナリオを検索"></div><div><label>絞り込み</label><select id="filter"><option value="">すべて</option><option value="owned">所持</option><option value="played">通過済み</option><option value="planned">通過予定</option><option value="kpDone">KP済み</option><option value="kpPlanned">KP予定</option><option value="wish">気になる</option></select></div></div><div class="sc-tools"><button id="shareScenarioList" type="button">一覧を共有</button><button id="openForm" class="primary" type="button">＋ シナリオ</button></div></div><div id="summary" class="small" style="margin-top:8px"></div>
 <div id="list" class="sc-list"></div>
 </section>
 </div>
 </div></main>
+<dialog id="detailDialog" class="sc-detail"><div id="detailContent"></div></dialog>
 <footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
 
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/migrate-v02.js"></script>
 <script src="../assets/js/shared-data.js"></script>
 <script src="../assets/js/supabase-config.js?v=026"></script>
-<script src="../assets/js/supabase-sync.js?v=027"></script>
-<script src="../assets/js/og-preview.js?v=027"></script>
+<script src="../assets/js/supabase-sync.js?v=028"></script>
+<script src="../assets/js/og-preview.js?v=028"></script>
 <script>TRPG39Sync.initAutoSync();</script>
 <script src="../assets/js/supabase-share.js"></script>
 <script>
@@ -83,9 +78,10 @@ const q=id=>document.getElementById(id),flags={owned:"所持",played:"通過済�
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let data=TRPG39.loadScenarios();
 const persist=()=>TRPG39.saveScenarios(data);
-function reset(){q("editId").value="";["title","system","author","url","thumbnailUrl"].forEach(x=>q(x).value="");document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true;q("thumbStatus").textContent="";updateThumbPreview()}
+function reset(){q("editId").value="";["title","system","author","url","thumbnailUrl"].forEach(x=>q(x).value="");document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true;q("thumbStatus").textContent="";updateThumbPreview();q("scenarioForm").classList.remove("open")}
+function openForm(){q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
 function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");let id=q("editId").value||TRPG39.uuid();let item={id,title,system:q("system").value.trim(),author:q("author").value.trim(),url:q("url").value.trim(),thumbnailUrl:q("thumbnailUrl").value.trim(),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),updatedAt:new Date().toISOString()};let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);persist();reset();render()}
-function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("editId").value=x.id;q("title").value=x.title||"";q("system").value=x.system||"";q("author").value=x.author||"";q("url").value=x.url||"";q("thumbnailUrl").value=x.thumbnailUrl||"";updateThumbPreview(x.ogTitle||x.title||"");document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;scrollTo({top:0,behavior:"smooth"})}
+function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("editId").value=x.id;q("title").value=x.title||"";q("system").value=x.system||"";q("author").value=x.author||"";q("url").value=x.url||"";q("thumbnailUrl").value=x.thumbnailUrl||"";updateThumbPreview(x.ogTitle||x.title||"");document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
 function del(id){if(confirm("このシナリオを削除しますか？")){data=data.filter(x=>x.id!==id);persist();render()}}
 function schedule(id){
  const x=data.find(v=>v.id===id);if(!x)return;
@@ -148,8 +144,29 @@ async function fetchThumbnail(){
    console.error(e);q("thumbStatus").textContent="⚠ "+e.message;
  }finally{q("fetchThumb").disabled=false}
 }
-function render(){let term=q("search").value.trim().toLowerCase(),f=q("filter").value;let xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term)));q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件`;q("list").innerHTML=xs.length?xs.map(x=>`<article class="sc-card ${x.thumbnailUrl?"":"no-thumb"}">${x.thumbnailUrl?`<img class="sc-thumb" src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<div class="sc-body"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}</div>${x.author?`<div class="small">作者・サークル：${esc(x.author)}</div>`:""}${x.url?`<div><a class="link" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・販売ページ</a></div>`:""}<div class="sc-actions"><button data-schedule="${x.id}">卓予定を作る</button><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div></div></article>`).join(""):'<div class="empty">まだ登録されていません。</div>';document.querySelectorAll("[data-schedule]").forEach(b=>b.onclick=()=>schedule(b.dataset.schedule));document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>del(b.dataset.del))}
-q("shareScenarioList").onclick=shareScenarioList;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;render();
+function detail(id){
+ const x=data.find(v=>v.id===id);if(!x)return;
+ const labels=Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("");
+ q("detailContent").innerHTML=`${x.thumbnailUrl?`<img class="sc-detail-img" src="${esc(x.thumbnailUrl)}" alt="">`:""}<div class="sc-detail-body"><div class="sc-detail-top"><div><h2>${esc(x.title)}</h2><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${labels}</div></div><button class="sc-detail-close" data-close type="button">×</button></div>${x.author?`<p>作者・サークル：${esc(x.author)}</p>`:""}<div class="sc-detail-actions">${x.url?`<a class="button" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・販売ページ</a>`:""}<button data-detail-schedule="${x.id}">卓予定を作る</button><button data-detail-edit="${x.id}">編集</button></div></div>`;
+ q("detailDialog").showModal();
+ q("detailContent").querySelector("[data-close]").onclick=()=>q("detailDialog").close();
+ const eb=q("detailContent").querySelector("[data-detail-edit]");if(eb)eb.onclick=()=>{q("detailDialog").close();edit(id)};
+ const sb=q("detailContent").querySelector("[data-detail-schedule]");if(sb)sb.onclick=()=>schedule(id);
+}
+function render(){
+ let term=q("search").value.trim().toLowerCase(),f=q("filter").value;
+ let xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term)));
+ q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件`;
+ const cards=xs.map(x=>`<article class="sc-card" data-open="${x.id}" tabindex="0"><div class="sc-thumb-wrap">${x.thumbnailUrl?`<img class="sc-thumb" src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="sc-placeholder">🌺</div>`}</div><div class="sc-menu-wrap"><button class="sc-menu-btn" data-menu="${x.id}" type="button" aria-label="メニュー">⋯</button><div class="sc-menu" data-menu-panel="${x.id}">${x.url?`<a target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布ページ</a>`:""}<button data-schedule="${x.id}" type="button">卓予定を作る</button><button data-edit="${x.id}" type="button">編集</button><button class="danger" data-del="${x.id}" type="button">削除</button></div></div><div class="sc-body"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}</div>${x.author?`<div class="small muted sc-author">${esc(x.author)}</div>`:""}</div></article>`).join("");
+ q("list").innerHTML=cards+`<button id="addCard" class="sc-add-card" type="button"><span class="sc-add-plus">＋</span><span>シナリオを追加</span></button>`;
+ document.querySelectorAll("[data-open]").forEach(c=>{c.onclick=e=>{if(e.target.closest("button,a,.sc-menu"))return;detail(c.dataset.open)};c.onkeydown=e=>{if(e.key==="Enter")detail(c.dataset.open)}});
+ document.querySelectorAll("[data-menu]").forEach(b=>b.onclick=e=>{e.stopPropagation();const panel=document.querySelector(`[data-menu-panel="${b.dataset.menu}"]`);document.querySelectorAll(".sc-menu.open").forEach(m=>{if(m!==panel)m.classList.remove("open")});panel.classList.toggle("open")});
+ document.querySelectorAll("[data-schedule]").forEach(b=>b.onclick=e=>{e.stopPropagation();schedule(b.dataset.schedule)});
+ document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=e=>{e.stopPropagation();edit(b.dataset.edit)});
+ document.querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>{e.stopPropagation();del(b.dataset.del)});
+ q("addCard").onclick=openForm;
+}
+q("shareScenarioList").onclick=shareScenarioList;q("openForm").onclick=openForm;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;render();
 })();
 </script>
 </body></html>

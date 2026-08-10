@@ -90,7 +90,7 @@ async function shareAlbum(id){
  try{
    if(TRPG39Cloud && TRPG39Cloud.configured()){
      const shareId=await TRPG39Cloud.createSharedPage(payload);
-     const url=TRPG39.makeShortShareUrl(shareId);
+     const url=(TRPG39 && typeof TRPG39.makeShortShareUrl==="function") ? TRPG39.makeShortShareUrl(shareId) : new URL("../share/?id="+encodeURIComponent(shareId), location.href).href;
      showShareUrl(url,"短い共有URLを作成しました。URLを知っている人はこの卓記録を閲覧できます。");
      return;
    }

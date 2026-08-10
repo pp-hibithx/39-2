@@ -4,3 +4,20 @@ html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text)
 
 /* Dice log tool */
 .tool-panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}.tool-panel h3{margin:0 0 14px;font-size:17px}.or{text-align:center;color:var(--muted);font-size:12px;margin:2px 0}.button-row,.subrow,.result-head{display:flex;gap:10px;align-items:center}.button-row button{flex:1}.subrow{margin-bottom:12px}.compact{width:auto;padding:8px 12px;font-size:12px}.small{font-size:12px}.check-grid,.option-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px}.check-card{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#10141a;border:1px solid var(--line);border-radius:10px;cursor:pointer}.check-card input{width:auto;accent-color:var(--accent)}.check-card span{min-width:0;overflow:hidden;text-overflow:ellipsis}.check-card small{margin-left:auto;color:var(--muted)}.inline-field{margin-top:14px}.result-head{justify-content:space-between}.result-head h3{margin-bottom:2px}.special-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}.special-summary span{padding:5px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px}.special-summary b{color:var(--accent2)}.result{font-family:"Consolas","Yu Gothic",monospace;overflow:auto;white-space:pre-wrap;word-break:break-word}.help{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 15px}.help summary{cursor:pointer;color:var(--accent2)}.help p{color:var(--muted);font-size:13px;margin-bottom:2px}.field input[type="file"]{padding:8px}@media(max-width:560px){.button-row,.result-head{align-items:stretch;flex-direction:column}.button-row button,.result-head button{width:100%}.check-grid,.option-grid{grid-template-columns:1fr}}
+
+
+/* 39*2 branding */
+.brand-392{
+  display:flex;
+  align-items:center;
+  gap:.28em;
+  width:max-content;
+}
+.hibiscus-logo{
+  display:inline-block;
+  font-size:.62em;
+  line-height:1;
+  transform:translateY(-.04em) rotate(-7deg);
+  filter:saturate(.85);
+  text-shadow:0 0 14px rgba(213,111,120,.18);
+}

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MY SCENARIO | 39*2</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+.my-grid{display:grid;grid-template-columns:360px minmax(0,1fr);gap:16px;align-items:start}
+.my-panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px}
+.my-panel h2,.my-panel h3{margin-top:0}
+.my-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.my-tools{display:flex;gap:7px;flex-wrap:wrap}
+.my-list{display:grid;gap:9px;margin-top:10px}
+.my-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.my-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.my-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.my-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.my-note{border-left:3px solid var(--accent);padding:9px 11px;margin:10px 0 14px;background:rgba(255,255,255,.02)}
+input,select{width:100%}
+label{display:block;margin:8px 0 4px}
+@media(max-width:850px){.my-grid{grid-template-columns:1fr}.my-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="site-header"><div class="wrap">
+<h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
+<div class="tagline">TRPG Scenario &amp; Tools</div>
+<nav class="nav"><a href="../">HOME</a><a href="../scenario/">SCENARIO</a><a href="../scenario/owned/">LIBRARY</a><a href="./" aria-current="page">MY SCENARIO</a><a href="../tools/">TOOLS</a><a href="../about/">ABOUT</a></nav>
+</div></header>
+
+<main><div class="wrap">
+<div class="hero">
+<h2>MY SCENARIO</h2>
+<p>自分だけのシナリオ管理帳。登録内容はこのブラウザにだけ保存されます。</p>
+</div>
+<div class="my-note small">39*2本体や他の利用者のデータは書き換えません。ネタバレ本文を保存する欄は設けていません。</div>
+
+<div class="my-grid">
+<section class="my-panel">
+<h2 id="formTitle">シナリオを登録</h2>
+<input id="editId" type="hidden">
+<label>シナリオ名</label><input id="title" placeholder="シナリオ名">
+<div class="my-row">
+<div><label>システム</label><input id="system" placeholder="CoC6版 / エモクロア など"></div>
+<div><label>作者・サークル</label><input id="author"></div>
+</div>
+<label>配布・販売ページ</label><input id="url" type="url" placeholder="https://...">
+<div class="my-row">
+<div><label>状態</label><select id="status">
+<option>未通過</option><option>PL予定</option><option>PL済</option><option>KP予定</option><option>KP済</option><option>PL・KP済</option><option>回したい</option>
+</select></div>
+<div><label>遊んだ日</label><input id="playedAt" type="date"></div>
+</div>
+<label>一緒に遊んだ人</label><input id="people" placeholder="名前をカンマ区切り">
+<div class="my-tools" style="margin-top:10px">
+<button id="save" class="primary" type="button">保存</button>
+<button id="cancel" type="button" hidden>編集をやめる</button>
+</div>
+</section>
+
+<section class="my-panel">
+<div class="my-card-head">
+<div><h2>自分のシナリオ</h2><div id="summary" class="small"></div></div>
+<div class="my-tools">
+<button id="backup" type="button">バックアップ</button>
+<button id="restore" type="button">復元</button>
+<input id="restoreFile" type="file" accept=".json,application/json" hidden>
+</div>
+</div>
+<div class="my-row">
+<div><label>検索</label><input id="search" type="search" placeholder="タイトル・作者・一緒に遊んだ人"></div>
+<div><label>状態</label><select id="filter"><option value="">すべて</option><option>未通過</option><option>PL予定</option><option>PL済</option><option>KP予定</option><option>KP済</option><option>PL・KP済</option><option>回したい</option></select></div>
+</div>
+<div id="list" class="my-list"></div>
+</section>
+</div>
+</div></main>
+
+<footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
+<script src="../assets/js/main.js"></script>
+<script>
+(function(){
+"use strict";
+const KEY="39x2_my_scenario_v1";
+const q=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,8);
+let data=load();
+
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(x)?x:[]}catch{return[]}}
+function persist(){localStorage.setItem(KEY,JSON.stringify(data))}
+function clearForm(){["editId","title","system","author","url","playedAt","people"].forEach(id=>q(id).value="");q("status").value="未通過";q("formTitle").textContent="シナリオを登録";q("cancel").hidden=true}
+function save(){
+ const title=q("title").value.trim();
+ if(!title)return alert("シナリオ名を入力してください。");
+ const item={
+   id:q("editId").value||uid(),title,
+   system:q("system").value.trim(),author:q("author").value.trim(),
+   url:q("url").value.trim(),status:q("status").value,
+   playedAt:q("playedAt").value,
+   people:q("people").value.split(",").map(x=>x.trim()).filter(Boolean),
+   updatedAt:Date.now()
+ };
+ const i=data.findIndex(x=>x.id===item.id);
+ if(i>=0)data[i]=item;else data.unshift(item);
+ persist();clearForm();render();
+}
+function edit(id){
+ const x=data.find(v=>v.id===id);if(!x)return;
+ q("editId").value=x.id;q("title").value=x.title||"";q("system").value=x.system||"";q("author").value=x.author||"";
+ q("url").value=x.url||"";q("status").value=x.status||"未通過";q("playedAt").value=x.playedAt||"";q("people").value=(x.people||[]).join(", ");
+ q("formTitle").textContent="シナリオを編集";q("cancel").hidden=false;window.scrollTo({top:0,behavior:"smooth"});
+}
+function remove(id){if(!confirm("このシナリオを削除しますか？"))return;data=data.filter(x=>x.id!==id);persist();render()}
+function render(){
+ const term=q("search").value.trim().toLowerCase(),status=q("filter").value;
+ const list=data.filter(x=>{
+   if(status&&x.status!==status)return false;
+   const hay=[x.title,x.system,x.author,(x.people||[]).join(" ")].join(" ").toLowerCase();
+   return !term||hay.includes(term);
+ });
+ q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${list.length}件`;
+ q("list").innerHTML=list.length?list.map(x=>`
+ <article class="my-card">
+   <div class="my-card-head"><div><h3>${esc(x.title)}</h3><div class="my-meta">
+   ${x.system?`<span class="badge">${esc(x.system)}</span>`:""}<span class="badge">${esc(x.status)}</span>
+   ${x.playedAt?`<span class="badge">${esc(x.playedAt)}</span>`:""}
+   </div></div></div>
+   ${x.author?`<div class="small">作者・サークル：${esc(x.author)}</div>`:""}
+   ${(x.people||[]).length?`<div class="small">一緒に遊んだ人：${esc(x.people.join(" / "))}</div>`:""}
+   ${x.url?`<div><a class="link" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布・販売ページ</a></div>`:""}
+   <div class="my-actions"><button type="button" data-edit="${x.id}">編集</button><button type="button" class="danger" data-delete="${x.id}">削除</button></div>
+ </article>`).join(""):'<div class="empty">まだシナリオが登録されていません。</div>';
+ document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));
+ document.querySelectorAll("[data-delete]").forEach(b=>b.onclick=()=>remove(b.dataset.delete));
+}
+function backup(){
+ const blob=new Blob([JSON.stringify({app:"39*2",kind:"my-scenario",version:1,exportedAt:new Date().toISOString(),data},null,2)],{type:"application/json"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="39x2-my-scenario-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function restore(file){
+ const r=new FileReader();
+ r.onload=()=>{try{
+   const x=JSON.parse(String(r.result||""));
+   const incoming=Array.isArray(x)?x:(Array.isArray(x.data)?x.data:null);
+   if(!incoming)throw new Error("形式が違います");
+   if(!confirm(`バックアップ ${incoming.length}件で現在のデータを置き換えますか？`))return;
+   data=incoming;persist();clearForm();render();
+ }catch(e){alert("バックアップを読み込めませんでした。")}};
+ r.readAsText(file);
+}
+q("save").onclick=save;q("cancel").onclick=clearForm;
+q("search").oninput=render;q("filter").onchange=render;
+q("backup").onclick=backup;q("restore").onclick=()=>q("restoreFile").click();
+q("restoreFile").onchange=()=>{const f=q("restoreFile").files&&q("restoreFile").files[0];if(f)restore(f);q("restoreFile").value=""};
+render();
+})();
+</script>
+</body>
+</html>

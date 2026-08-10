@@ -21,3 +21,9 @@ html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text)
   filter:saturate(.85);
   text-shadow:0 0 14px rgba(213,111,120,.18);
 }
+
+.link{color:var(--accent);overflow-wrap:anywhere}
+
+.empty{padding:18px;text-align:center;border:1px dashed var(--line);border-radius:10px;color:var(--muted)}
+
+button.danger,.danger{background:transparent;border:1px solid #a85f65;color:#e8a5aa}

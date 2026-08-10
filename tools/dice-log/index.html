@@ -321,9 +321,9 @@ main>.wrap{
 <main><div class="wrap" style="display:block">
 <div class="hero hero-copy">
   <h2>🎲 ダイスログ解析</h2>
-  <p>ココフォリアのログから、技能判定・成長候補・<br>クリティカル／ファンブルをまとめて確認します。</p>
+  <p>ココフォリアのログから、技能判定・成長候補・ クリティカル／ファンブルをまとめて確認します。</p>
 </div>
-<div class="note small">ログは外部へ送信しません。<br>解析・保存はこのブラウザ内だけで行います。</div>
+<div class="note small">ログは外部へ送信しません。 解析・保存はこのブラウザ内だけで行います。</div>
 
 <div class="tool-grid2">
 <section class="panel">
@@ -588,7 +588,7 @@ function renderSourcePreview(){
  const hitLines=new Set(currentDiceResults.map(x=>x.sourceLine));
  const startText=r.startMark?(r.startFound?`開始目印を ${r.start+1} 行目で確認`:`開始目印「${esc(r.startMark)}」が見つからず、先頭から解析`):"先頭から解析";
  const endText=r.endMark?(r.endFound?`終了目印の直前 ${r.end} 行目まで`:`終了目印「${esc(r.endMark)}」が見つからず、末尾まで解析`):"末尾まで解析";
- sum.innerHTML=`<b>${startText}</b> ／ <b>${endText}</b><br><span class="small">対象：${r.lines.length}行・判定抽出：${currentDiceResults.length}件</span>`;
+ sum.innerHTML=`<b>${startText}</b> ／ <b>${endText}</b> <span class="small">対象：${r.lines.length}行・判定抽出：${currentDiceResults.length}件</span>`;
  box.innerHTML=r.lines.map((line,i)=>{const no=r.start+i+1,hit=hitLines.has(no);return `<div id="sourceLine${no}" class="source-line ${hit?'hit dice':''}"><span class="line-no">${no}</span><span>${esc(line)||'&nbsp;'}</span></div>`}).join("");
  $("trpgJumpFirst").disabled=!currentDiceResults.length;
 }

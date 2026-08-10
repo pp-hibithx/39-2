@@ -80,3 +80,72 @@ button.danger,.danger{background:transparent;border:1px solid #a85f65;color:#e8a
 .notice{
   line-height:1.65;
 }
+
+
+/* v0.1.5: 手動改行をやめ、文章幅と日本語組版で自然に折り返す */
+.hero p,
+.card p,
+.panel p,
+.notice,
+.small,
+.muted{
+  line-break: strict;
+  word-break: normal;
+  overflow-wrap: normal;
+  hanging-punctuation: none;
+}
+
+/* 本文は読みやすい1行長に制限 */
+.hero p,
+.panel p,
+.notice{
+  max-width: 46em;
+}
+
+/* カード本文はカード幅に対して自然に収める */
+.card p{
+  max-width: 30em;
+}
+
+/* 行間は詰めすぎず、広げすぎず */
+.hero p,
+.card p,
+.panel p,
+.notice{
+  line-height: 1.6;
+}
+
+/* TOPカードの列幅を少し広めにして、末尾1～2文字の孤立を減らす */
+.grid{
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 14px;
+}
+
+/* ABOUTなど横長本文は左揃えで安定 */
+.panel{
+  min-width: 0;
+}
+.panel p,
+.hero p,
+.notice{
+  margin-right: auto;
+}
+
+/* 句読点が行頭に出にくいブラウザ向け設定 */
+html{
+  line-break: strict;
+  word-break: normal;
+}
+
+/* 狭い画面では1列に */
+@media (max-width: 760px){
+  .grid{
+    grid-template-columns: 1fr;
+  }
+  .hero p,
+  .panel p,
+  .notice,
+  .card p{
+    max-width: none;
+  }
+}

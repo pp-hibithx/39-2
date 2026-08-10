@@ -29,19 +29,19 @@
 
 <section class="panel">
 <div class="calendar-toolbar">
-  <div class="wrap">
-    <button id="prevMonth" type="button">←</button>
+  <div class="month-nav">
+    <button id="prevMonth" type="button" aria-label="前の月">←</button>
     <strong id="monthLabel"></strong>
-    <button id="nextMonth" type="button">→</button>
+    <button id="nextMonth" type="button" aria-label="次の月">→</button>
     <button id="todayBtn" type="button">今月</button>
   </div>
-  <button id="newEventBtn" class="primary" type="button">卓予定を追加</button>
+  <button id="newEventBtn" type="button">＋ 予定を追加</button>
 </div>
 <div class="calendar-grid" id="weekdayHead"></div>
 <div class="calendar-grid" id="calendar"></div>
 </section>
 
-<section class="panel" id="eventPanel">
+<section class="panel event-editor" id="eventPanel">
 <h2 id="eventHeading">卓予定を登録</h2>
 <input id="eventId" type="hidden">
 <div class="event-form">
@@ -55,11 +55,11 @@
 <div><label>PC名</label><input id="eventPc"></div>
 <div class="full"><label>参加者</label><input id="eventPeople" placeholder="名前をカンマ区切り"></div>
 </div>
-<div class="wrap" style="margin-top:10px">
-<button id="saveEvent" class="primary" type="button">保存</button>
-<button id="toAlbum" class="success" type="button" hidden>この卓をLIBRARYに残す</button>
-<button id="deleteEvent" class="danger" type="button" hidden>削除</button>
+<div class="event-editor-actions">
+<button id="saveEvent" type="button">保存</button>
+<button id="toAlbum" type="button" hidden>LIBRARYに残す</button>
 <button id="resetEvent" type="button">入力をクリア</button>
+<button id="deleteEvent" class="danger" type="button" hidden>削除</button>
 </div>
 <div class="small" style="margin-top:8px">予定をLIBRARYへ送ると、日付・シナリオ・役割・参加者などを引き継いでアルバム記録を作成します。</div>
 </section>
@@ -68,8 +68,8 @@
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/migrate-v02.js"></script>
 <script src="../assets/js/shared-data.js"></script>
-<script src="../assets/js/supabase-config.js?v=026"></script>
-<script src="../assets/js/supabase-sync.js?v=026"></script>
+<script src="../assets/js/supabase-config.js?v=029"></script>
+<script src="../assets/js/supabase-sync.js?v=029"></script>
 <script>TRPG39Sync.initAutoSync();</script>
 <script>
 (() => {

@@ -53,10 +53,10 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <label><input type="checkbox" class="flag" value="kpPlanned">KP予定</label>
 <label><input type="checkbox" class="flag" value="wish">気になる</label>
 </div>
-<div class="sc-tools"><button id="save" class="primary" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
+<div class="sc-tools"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
 <section>
-<div class="sc-toolbar"><div class="sc-toolbar-main"><div><label>検索</label><input id="search" type="search" placeholder="シナリオを検索"></div><div><label>絞り込み</label><select id="filter"><option value="">すべて</option><option value="owned">所持</option><option value="played">通過済み</option><option value="planned">通過予定</option><option value="kpDone">KP済み</option><option value="kpPlanned">KP予定</option><option value="wish">気になる</option></select></div></div><div class="sc-tools"><button id="shareScenarioList" type="button">一覧を共有</button><button id="openForm" class="primary" type="button">＋ シナリオ</button></div></div><div id="summary" class="small" style="margin-top:8px"></div>
+<div class="sc-toolbar"><div class="sc-toolbar-main"><div><label>検索</label><input id="search" type="search" placeholder="シナリオを検索"></div><div><label>絞り込み</label><select id="filter"><option value="">すべて</option><option value="owned">所持</option><option value="played">通過済み</option><option value="planned">通過予定</option><option value="kpDone">KP済み</option><option value="kpPlanned">KP予定</option><option value="wish">気になる</option></select></div></div><div class="sc-tools"><button id="shareScenarioList" type="button">共有</button><button id="openForm" type="button">＋ 追加</button></div></div><div id="summary" class="small" style="margin-top:8px"></div>
 <div id="list" class="sc-list"></div>
 </section>
 </div>
@@ -67,7 +67,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/migrate-v02.js"></script>
 <script src="../assets/js/shared-data.js"></script>
-<script src="../assets/js/supabase-config.js?v=026"></script>
+<script src="../assets/js/supabase-config.js?v=029"></script>
 <script src="../assets/js/supabase-sync.js?v=028"></script>
 <script src="../assets/js/og-preview.js?v=028"></script>
 <script>TRPG39Sync.initAutoSync();</script>
@@ -158,7 +158,7 @@ function render(){
  let xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term)));
  q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件`;
  const cards=xs.map(x=>`<article class="sc-card" data-open="${x.id}" tabindex="0"><div class="sc-thumb-wrap">${x.thumbnailUrl?`<img class="sc-thumb" src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="sc-placeholder">🌺</div>`}</div><div class="sc-menu-wrap"><button class="sc-menu-btn" data-menu="${x.id}" type="button" aria-label="メニュー">⋯</button><div class="sc-menu" data-menu-panel="${x.id}">${x.url?`<a target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布ページ</a>`:""}<button data-schedule="${x.id}" type="button">卓予定を作る</button><button data-edit="${x.id}" type="button">編集</button><button class="danger" data-del="${x.id}" type="button">削除</button></div></div><div class="sc-body"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}</div>${x.author?`<div class="small muted sc-author">${esc(x.author)}</div>`:""}</div></article>`).join("");
- q("list").innerHTML=cards+`<button id="addCard" class="sc-add-card" type="button"><span class="sc-add-plus">＋</span><span>シナリオを追加</span></button>`;
+ q("list").innerHTML=cards+`<button id="addCard" class="sc-add-card" type="button"><span class="sc-add-plus">＋</span><span>追加</span></button>`;
  document.querySelectorAll("[data-open]").forEach(c=>{c.onclick=e=>{if(e.target.closest("button,a,.sc-menu"))return;detail(c.dataset.open)};c.onkeydown=e=>{if(e.key==="Enter")detail(c.dataset.open)}});
  document.querySelectorAll("[data-menu]").forEach(b=>b.onclick=e=>{e.stopPropagation();const panel=document.querySelector(`[data-menu-panel="${b.dataset.menu}"]`);document.querySelectorAll(".sc-menu.open").forEach(m=>{if(m!==panel)m.classList.remove("open")});panel.classList.toggle("open")});
  document.querySelectorAll("[data-schedule]").forEach(b=>b.onclick=e=>{e.stopPropagation();schedule(b.dataset.schedule)});

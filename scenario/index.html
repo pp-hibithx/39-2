@@ -1,46 +1,74 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SCENARIO | 39*2</title>
 <link rel="stylesheet" href="../assets/css/style.css">
+<style>
+.sc-grid{display:grid;grid-template-columns:350px minmax(0,1fr);gap:14px;align-items:start}
+.sc-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}
+.sc-panel h2{margin-top:0}
+.sc-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sc-checks{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
+.sc-checks label{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:5px 8px;margin:0}
+.sc-checks input{width:auto}
+.sc-tools,.sc-actions{display:flex;gap:6px;flex-wrap:wrap}
+.sc-list{display:grid;gap:8px;margin-top:10px}
+.sc-card{border:1px solid var(--line);border-radius:9px;padding:11px}
+.sc-head{display:flex;justify-content:space-between;gap:10px}
+.sc-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+input,select{width:100%}
+label{display:block;margin:7px 0 3px}
+@media(max-width:820px){.sc-grid{grid-template-columns:1fr}.sc-row{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
 <div class="tagline">TRPG Scenario &amp; Tools</div>
-<nav class="nav"><a href="../">HOME</a><a href="./" aria-current="page">SCENARIO</a><a href="./owned/">LIBRARY</a><a href="../my-scenario/">MY SCENARIO</a><a href="../tools/">TOOLS</a><a href="../about/">ABOUT</a></nav>
+<nav class="nav"><a href="../">HOME</a><a href="./" aria-current="page">SCENARIO</a><a href="../library/">LIBRARY</a><a href="../tools/">TOOLS</a><a href="../about/">ABOUT</a></nav>
 </div></header>
-
 <main><div class="wrap">
-<div class="hero">
-<h2>SCENARIO</h2>
-<p>39*2で公開している自作TRPGシナリオ。</p>
+<div class="hero"><h2>SCENARIO</h2><p>所持・予定・通過状況を、自分用にまとめるシナリオ棚。</p></div>
+<div class="notice small">登録内容はこのブラウザにだけ保存されます。他の利用者や39*2本体のデータは変更しません。</div>
+<div class="sc-grid">
+<section class="sc-panel">
+<h2 id="formHeading">シナリオを登録</h2><input id="editId" type="hidden">
+<label>シナリオ名</label><input id="title">
+<div class="sc-row"><div><label>システム</label><input id="system" placeholder="CoC6版 など"></div><div><label>作者・サークル</label><input id="author"></div></div>
+<label>配布・販売ページ</label><input id="url" type="url" placeholder="https://...">
+<label>分類</label>
+<div class="sc-checks">
+<label><input type="checkbox" class="flag" value="owned">所持</label>
+<label><input type="checkbox" class="flag" value="played">通過済み</label>
+<label><input type="checkbox" class="flag" value="planned">通過予定</label>
+<label><input type="checkbox" class="flag" value="kpDone">KP済み</label>
+<label><input type="checkbox" class="flag" value="kpPlanned">KP予定</label>
+<label><input type="checkbox" class="flag" value="wish">気になる</label>
 </div>
-
-<section>
-<div class="grid">
-<div class="card">
-<span class="badge">COMING SOON</span>
-<h3>公開シナリオ</h3>
-<p>自作シナリオをここに追加していきます。</p>
-</div>
-<a class="card" href="./owned/">
-<span class="badge">LIBRARY</span>
-<h3>所持シナリオ一覧</h3>
-<p>39*2管理者が所持しているシナリオの公開用一覧です。</p>
-</a>
-<a class="card" href="../my-scenario/">
-<span class="badge">PERSONAL</span>
-<h3>MY SCENARIO</h3>
-<p>自分のブラウザだけに保存される、個人用のシナリオ管理帳です。</p>
-</a>
-</div>
+<div class="sc-tools"><button id="save" class="primary" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
+<section class="sc-panel">
+<div class="sc-head"><div><h2>シナリオ一覧</h2><div id="summary" class="small"></div></div></div>
+<div class="sc-row"><div><label>検索</label><input id="search" type="search"></div><div><label>絞り込み</label><select id="filter"><option value="">すべて</option><option value="owned">所持</option><option value="played">通過済み</option><option value="planned">通過予定</option><option value="kpDone">KP済み</option><option value="kpPlanned">KP予定</option><option value="wish">気になる</option></select></div></div>
+<div id="list" class="sc-list"></div>
+</section>
+</div>
 </div></main>
-
 <footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
 <script src="../assets/js/main.js"></script>
-</body>
-</html>
+<script>
+(()=>{"use strict";
+const KEY="39x2_scenarios_v2",q=id=>document.getElementById(id),flags={owned:"所持",played:"通過済み",planned:"通過予定",kpDone:"KP済み",kpPlanned:"KP予定",wish:"気になる"};
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let data=(()=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return[]}})();
+const persist=()=>localStorage.setItem(KEY,JSON.stringify(data));
+function reset(){q("editId").value="";["title","system","author","url"].forEach(x=>q(x).value="");document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true}
+function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");let id=q("editId").value||Date.now().toString(36)+Math.random().toString(36).slice(2,6);let item={id,title,system:q("system").value.trim(),author:q("author").value.trim(),url:q("url").value.trim(),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),updatedAt:Date.now()};let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);persist();reset();render()}
+function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("editId").value=x.id;q("title").value=x.title||"";q("system").value=x.system||"";q("author").value=x.author||"";q("url").value=x.url||"";document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;scrollTo({top:0,behavior:"smooth"})}
+function del(id){if(confirm("このシナリオを削除しますか？")){data=data.filter(x=>x.id!==id);persist();render()}}
+function render(){let term=q("search").value.trim().toLowerCase(),f=q("filter").value;let xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term)));q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件`;q("list").innerHTML=xs.length?xs.map(x=>`<article class="sc-card"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}</div>${x.author?`<div class="small">作者・サークル：${esc(x.author)}</div>`:""}${x.url?`<div><a class="link" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・販売ページ</a></div>`:""}<div class="sc-actions"><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div></article>`).join(""):'<div class="empty">まだ登録されていません。</div>';document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>del(b.dataset.del))}
+q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;render();
+})();
+</script>
+</body></html>

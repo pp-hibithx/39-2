@@ -27,3 +27,9 @@ html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text)
 .empty{padding:18px;text-align:center;border:1px dashed var(--line);border-radius:10px;color:var(--muted)}
 
 button.danger,.danger{background:transparent;border:1px solid #a85f65;color:#e8a5aa}
+
+
+.notice{padding:8px 10px;margin:8px 0 12px;border-left:3px solid var(--accent);background:rgba(255,255,255,.025)}
+.link{color:var(--accent);overflow-wrap:anywhere}
+.empty{padding:16px;text-align:center;border:1px dashed var(--line);border-radius:9px;color:var(--muted)}
+button.danger,.danger{background:transparent;border:1px solid #a85f65;color:#e8a5aa}

@@ -65,6 +65,62 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .note{border-left:3px solid var(--dl-accent);padding:10px 12px;background:color-mix(in srgb,var(--dl-accent) 7%,transparent);border-radius:0 8px 8px 0}
 details.card>summary{cursor:pointer;font-weight:700}
 </style>
+
+<style id="trpgthxCenterFix">
+body{margin:0}
+.site-header>.wrap,
+main>.wrap,
+.footer>.wrap{
+  width:min(1120px,calc(100% - 32px));
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+.site-header>.wrap{
+  display:block;
+}
+.site-header .nav{
+  display:flex;
+  gap:20px;
+  flex-wrap:wrap;
+  margin-top:18px;
+}
+main{
+  width:100%;
+  max-width:none!important;
+  padding-left:0!important;
+  padding-right:0!important;
+}
+main>.wrap{
+  display:block!important;
+  padding-top:24px;
+  padding-bottom:48px;
+}
+.hero{
+  text-align:center;
+}
+.hero p{
+  max-width:760px;
+  margin-left:auto;
+  margin-right:auto;
+}
+.note{
+  max-width:860px;
+  margin:12px auto 20px;
+}
+.tool-grid2{
+  align-items:start;
+}
+.panel{
+  width:100%;
+}
+@media(max-width:720px){
+  .site-header>.wrap,
+  main>.wrap,
+  .footer>.wrap{width:min(100% - 20px,1120px)}
+  .hero{text-align:left}
+}
+</style>
+
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -84,12 +140,12 @@ details.card>summary{cursor:pointer;font-weight:700}
 <section class="panel">
 <h2>ログ</h2>
 <div class="inline2">
-  <div><label>キャンペーン名</label><input id="trpgCampaign" placeholder="例：シリウスの篝火"></div>
+  <div><label>キャンペーン名</label><input id="trpgCampaign" placeholder="例：○○のシナリオ"></div>
   <div><label>区切り・章</label><input id="trpgScenario" placeholder="例：初日／Case2／第3話"></div>
 </div>
 <div class="inline2">
-  <div><label>抽出開始の目印（任意）</label><input id="trpgStartMarker" placeholder="例：◎七ヶ丘大学附属病院から再開"></div>
-  <div><label>抽出終了の目印（任意）</label><input id="trpgEndMarker" placeholder="例：次回は～から／Case3開始"></div>
+  <div><label>抽出開始の目印（任意）</label><input id="trpgStartMarker" placeholder="例：◎××病院から再開"></div>
+  <div><label>抽出終了の目印（任意）</label><input id="trpgEndMarker" placeholder="例：次回は○○から／第3章開始"></div>
 </div>
 <p class="small">開始行は含め、終了の目印がある行は含めません。空欄ならログ全体を解析します。</p>
 <label>ログ本文</label>
@@ -97,18 +153,15 @@ details.card>summary{cursor:pointer;font-weight:700}
 <label>HTML／テキストログ</label>
 <input id="trpgLogFile" type="file" accept=".html,.htm,.txt,text/html,text/plain">
 <div class="wrap" style="margin-top:12px">
-  <button id="trpgAnalyze" class="primary">解析する</button>
-  <button id="trpgClear" class="secondary">入力を消す</button>
+  <button id="trpgAnalyze" class="primary" type="button">解析する</button>
+  <button id="trpgClear" class="secondary" type="button">入力を消す</button>
 </div>
 <div id="fileStatus" class="small" style="margin-top:8px"></div>
 </section>
 
 <section class="panel">
 <h2>抽出条件</h2>
-<div class="inline2">
-  <div><label>CoCルール</label><select id="trpgEdition"><option value="6">6版</option><option value="7">7版</option></select></div>
-  <div><label>キャラクター</label><select id="trpgCharacterFilter"><option value="">全員</option></select></div>
-</div>
+<div><label>キャラクター</label><select id="trpgCharacterFilter"><option value="">全員</option></select></div>
 <label>結果</label>
 <select id="trpgResultFilter">
   <option value="">すべて</option>
@@ -122,9 +175,7 @@ details.card>summary{cursor:pointer;font-weight:700}
   <label class="checkline"><input class="growthRule" type="checkbox" value="成功" checked> 成功</label>
   <label class="checkline"><input class="growthRule" type="checkbox" value="失敗"> 失敗</label>
   <label class="checkline"><input class="growthRule" type="checkbox" value="致命的失敗" checked> 致命的失敗</label>
-  <label class="checkline"><input id="trpgInitialGrowth" type="checkbox" checked> 🌱 初期値成功</label>
 </div>
-<p class="small">初期値成功は6版／7版の技能初期値と照合します。能力値依存の技能は下の「初期値上書き」で指定できます。</p>
 
 <div class="card">
   <b>🚫 成長対象外</b>
@@ -181,21 +232,7 @@ details.card>summary{cursor:pointer;font-weight:700}
 </div>
 </section>
 
-<section class="panel">
-<details class="card">
-<summary>🌱 初期値上書き</summary>
-<div class="small" style="margin-top:8px">回避など能力値で初期値が変わる技能や、卓独自の初期値を登録できます。</div>
-<div class="inline2">
-  <div><label>技能名</label><input id="overrideSkill" placeholder="例：回避"></div>
-  <div><label>初期値</label><input id="overrideValue" type="number" min="0" max="100" placeholder="例：35"></div>
-</div>
-<div class="inline2">
-  <div><label>版</label><select id="overrideEdition"><option value="6">6版</option><option value="7">7版</option></select></div>
-  <div style="display:flex;align-items:end"><button id="overrideAdd" class="primary" style="width:100%">登録</button></div>
-</div>
-<div id="overrideList"></div>
-</details>
-</section>
+
 
 <section class="panel">
 <h2>保存済み解析</h2>
@@ -204,7 +241,6 @@ details.card>summary{cursor:pointer;font-weight:700}
 </div></main>
 
 <footer class="footer"><div class="wrap">© <span data-year></span> TRPGTHX</div></footer>
-<script src="../../assets/js/main.js"></script>
 <script>
 (function(){
 "use strict";
@@ -217,19 +253,7 @@ let currentDiceTotalResults=[];
 let currentSourceRange={lines:[],start:0,end:0,startFound:false,endFound:false,startMark:"",endMark:""};
 let currentRawText="";
 
-const COC_INITIAL_SKILLS={
- "6":[
-  ["キック",25],["組みつき",25],["こぶし",50],["こぶし/パンチ",50],["頭突き",10],["投擲",25],["マーシャルアーツ",1],
-  ["拳銃",20],["サブマシンガン",15],["ショットガン",30],["マシンガン",15],["ライフル",25],
-  ["応急手当",30],["鍵開け",1],["隠す",15],["隠れる",10],["聞き耳",25],["忍び歩き",10],["写真術",10],["精神分析",1],["追跡",10],["登攀",40],["図書館",25],["目星",25],
-  ["運転",20],["機械修理",20],["重機械操作",1],["乗馬",5],["水泳",25],["製作",5],["操縦",1],["跳躍",25],["電気修理",10],["ナビゲート",10],["変装",1],
-  ["言いくるめ",5],["信用",15],["説得",15],["値切り",5],["医学",5],["オカルト",5],["化学",1],["芸術",5],["経理",10],["考古学",1],["コンピューター",1],["心理学",5],["人類学",1],["生物学",1],["地質学",1],["電子工学",1],["天文学",1],["博物学",10],["物理学",1],["法律",5],["薬学",1],["歴史",20]
- ],
- "7":[
-  ["威圧",15],["医学",1],["運転",20],["応急手当",30],["オカルト",5],["回避",null,"DEX/2"],["科学",1],["鍵開け",1],["鑑定",5],["機械修理",10],["聞き耳",20],["近接戦闘",25],["近接戦闘（格闘）",25],["クトゥルフ神話",0],
-  ["芸術/製作",5],["経理",5],["考古学",1],["コンピューター",5],["サバイバル",10],["自然",10],["射撃",20],["射撃（拳銃）",20],["重機械操作",1],["乗馬",5],["信用",0],["心理学",10],["人類学",1],["水泳",20],["精神分析",1],["説得",10],["操縦",1],["跳躍",20],["追跡",10],["手さばき",10],["電気修理",10],["図書館",20],["投擲",20],["登攀",20],["ナビゲート",10],["変装",5],["法律",5],["魅惑",15],["目星",25],["歴史",5],["言いくるめ",5],["母国語",null,"EDU"]
- ]
-};
+
 
 function loadStore(){
  try{
@@ -239,15 +263,7 @@ function loadStore(){
 }
 function saveStore(x){localStorage.setItem(STORE_KEY,JSON.stringify(x))}
 function normSkillName(s){return String(s||"").replace(/[〈〉<>【】［］\[\]\s]/g,"").replace(/：/g,":").toLowerCase()}
-function skillInitialValue(skill,edition){
- const st=loadStore(),key=normSkillName(skill);
- const ov=st.overrides.slice().reverse().find(x=>x.edition===String(edition)&&normSkillName(x.skill)===key);
- if(ov)return {value:Number(ov.value),source:"卓用上書き"};
- const rows=COC_INITIAL_SKILLS[String(edition)]||[];
- let hit=rows.find(x=>normSkillName(x[0])===key);
- if(!hit)hit=rows.find(x=>{const b=normSkillName(x[0]);return key.startsWith(b+"(")||key.startsWith(b+"（")||b.startsWith(key+"(")});
- return hit?{value:hit[1],formula:hit[2]||"",source:"初期値表"}:null;
-}
+
 function selectedGrowthResults(){return new Set([...document.querySelectorAll(".growthRule:checked")].map(x=>x.value))}
 function resultRank(text){
  const s=String(text||"");
@@ -338,15 +354,7 @@ function parseDiceLogTotal(raw){
  const all=String(raw||"").replace(/\r/g,"").split("\n");
  return parseDiceLines(all.map((text,idx)=>({text,sourceLine:idx+1})));
 }
-function markInitialGrowth(rows){
- const ed=$("trpgEdition").value,enabled=$("trpgInitialGrowth").checked;
- for(const x of rows){
-  const iv=skillInitialValue(x.skill,ed);
-  x.initialValue=iv?.value??null;x.initialFormula=iv?.formula||"";
-  x.initialSuccess=!!(enabled&&iv&&iv.value!==null&&Number(x.target)===Number(iv.value)&&["成功","決定的成功","スペシャル"].includes(x.result));
-  if(x.initialSuccess&&!x.manualGrowth)x.growth=true;
- }
-}
+
 function growthExcludedSkillSet(){
  return new Set(String($("trpgGrowthExcludeSkills").value||"").split(/\r?\n|,/).map(x=>x.trim().toLowerCase()).filter(Boolean));
 }
@@ -427,10 +435,10 @@ function renderDiceResults(){
  $("trpgAnalyzeSummary").innerHTML=`抽出：<b>${currentDiceResults.length}件</b> ／ 表示：<b>${a.length}件</b> ／ 成長候補：<b>${growthCount}件</b>`;
  $("trpgCopyResults").disabled=!a.length;$("trpgSaveAnalysis").disabled=!currentDiceResults.length;
  if(!a.length){$("trpgResults").innerHTML='<div class="empty">条件に一致する判定はありません。</div>';return}
- $("trpgResults").innerHTML=`<div style="overflow:auto"><table class="dice-table"><thead><tr><th>人物</th><th>技能</th><th>目標</th><th>出目</th><th>結果</th><th>元ログ</th><th>成長候補</th></tr></thead><tbody>${a.map(x=>`<tr class="${resultClass(x.result)}"><td>${esc(x.speaker)}</td><td><b>${esc(x.skill)}</b>${x.initialSuccess?'<div class="badge green">🌱 初期値成功</div>':""}${x.growthExcluded?`<div class="badge">🚫 ${esc(x.growthExcludeReason)}</div>`:""}${x.initialFormula&&x.initialValue===null?`<div class="small">初期値：${esc(x.initialFormula)}（上書き未設定）</div>`:""}${x.count?`<div class="small">${x.count}回</div>`:""}</td><td>${x.target??"-"}</td><td>${x.rolls?x.rolls.join(", "):x.roll}</td><td>${x.results?x.results.map(esc).join("・"):esc(x.result)}</td><td>${x.sourceLine?`<button class="ghost jumpSource" data-line="${x.sourceLine}">${x.sourceLine}行</button>`:"-"}</td><td>${x.count?`<span class="badge ${x.growth?"green":""}">${x.growth?"候補あり":"候補なし"}</span>`:`<label class="checkline" style="margin:0"><input class="diceGrowthToggle" type="checkbox" data-id="${x.id}" ${x.growth?"checked":""}> 候補</label><button class="ghost diceGrowthExclude" data-id="${x.id}" style="margin-top:5px">${x.manualExcluded?"除外を解除":"この判定を除外"}</button>`}</td></tr>`).join("")}</tbody></table></div>`;
+ $("trpgResults").innerHTML=`<div style="overflow:auto"><table class="dice-table"><thead><tr><th>人物</th><th>技能</th><th>目標</th><th>出目</th><th>結果</th><th>元ログ</th><th>成長候補</th></tr></thead><tbody>${a.map(x=>`<tr class="${resultClass(x.result)}"><td>${esc(x.speaker)}</td><td><b>${esc(x.skill)}</b>${x.growthExcluded?`<div class="badge">🚫 ${esc(x.growthExcludeReason)}</div>`:""}${x.count?`<div class="small">${x.count}回</div>`:""}</td><td>${x.target??"-"}</td><td>${x.rolls?x.rolls.join(", "):x.roll}</td><td>${x.results?x.results.map(esc).join("・"):esc(x.result)}</td><td>${x.sourceLine?`<button class="ghost jumpSource" data-line="${x.sourceLine}">${x.sourceLine}行</button>`:"-"}</td><td>${x.count?`<span class="badge ${x.growth?"green":""}">${x.growth?"候補あり":"候補なし"}</span>`:`<label class="checkline" style="margin:0"><input class="diceGrowthToggle" type="checkbox" data-id="${x.id}" ${x.growth?"checked":""}> 候補</label><button class="ghost diceGrowthExclude" data-id="${x.id}" style="margin-top:5px">${x.manualExcluded?"除外を解除":"この判定を除外"}</button>`}</td></tr>`).join("")}</tbody></table></div>`;
  document.querySelectorAll(".jumpSource").forEach(b=>b.onclick=()=>{$("sourceLine"+b.dataset.line)?.scrollIntoView({behavior:"smooth",block:"center"})});
  document.querySelectorAll(".diceGrowthToggle").forEach(c=>c.onchange=()=>{const row=currentDiceResults.find(v=>v.id===c.dataset.id);if(row){row.growth=c.checked;row.manualGrowth=true;if(c.checked)row.manualExcluded=false;renderDiceResults()}});
- document.querySelectorAll(".diceGrowthExclude").forEach(b=>b.onclick=()=>{const row=currentDiceResults.find(v=>v.id===b.dataset.id);if(!row)return;row.manualExcluded=!row.manualExcluded;if(row.manualExcluded){row.growth=false;row.manualGrowth=true}else{row.manualGrowth=false;row.growth=selectedGrowthResults().has(row.result);markInitialGrowth([row])}renderDiceResults()});
+ document.querySelectorAll(".diceGrowthExclude").forEach(b=>b.onclick=()=>{const row=currentDiceResults.find(v=>v.id===b.dataset.id);if(!row)return;row.manualExcluded=!row.manualExcluded;if(row.manualExcluded){row.growth=false;row.manualGrowth=true}else{row.manualGrowth=false;row.growth=selectedGrowthResults().has(row.result);}renderDiceResults()});
 }
 function renderSkillOnlySpeakers(){
  const names=[];
@@ -455,8 +463,7 @@ function applyGrowthRules(){
  const rules=selectedGrowthResults();
  currentDiceResults.forEach(x=>{if(!x.manualGrowth)x.growth=rules.has(x.result)});
  currentDiceTotalResults.forEach(x=>{if(!x.manualGrowth)x.growth=rules.has(x.result)});
- markInitialGrowth(currentDiceResults);markInitialGrowth(currentDiceTotalResults);
- applyGrowthExclusions(currentDiceResults);applyGrowthExclusions(currentDiceTotalResults);
+  applyGrowthExclusions(currentDiceResults);applyGrowthExclusions(currentDiceTotalResults);
  renderDiceResults();
 }
 function analyzeTRPG(){
@@ -464,8 +471,7 @@ function analyzeTRPG(){
  if(!raw.trim())return alert("ログを貼り付けるか、ファイルを選択してください。");
  currentDiceResults=parseDiceLog(raw);
  currentDiceTotalResults=parseDiceLogTotal(raw);
- markInitialGrowth(currentDiceResults);markInitialGrowth(currentDiceTotalResults);
- applyGrowthExclusions(currentDiceResults);applyGrowthExclusions(currentDiceTotalResults);
+  applyGrowthExclusions(currentDiceResults);applyGrowthExclusions(currentDiceTotalResults);
  const names=[...new Set(currentDiceResults.map(x=>x.speaker))].sort((a,b)=>a.localeCompare(b,"ja"));
  $("trpgCharacterFilter").innerHTML='<option value="">全員</option>'+names.map(x=>`<option>${esc(x)}</option>`).join("");
  renderDiceResults();renderSourcePreview();renderCritFumbleSummary("trpgRangeCritFumble",currentDiceResults);renderCritFumbleSummary("trpgTotalCritFumble",currentDiceTotalResults);renderSkillOnlySpeakers();
@@ -493,11 +499,7 @@ function renderSavedAnalyses(){
  document.querySelectorAll(".savedCopy").forEach(b=>b.onclick=()=>{const x=loadStore().analyses.find(v=>v.id===b.dataset.id);if(x)copyText((x.results||[]).map(r=>`${r.speaker}｜${r.skill}｜${r.target??"-"}｜${r.roll}｜${r.result}${r.growth?"｜成長候補":""}`).join("\n"),b,"コピー")});
  document.querySelectorAll(".savedDelete").forEach(b=>b.onclick=()=>{if(!confirm("この保存済み解析を削除しますか？"))return;const st=loadStore();st.analyses=st.analyses.filter(v=>v.id!==b.dataset.id);saveStore(st);renderSavedAnalyses()});
 }
-function renderOverrides(){
- const st=loadStore();
- $("overrideList").innerHTML=st.overrides.length?st.overrides.slice().reverse().map(x=>`<div class="listitem"><div class="row"><div><b>${esc(x.skill)}</b><div class="small">${esc(x.edition)}版 ／ ${x.value}%</div></div><button class="danger overrideDelete" data-id="${x.id}">削除</button></div></div>`).join(""):'<div class="empty">初期値上書きはありません。</div>';
- document.querySelectorAll(".overrideDelete").forEach(b=>b.onclick=()=>{const st=loadStore();st.overrides=st.overrides.filter(x=>x.id!==b.dataset.id);saveStore(st);renderOverrides();applyGrowthRules()});
-}
+
 
 /* events */
 $("trpgLogFile").addEventListener("change",()=>{
@@ -521,23 +523,18 @@ $("trpgClear").onclick=()=>{
  $("trpgResults").innerHTML='<div class="empty">ログを解析すると、ここに判定一覧が表示されます。</div>';$("trpgSkillOnlySpeakers").innerHTML="";$("trpgSkillOnlyOutput").value="";
 };
 document.querySelectorAll(".growthRule").forEach(x=>x.onchange=applyGrowthRules);
-["trpgInitialGrowth","trpgExcludeAbilityGrowth"].forEach(id=>$(id).onchange=applyGrowthRules);
+$("trpgExcludeAbilityGrowth").onchange=applyGrowthRules;
 $("trpgGrowthExcludeSkills").oninput=()=>{applyGrowthExclusions();renderDiceResults()};
 ["trpgCharacterFilter","trpgResultFilter","trpgGrowthOnly","trpgMergeSkills"].forEach(id=>$(id).onchange=renderDiceResults);
-$("trpgEdition").onchange=applyGrowthRules;
 $("trpgJumpFirst").onclick=()=>{const x=currentDiceResults[0];if(x)$("sourceLine"+x.sourceLine)?.scrollIntoView({behavior:"smooth",block:"center"})};
 $("trpgCopyResults").onclick=()=>{const a=filteredDiceResults();copyText(a.map(r=>`${r.speaker}｜${r.skill}｜${r.target??"-"}｜${r.rolls?r.rolls.join(","):r.roll}｜${r.results?r.results.join("・"):r.result}${r.growth?"｜成長候補":""}`).join("\n"),$("trpgCopyResults"),"一覧をコピー")};
 $("trpgSkillOnlyRefresh").onclick=renderSkillOnlySpeakers;
 $("trpgSkillOnlyMake").onclick=makeSkillOnlyOutput;
 $("trpgSkillOnlyCopy").onclick=()=>copyText($("trpgSkillOnlyOutput").value,$("trpgSkillOnlyCopy"),"コピー");
 $("trpgSaveAnalysis").onclick=saveAnalysis;
-$("overrideAdd").onclick=()=>{
- const skill=$("overrideSkill").value.trim(),value=Number($("overrideValue").value),edition=$("overrideEdition").value;
- if(!skill||!Number.isFinite(value)||value<0||value>100)return alert("技能名と0～100の初期値を入力してください。");
- const st=loadStore();st.overrides.push({id:uid(),skill,value,edition});saveStore(st);$("overrideSkill").value="";$("overrideValue").value="";renderOverrides();applyGrowthRules();
-};
 
-renderSavedAnalyses();renderOverrides();
+
+renderSavedAnalyses();
 const y=document.querySelector("[data-year]");if(y)y.textContent=new Date().getFullYear();
 })();
 </script>

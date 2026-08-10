@@ -14,7 +14,15 @@
 .sc-checks input{width:auto}
 .sc-tools,.sc-actions{display:flex;gap:6px;flex-wrap:wrap}
 .sc-list{display:grid;gap:8px;margin-top:10px}
-.sc-card{border:1px solid var(--line);border-radius:9px;padding:11px}
+.sc-card{border:1px solid var(--line);border-radius:9px;padding:11px;display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px;align-items:start}
+.sc-card.no-thumb{grid-template-columns:1fr}
+.sc-thumb{width:140px;aspect-ratio:16/10;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:#0c0f13}
+.sc-body{min-width:0}
+.sc-preview{display:flex;gap:10px;align-items:flex-start;margin-top:8px}
+.sc-preview img{width:120px;aspect-ratio:16/10;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.sc-preview-meta{min-width:0}
+.sc-inline{display:flex;gap:7px;align-items:center}.sc-inline input{flex:1}.sc-inline button{width:auto;white-space:nowrap}
+@media(max-width:560px){.sc-card{grid-template-columns:100px minmax(0,1fr)}.sc-thumb{width:100px}.sc-inline{align-items:stretch;flex-direction:column}.sc-inline button{width:100%}}
 .sc-head{display:flex;justify-content:space-between;gap:10px}
 .sc-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
 input,select{width:100%}
@@ -36,7 +44,11 @@ label{display:block;margin:7px 0 3px}
 <h2 id="formHeading">シナリオを登録</h2><input id="editId" type="hidden">
 <label>シナリオ名</label><input id="title">
 <div class="sc-row"><div><label>システム</label><input id="system" placeholder="CoC6版 など"></div><div><label>作者・サークル</label><input id="author"></div></div>
-<label>配布・販売ページ</label><input id="url" type="url" placeholder="https://...">
+<label>配布・販売ページ</label>
+<div class="sc-inline"><input id="url" type="url" placeholder="https://booth.pm/ja/items/..."><button id="fetchThumb" type="button">サムネを取得</button></div>
+<div id="thumbStatus" class="small muted"></div>
+<label>サムネイル画像URL <span class="small muted">（自動取得できない時は手動指定）</span></label><input id="thumbnailUrl" type="url" placeholder="https://...">
+<div id="thumbPreview" class="sc-preview" hidden><img id="thumbPreviewImg" alt=""><div class="sc-preview-meta"><b id="thumbPreviewTitle"></b><div class="small muted">保存すると一覧に表示されます。</div></div></div>
 <label>分類</label>
 <div class="sc-checks">
 <label><input type="checkbox" class="flag" value="owned">所持</label>
@@ -61,7 +73,8 @@ label{display:block;margin:7px 0 3px}
 <script src="../assets/js/migrate-v02.js"></script>
 <script src="../assets/js/shared-data.js"></script>
 <script src="../assets/js/supabase-config.js?v=026"></script>
-<script src="../assets/js/supabase-sync.js?v=026"></script>
+<script src="../assets/js/supabase-sync.js?v=027"></script>
+<script src="../assets/js/og-preview.js?v=027"></script>
 <script>TRPG39Sync.initAutoSync();</script>
 <script src="../assets/js/supabase-share.js"></script>
 <script>
@@ -70,9 +83,9 @@ const q=id=>document.getElementById(id),flags={owned:"所持",played:"通過済�
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let data=TRPG39.loadScenarios();
 const persist=()=>TRPG39.saveScenarios(data);
-function reset(){q("editId").value="";["title","system","author","url"].forEach(x=>q(x).value="");document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true}
-function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");let id=q("editId").value||TRPG39.uuid();let item={id,title,system:q("system").value.trim(),author:q("author").value.trim(),url:q("url").value.trim(),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),updatedAt:new Date().toISOString()};let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);persist();reset();render()}
-function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("editId").value=x.id;q("title").value=x.title||"";q("system").value=x.system||"";q("author").value=x.author||"";q("url").value=x.url||"";document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;scrollTo({top:0,behavior:"smooth"})}
+function reset(){q("editId").value="";["title","system","author","url","thumbnailUrl"].forEach(x=>q(x).value="");document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true;q("thumbStatus").textContent="";updateThumbPreview()}
+function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");let id=q("editId").value||TRPG39.uuid();let item={id,title,system:q("system").value.trim(),author:q("author").value.trim(),url:q("url").value.trim(),thumbnailUrl:q("thumbnailUrl").value.trim(),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),updatedAt:new Date().toISOString()};let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);persist();reset();render()}
+function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("editId").value=x.id;q("title").value=x.title||"";q("system").value=x.system||"";q("author").value=x.author||"";q("url").value=x.url||"";q("thumbnailUrl").value=x.thumbnailUrl||"";updateThumbPreview(x.ogTitle||x.title||"");document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;scrollTo({top:0,behavior:"smooth"})}
 function del(id){if(confirm("このシナリオを削除しますか？")){data=data.filter(x=>x.id!==id);persist();render()}}
 function schedule(id){
  const x=data.find(v=>v.id===id);if(!x)return;
@@ -94,7 +107,7 @@ function showShareUrl(url,message){
 async function shareScenarioList(){
  const term=q("search").value.trim().toLowerCase(),f=q("filter").value;
  const xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term)));
- const items=xs.map(x=>({title:x.title,system:x.system||"",author:x.author||"",url:x.url||"",labels:Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>v)}));
+ const items=xs.map(x=>({title:x.title,system:x.system||"",author:x.author||"",url:x.url||"",thumbnailUrl:x.thumbnailUrl||"",labels:Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>v)}));
  const payload={kind:"scenario-list",version:1,title:"シナリオ一覧",items};
 
  try{
@@ -113,8 +126,30 @@ async function shareScenarioList(){
  showShareUrl(url,"共有URLを作成しました。現在表示しているシナリオ一覧を共有できます。");
 }
 
-function render(){let term=q("search").value.trim().toLowerCase(),f=q("filter").value;let xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term)));q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件`;q("list").innerHTML=xs.length?xs.map(x=>`<article class="sc-card"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}</div>${x.author?`<div class="small">作者・サークル：${esc(x.author)}</div>`:""}${x.url?`<div><a class="link" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・販売ページ</a></div>`:""}<div class="sc-actions"><button data-schedule="${x.id}">卓予定を作る</button><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div></article>`).join(""):'<div class="empty">まだ登録されていません。</div>';document.querySelectorAll("[data-schedule]").forEach(b=>b.onclick=()=>schedule(b.dataset.schedule));document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>del(b.dataset.del))}
-q("shareScenarioList").onclick=shareScenarioList;q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;render();
+function updateThumbPreview(title=""){
+ const u=q("thumbnailUrl").value.trim();
+ q("thumbPreview").hidden=!u;
+ q("thumbPreviewImg").src=u||"";
+ q("thumbPreviewTitle").textContent=title||q("title").value.trim()||"サムネイル";
+}
+async function fetchThumbnail(){
+ const url=q("url").value.trim();
+ if(!url)return alert("配布・販売ページのURLを入力してください。");
+ q("fetchThumb").disabled=true;q("thumbStatus").textContent="サムネイルを取得中…";
+ try{
+   if(!window.TRPG39OG)throw new Error("サムネイル取得機能を読み込めませんでした。");
+   const meta=await TRPG39OG.fetch(url);
+   if(!meta.image)throw new Error("このページから画像を見つけられませんでした。手動で画像URLを指定してください。");
+   q("thumbnailUrl").value=meta.image;
+   if(!q("title").value.trim() && meta.title) q("title").value=meta.title;
+   updateThumbPreview(meta.title||"");
+   q("thumbStatus").textContent="✓ サムネイルを取得しました。";
+ }catch(e){
+   console.error(e);q("thumbStatus").textContent="⚠ "+e.message;
+ }finally{q("fetchThumb").disabled=false}
+}
+function render(){let term=q("search").value.trim().toLowerCase(),f=q("filter").value;let xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term)));q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件`;q("list").innerHTML=xs.length?xs.map(x=>`<article class="sc-card ${x.thumbnailUrl?"":"no-thumb"}">${x.thumbnailUrl?`<img class="sc-thumb" src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<div class="sc-body"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}</div>${x.author?`<div class="small">作者・サークル：${esc(x.author)}</div>`:""}${x.url?`<div><a class="link" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・販売ページ</a></div>`:""}<div class="sc-actions"><button data-schedule="${x.id}">卓予定を作る</button><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div></div></article>`).join(""):'<div class="empty">まだ登録されていません。</div>';document.querySelectorAll("[data-schedule]").forEach(b=>b.onclick=()=>schedule(b.dataset.schedule));document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>del(b.dataset.del))}
+q("shareScenarioList").onclick=shareScenarioList;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;render();
 })();
 </script>
 </body></html>

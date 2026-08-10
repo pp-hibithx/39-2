@@ -1,0 +1,2 @@
+[functions.og-preview]
+verify_jwt = false

@@ -2,8 +2,8 @@
 <header class="site-header"><div class="wrap"><h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../">HOME</a><a href="../scenario/">SCENARIO</a><a href="../calendar/">CALENDAR</a><a href="../library/">LIBRARY</a><a href="../tools/">TOOLS</a><a href="../backup/" aria-current="page">BACKUP</a><a href="../about/">ABOUT</a></nav></div></header>
 <main><div class="wrap"><div class="hero"><h2>BACKUP</h2><p>SCENARIOとLIBRARYに保存したデータを、 バックアップ・復元できます。</p></div><section class="panel"><p>ブラウザ内に保存されているSCENARIOとLIBRARYのデータを、 ひとつのバックアップファイルとして保存できます。</p><button id="export" class="primary">バックアップを書き出す</button> <button id="import">バックアップを復元</button><input id="file" type="file" accept=".json,application/json" hidden><p class="small" style="margin-top:12px"><a class="link" href="../bridge/">Life Archive連携用データを書き出す</a></p></section>
 <section class="panel" style="margin-top:18px">
-<h2>クラウド同期テスト</h2>
-<p>PCのデータをSupabaseへ保存し、同じ同期コードを使って別端末で読み込めます。</p>
+<h2>クラウド同期</h2>
+<p>PCとスマホなど、同じ同期コードを使う端末間でデータを同期できます。</p>
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
 <button id="cloudSave" class="primary" type="button">クラウドへ保存</button>
 <button id="cloudLoad" type="button">クラウドから読み込む</button>
@@ -11,15 +11,15 @@
 <label style="display:block;margin-top:14px">同期コード<br><input id="syncId" type="text" autocomplete="off" spellcheck="false" style="width:min(100%,420px)"></label>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button id="copySync" type="button">同期コードをコピー</button></div>
 <label style="display:flex;gap:8px;align-items:center;margin-top:14px"><input id="autoSync" type="checkbox"> この端末で自動同期を使う</label>
-<p class="small">ONにすると、起動時にクラウドの新しいデータを読み込み、編集後は自動保存します。</p>
+<p class="small">ONにすると、起動時にクラウドの新しいデータを読み込み、編集後は自動保存します。画面右下に同期状態が表示されます。</p>
 <p id="cloudStatus" class="small" style="margin-top:12px"></p>
 <p class="small">同期コードを知っている端末だけがデータを読み込めます。公開しないでください。</p>
 </section></div></main><footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/migrate-v02.js"></script>
 <script src="../assets/js/shared-data.js"></script>
-<script src="../assets/js/supabase-config.js?v=025"></script>
-<script src="../assets/js/supabase-sync.js?v=025"></script>
+<script src="../assets/js/supabase-config.js?v=026"></script>
+<script src="../assets/js/supabase-sync.js?v=026"></script>
 <script>
 (()=>{const q=id=>document.getElementById(id);
 q("export").onclick=()=>{let payload={app:"39*2",schemaVersion:1,exportedAt:new Date().toISOString(),scenarios:TRPG39.loadScenarios(),events:TRPG39.loadEvents(),album:TRPG39.loadAlbum()},b=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="39x2-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
@@ -35,9 +35,10 @@ auto.onchange=()=>{
   status.textContent=auto.checked?"自動同期をONにしました。":"自動同期をOFFにしました。";
 };
 TRPG39Sync.initAutoSync();
-q("cloudSave").onclick=async()=>{try{status.textContent="保存中…";const id=await TRPG39Sync.saveCloud();sync.value=id;status.textContent="クラウドへ保存しました。スマホでこの同期コードを入力して読み込めます。"}catch(e){status.textContent="保存できませんでした："+e.message}};
+q("cloudSave").onclick=async()=>{try{status.textContent="保存中…";const id=await TRPG39Sync.saveCloud();sync.value=id;status.textContent="クラウドへ保存しました。"}catch(e){if(e.code==="SYNC_CONFLICT"&&confirm("他の端末に新しい変更があります。\nこの端末の内容でクラウドを上書きしますか？\n\n通常は『キャンセル』して先にクラウドから読み込むのがおすすめです。")){try{const id=await TRPG39Sync.saveCloud({force:true});sync.value=id;status.textContent="この端末の内容でクラウドを上書きしました。";return}catch(e2){status.textContent="保存できませんでした："+e2.message;return}}status.textContent="保存できませんでした："+e.message}};
 q("cloudLoad").onclick=async()=>{try{const id=sync.value.trim();if(!id)return alert("同期コードを入力してください。");if(!confirm("この端末のSCENARIO・CALENDAR・LIBRARYをクラウドの内容で置き換えますか？"))return;status.textContent="読み込み中…";await TRPG39Sync.loadCloud(id);status.textContent="クラウドから読み込みました。";alert("読み込みました。") }catch(e){status.textContent="読み込めませんでした："+e.message}};
 q("copySync").onclick=async()=>{const id=sync.value.trim();if(!id)return alert("先にクラウドへ保存してください。");try{await navigator.clipboard.writeText(id);status.textContent="同期コードをコピーしました。"}catch{sync.select();document.execCommand("copy");status.textContent="同期コードをコピーしました。"}};
+window.addEventListener("39x2-sync-status",e=>{if(e.detail&&e.detail.message)status.textContent=e.detail.message;});
 sync.onchange=()=>TRPG39Sync.setSyncId(sync.value);
 })();
 </script>

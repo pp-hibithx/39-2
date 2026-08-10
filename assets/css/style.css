@@ -151,3 +151,30 @@ html{
 }
 
 button.success,.success{background:#244735;color:#dcffe6;border:1px solid #3e6c52}
+
+/* v0.2.6: cloud sync status */
+.cloud-sync-badge{
+  position:fixed;
+  right:14px;
+  bottom:14px;
+  z-index:9999;
+  width:auto;
+  max-width:min(82vw,320px);
+  padding:7px 11px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(20,24,31,.92);
+  color:#eef3f8;
+  font:inherit;
+  font-size:12px;
+  line-height:1.2;
+  box-shadow:0 4px 18px rgba(0,0,0,.22);
+  cursor:pointer;
+}
+.cloud-sync-badge[data-state="synced"]{opacity:.72}
+.cloud-sync-badge[data-state="checking"],
+.cloud-sync-badge[data-state="pending"],
+.cloud-sync-badge[data-state="syncing"]{opacity:.92}
+.cloud-sync-badge[data-state="conflict"],
+.cloud-sync-badge[data-state="error"]{opacity:1;font-weight:700}
+.cloud-sync-badge[hidden]{display:none!important}

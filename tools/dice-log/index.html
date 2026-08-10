@@ -6,90 +6,200 @@
 <title>ダイスログ抽出 | TRPGTHX</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
 <style>
-.dl-wrap{display:grid;gap:16px}.dl-panel{border:1px solid var(--line,#30343d);border-radius:12px;padding:18px;background:var(--panel,#181b21)}
-.dl-panel h3{margin-top:0}.dl-field{margin:12px 0}.dl-field label{display:block;margin-bottom:6px}
-.dl-field textarea{width:100%;min-height:180px}.dl-field select,.dl-field input[type="search"]{width:100%}
-.dl-actions,.dl-subactions{display:flex;gap:8px;flex-wrap:wrap}
-.dl-characters{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-top:12px}
-.dl-character{display:flex;gap:8px;align-items:center;border:1px solid var(--line,#30343d);border-radius:9px;padding:10px}
-.dl-character input{width:auto}.dl-result{white-space:pre-wrap;word-break:break-word;min-height:80px;padding:14px;border:1px solid var(--line,#30343d);border-radius:9px;background:rgba(0,0,0,.16)}
-.dl-muted{opacity:.72;font-size:.9rem}.dl-note{padding:12px;border-left:3px solid currentColor;opacity:.85}
-.dl-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
-.dl-stat{border:1px solid var(--line,#30343d);border-radius:10px;padding:12px}
-.dl-stat b{display:block;font-size:1.35rem;margin-top:4px}
-.dl-charstat{border-top:1px solid var(--line,#30343d);padding:14px 0}
-.dl-charstat:first-child{border-top:0;padding-top:0}
-.dl-detail{margin:8px 0 0 18px}.dl-detail li{margin:3px 0}
-.dl-house{display:grid;gap:8px}.dl-house small{opacity:.72}
+/* Life Archive のダイスログ画面を、TRPGTHX の配色のまま再構成 */
+:root{
+  --dl-panel:var(--panel,#181b21);
+  --dl-panel2:var(--panel-hover,#20242c);
+  --dl-line:var(--line,#30343d);
+  --dl-text:var(--text,#eeeeee);
+  --dl-muted:var(--muted,#999fa9);
+  --dl-accent:var(--accent,#c8a96b);
+  --dl-green:#79b991;
+  --dl-red:#d88484;
+  --dl-purple:#a894c9;
+}
+main{max-width:1180px}
+.tool-grid2{display:grid;gap:16px}
+@media(min-width:900px){.tool-grid2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.panel{background:var(--dl-panel);border:1px solid var(--dl-line);border-radius:12px;padding:18px;margin:16px 0}
+.card,.listitem{background:var(--dl-panel2);border:1px solid var(--dl-line);border-radius:10px;padding:12px;margin:8px 0}
+.small,.muted{color:var(--dl-muted);font-size:.88rem}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.wrap{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.inline2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:650px){.inline2{grid-template-columns:1fr}}
+label{display:block;margin:10px 0 5px;color:var(--dl-muted)}
+input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid var(--dl-line);background:#0d1117;color:var(--dl-text);font:inherit}
+textarea{min-height:120px;resize:vertical}
+button{padding:9px 12px;border-radius:8px;border:1px solid var(--dl-line);background:var(--dl-panel2);color:var(--dl-text);font:inherit;font-weight:700;cursor:pointer}
+button.primary{background:var(--dl-accent);color:#17130c;border-color:var(--dl-accent)}
+button.secondary{background:var(--dl-panel2)}
+button.ghost{background:transparent}
+button.danger{background:transparent;border-color:var(--dl-red);color:#f2b7b7}
+button.success{background:#244735;color:#dcffe6;border-color:#3e6c52}
+button:disabled{opacity:.45;cursor:not-allowed}
+.checkline{display:flex;align-items:flex-start;gap:7px;margin:7px 0;color:var(--dl-text)}
+.checkline input{width:auto;margin-top:4px}
+.badge{display:inline-block;padding:4px 7px;border-radius:999px;background:#293544;border:1px solid var(--dl-line);font-size:.78rem}
+.badge.gold{border-color:var(--dl-accent);color:var(--dl-accent)}
+.badge.green{border-color:var(--dl-green);color:#bce4ca}
+.empty{padding:18px;text-align:center;border:1px dashed var(--dl-line);border-radius:9px;color:var(--dl-muted)}
+.source-preview{max-height:360px;overflow:auto;font-family:Consolas,"Yu Gothic UI",monospace;white-space:pre-wrap;background:#0c1016;border:1px solid var(--dl-line);border-radius:9px;padding:10px;font-size:.86rem;line-height:1.5}
+.source-line{display:grid;grid-template-columns:55px 1fr;gap:9px;padding:3px 5px;border-radius:5px}
+.source-line.hit{background:color-mix(in srgb,var(--dl-accent) 16%,transparent)}
+.source-line.dice{border-left:3px solid var(--dl-accent)}
+.line-no{text-align:right;color:var(--dl-muted);user-select:none}
+.dice-table{width:100%;border-collapse:collapse}
+.dice-table th,.dice-table td{padding:8px;border-bottom:1px solid var(--dl-line);text-align:left;vertical-align:top}
+.dice-table th{color:var(--dl-muted);font-size:.82rem}
+.result-critical{border-left:4px solid var(--dl-accent)}
+.result-fumble{border-left:4px solid var(--dl-red)}
+.result-success{border-left:4px solid var(--dl-green)}
+.result-failure{border-left:4px solid var(--dl-line)}
+.cf-details>summary{cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(max-width:600px){.stats{grid-template-columns:1fr}}
+.stat{background:var(--dl-panel2);border:1px solid var(--dl-line);border-radius:9px;padding:11px}
+.stat b{display:block;font-size:1.3rem;margin-top:3px;color:var(--dl-accent)}
+.hero-copy{margin-bottom:8px}
+.note{border-left:3px solid var(--dl-accent);padding:10px 12px;background:color-mix(in srgb,var(--dl-accent) 7%,transparent);border-radius:0 8px 8px 0}
+details.card>summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
-<h1 class="brand">TRPGTHX</h1><div class="tagline">TRPG Scenario &amp; Tools</div>
-<nav class="nav"><a href="../../">HOME</a><a href="../../scenario/">SCENARIO</a><a href="../" aria-current="page">TOOLS</a><a href="../../about/">ABOUT</a></nav>
+  <h1 class="brand">TRPGTHX</h1>
+  <div class="tagline">TRPG Scenario &amp; Tools</div>
+  <nav class="nav"><a href="../../">HOME</a><a href="../../scenario/">SCENARIO</a><a href="../" aria-current="page">TOOLS</a><a href="../../about/">ABOUT</a></nav>
 </div></header>
 
-<main><div class="wrap">
-<div class="hero"><h2>ダイスログ抽出</h2><p>セッションログから、選んだキャラクターの技能を抜き出します。</p></div>
+<main><div class="wrap" style="display:block">
+<div class="hero hero-copy">
+  <h2>🎲 ダイスログ解析</h2>
+  <p>ココフォリアのログから、技能判定・成長候補・クリティカル／ファンブルをまとめて確認します。</p>
+</div>
+<div class="note small">ログは外部へ送信しません。解析・保存はこのブラウザ内だけで行います。</div>
 
-<section class="dl-note">ログは外部へ送信しません。解析はこのブラウザ内だけで行います。</section>
+<div class="tool-grid2">
+<section class="panel">
+<h2>ログ</h2>
+<div class="inline2">
+  <div><label>キャンペーン名</label><input id="trpgCampaign" placeholder="例：シリウスの篝火"></div>
+  <div><label>区切り・章</label><input id="trpgScenario" placeholder="例：初日／Case2／第3話"></div>
+</div>
+<div class="inline2">
+  <div><label>抽出開始の目印（任意）</label><input id="trpgStartMarker" placeholder="例：◎七ヶ丘大学附属病院から再開"></div>
+  <div><label>抽出終了の目印（任意）</label><input id="trpgEndMarker" placeholder="例：次回は～から／Case3開始"></div>
+</div>
+<p class="small">開始行は含め、終了の目印がある行は含めません。空欄ならログ全体を解析します。</p>
+<label>ログ本文</label>
+<textarea id="trpgLogText" style="min-height:240px" placeholder="CCB<=70 【目星】 (1D100<=70) ＞ 34 ＞ 成功"></textarea>
+<label>HTML／テキストログ</label>
+<input id="trpgLogFile" type="file" accept=".html,.htm,.txt,text/html,text/plain">
+<div class="wrap" style="margin-top:12px">
+  <button id="trpgAnalyze" class="primary">解析する</button>
+  <button id="trpgClear" class="secondary">入力を消す</button>
+</div>
+<div id="fileStatus" class="small" style="margin-top:8px"></div>
+</section>
 
-<section class="dl-wrap">
-<div class="dl-panel">
-<h3>1. ログを読み込む</h3>
-<div class="dl-field">
-<label for="logFile">ココフォリア HTML / TXT</label>
-<input id="logFile" type="file" accept=".html,.htm,.txt,text/html,text/plain">
+<section class="panel">
+<h2>抽出条件</h2>
+<div class="inline2">
+  <div><label>CoCルール</label><select id="trpgEdition"><option value="6">6版</option><option value="7">7版</option></select></div>
+  <div><label>キャラクター</label><select id="trpgCharacterFilter"><option value="">全員</option></select></div>
 </div>
-<div class="dl-field">
-<label for="logText">またはログを貼り付け</label>
-<textarea id="logText" placeholder="ログ本文をここに貼り付け"></textarea>
-</div>
-<div class="dl-actions">
-<button id="analyze" class="primary" type="button">ログを解析</button>
-<button id="clear" type="button">クリア</button>
-</div>
-<div id="status" class="dl-muted" style="margin-top:8px"></div>
-</div>
+<label>結果</label>
+<select id="trpgResultFilter">
+  <option value="">すべて</option>
+  <option>決定的成功</option><option>スペシャル</option><option>成功</option><option>失敗</option><option>致命的失敗</option>
+</select>
 
-<div id="charactersPanel" class="dl-panel" hidden>
-<h3>2. キャラクターを選ぶ</h3>
-<div class="dl-subactions">
-<button id="selectAll" type="button">全選択</button>
-<button id="selectNone" type="button">全解除</button>
-</div>
-<div id="characters" class="dl-characters"></div>
-</div>
-
-<div id="optionsPanel" class="dl-panel" hidden>
-<h3>3. 抽出条件</h3>
-
-<div class="dl-field dl-house">
 <label>この卓の成長候補ルール</label>
-<label><input class="growthRule" type="checkbox" value="critical" checked> 決定的成功</label>
-<label><input class="growthRule" type="checkbox" value="special" checked> スペシャル</label>
-<label><input class="growthRule" type="checkbox" value="success" checked> 成功</label>
-<label><input class="growthRule" type="checkbox" value="failure"> 失敗</label>
-<label><input class="growthRule" type="checkbox" value="fumble" checked> 致命的失敗</label>
-<small>成長候補だけに使う設定です。クリファン回数の集計には影響しません。</small>
+<div class="wrap" id="trpgGrowthRules">
+  <label class="checkline"><input class="growthRule" type="checkbox" value="決定的成功" checked> 決定的成功</label>
+  <label class="checkline"><input class="growthRule" type="checkbox" value="スペシャル" checked> スペシャル</label>
+  <label class="checkline"><input class="growthRule" type="checkbox" value="成功" checked> 成功</label>
+  <label class="checkline"><input class="growthRule" type="checkbox" value="失敗"> 失敗</label>
+  <label class="checkline"><input class="growthRule" type="checkbox" value="致命的失敗" checked> 致命的失敗</label>
+  <label class="checkline"><input id="trpgInitialGrowth" type="checkbox" checked> 🌱 初期値成功</label>
+</div>
+<p class="small">初期値成功は6版／7版の技能初期値と照合します。能力値依存の技能は下の「初期値上書き」で指定できます。</p>
+
+<div class="card">
+  <b>🚫 成長対象外</b>
+  <label class="checkline"><input id="trpgExcludeAbilityGrowth" type="checkbox" checked> STR / CON / POW / DEX / APP / SIZ / INT / EDU など能力値ロールを一括除外</label>
+  <label>技能名で除外（改行区切り）</label>
+  <textarea id="trpgGrowthExcludeSkills" style="min-height:85px" placeholder="例：&#10;アイデア&#10;幸運&#10;知識"></textarea>
+  <div class="small">ここで除外しても、実クリティカル／ファンブル集計には残ります。</div>
 </div>
 
-<label><input id="uniqueSkills" type="checkbox" checked> 同じキャラクターの同じ技能をまとめる</label>
+<label class="checkline"><input id="trpgGrowthOnly" type="checkbox"> 成長候補のみ</label>
+<label class="checkline"><input id="trpgMergeSkills" type="checkbox"> 同じキャラクター・技能をまとめる</label>
+<div id="trpgAnalyzeSummary" class="card">まだ解析していません。</div>
+<div class="small">成長候補の条件と、実際に出たクリティカル／ファンブルの集計は別です。</div>
+<button id="trpgSaveAnalysis" class="success" style="width:100%;margin-top:10px" disabled>解析結果をこのブラウザに保存</button>
+</section>
 </div>
 
-<div id="statsPanel" class="dl-panel" hidden>
-<h3>4. セッション集計</h3>
-<div id="sessionStats" class="dl-stats"></div>
-<div id="characterStats" style="margin-top:16px"></div>
+<section class="panel" style="border-color:var(--dl-accent)">
+<div class="row">
+  <div><h2>🎯 実クリティカル／ファンブル集計</h2><div class="small">ハウスルールとは無関係に、ログに実際に出たものだけを数えます。</div></div>
 </div>
+<div class="tool-grid2">
+  <div class="card"><h3>この章・範囲</h3><div id="trpgRangeCritFumble"><div class="empty">解析後に表示します。</div></div></div>
+  <div class="card"><h3>セッション全体</h3><div id="trpgTotalCritFumble"><div class="empty">解析後に表示します。</div></div></div>
+</div>
+</section>
 
-<div id="resultsPanel" class="dl-panel" hidden>
-<div class="dl-actions" style="justify-content:space-between;align-items:center">
-<div><h3 style="margin-bottom:4px">5. 成長候補</h3><div id="count" class="dl-muted"></div></div>
-<button id="copy" type="button">結果をコピー</button>
+<section class="panel">
+<div class="row">
+  <div><h2>抽出範囲の確認</h2><div class="small">解析に使った原文を行番号付きで表示します。強調行が抽出された判定です。</div></div>
+  <button id="trpgJumpFirst" class="ghost" disabled>最初の判定へ</button>
 </div>
-<pre id="result" class="dl-result"></pre>
+<div id="trpgRangeSummary" class="card">まだ解析していません。</div>
+<div id="trpgSourcePreview" class="source-preview"><div class="empty">解析後、使用したログ範囲がここに表示されます。</div></div>
+</section>
+
+<section class="panel">
+<div class="row"><h2>解析結果</h2><button id="trpgCopyResults" class="ghost" disabled>一覧をコピー</button></div>
+<div id="trpgResults"><div class="empty">ログを解析すると、ここに判定一覧が表示されます。</div></div>
+
+<div class="card" style="border-color:var(--dl-purple);margin-top:12px">
+  <div class="row">
+    <div><b>📋 発言者別・技能だけ抽出</b><div class="small">成長処理したい発言者を複数選び、技能名だけをまとめてコピーできます。</div></div>
+    <button id="trpgSkillOnlyRefresh" class="secondary">発言者を更新</button>
+  </div>
+  <div id="trpgSkillOnlySpeakers" class="wrap" style="margin-top:10px"></div>
+  <div class="inline2">
+    <label class="checkline"><input id="trpgSkillOnlyUnique" type="checkbox" checked> 同じ技能を1つにまとめる</label>
+    <div><label>並び</label><select id="trpgSkillOnlyOrder"><option value="speaker">発言者別</option><option value="appearance">出現順</option></select></div>
+  </div>
+  <button id="trpgSkillOnlyMake" class="primary" style="width:100%;margin-top:8px">選択した発言者の技能を抽出</button>
+  <textarea id="trpgSkillOnlyOutput" readonly style="margin-top:8px" placeholder="ここに技能だけ表示されます"></textarea>
+  <button id="trpgSkillOnlyCopy" class="secondary" style="width:100%;margin-top:8px">コピー</button>
 </div>
+</section>
+
+<section class="panel">
+<details class="card">
+<summary>🌱 初期値上書き</summary>
+<div class="small" style="margin-top:8px">回避など能力値で初期値が変わる技能や、卓独自の初期値を登録できます。</div>
+<div class="inline2">
+  <div><label>技能名</label><input id="overrideSkill" placeholder="例：回避"></div>
+  <div><label>初期値</label><input id="overrideValue" type="number" min="0" max="100" placeholder="例：35"></div>
+</div>
+<div class="inline2">
+  <div><label>版</label><select id="overrideEdition"><option value="6">6版</option><option value="7">7版</option></select></div>
+  <div style="display:flex;align-items:end"><button id="overrideAdd" class="primary" style="width:100%">登録</button></div>
+</div>
+<div id="overrideList"></div>
+</details>
+</section>
+
+<section class="panel">
+<h2>保存済み解析</h2>
+<div id="trpgAnalysisList"><div class="empty">保存済み解析はまだありません。</div></div>
 </section>
 </div></main>
 
@@ -98,327 +208,337 @@
 <script>
 (function(){
 "use strict";
-function q(id){return document.getElementById(id);}
-var rows=[];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,8);
+const STORE_KEY="trpgthx_dice_tool_v1";
+let currentDiceResults=[];
+let currentDiceTotalResults=[];
+let currentSourceRange={lines:[],start:0,end:0,startFound:false,endFound:false,startMark:"",endMark:""};
+let currentRawText="";
 
-function trim(s){return String(s==null?"":s).replace(/\u00a0/g," ").trim();}
+const COC_INITIAL_SKILLS={
+ "6":[
+  ["キック",25],["組みつき",25],["こぶし",50],["こぶし/パンチ",50],["頭突き",10],["投擲",25],["マーシャルアーツ",1],
+  ["拳銃",20],["サブマシンガン",15],["ショットガン",30],["マシンガン",15],["ライフル",25],
+  ["応急手当",30],["鍵開け",1],["隠す",15],["隠れる",10],["聞き耳",25],["忍び歩き",10],["写真術",10],["精神分析",1],["追跡",10],["登攀",40],["図書館",25],["目星",25],
+  ["運転",20],["機械修理",20],["重機械操作",1],["乗馬",5],["水泳",25],["製作",5],["操縦",1],["跳躍",25],["電気修理",10],["ナビゲート",10],["変装",1],
+  ["言いくるめ",5],["信用",15],["説得",15],["値切り",5],["医学",5],["オカルト",5],["化学",1],["芸術",5],["経理",10],["考古学",1],["コンピューター",1],["心理学",5],["人類学",1],["生物学",1],["地質学",1],["電子工学",1],["天文学",1],["博物学",10],["物理学",1],["法律",5],["薬学",1],["歴史",20]
+ ],
+ "7":[
+  ["威圧",15],["医学",1],["運転",20],["応急手当",30],["オカルト",5],["回避",null,"DEX/2"],["科学",1],["鍵開け",1],["鑑定",5],["機械修理",10],["聞き耳",20],["近接戦闘",25],["近接戦闘（格闘）",25],["クトゥルフ神話",0],
+  ["芸術/製作",5],["経理",5],["考古学",1],["コンピューター",5],["サバイバル",10],["自然",10],["射撃",20],["射撃（拳銃）",20],["重機械操作",1],["乗馬",5],["信用",0],["心理学",10],["人類学",1],["水泳",20],["精神分析",1],["説得",10],["操縦",1],["跳躍",20],["追跡",10],["手さばき",10],["電気修理",10],["図書館",20],["投擲",20],["登攀",20],["ナビゲート",10],["変装",5],["法律",5],["魅惑",15],["目星",25],["歴史",5],["言いくるめ",5],["母国語",null,"EDU"]
+ ]
+};
 
-function parseMessage(speaker,msg){
-  msg=trim(msg);
-  if(!/(?:CCB?|1D100)\s*(?:<=|&lt;=)\s*\d/i.test(msg)) return null;
-
-  var skillMatch=msg.match(/【([^】]+)】/);
-  if(!skillMatch) return null;
-
-  var targetMatch=msg.match(/\(1D100\s*(?:<=|&lt;=)\s*(\d{1,3})\)/i) ||
-                  msg.match(/(?:CCB?|1D100)\s*(?:<=|&lt;=)\s*(\d{1,3})/i);
-  var target=targetMatch?Number(targetMatch[1]):null;
-
-  var rollMatch=msg.match(/\(1D100\s*(?:<=|&lt;=)\s*\d{1,3}\)\s*[＞>]\s*(\d{1,3})/i);
-  if(!rollMatch) rollMatch=msg.match(/[＞>]\s*(\d{1,3})\s*[＞>]\s*(?:決定的成功|クリティカル|スペシャル|成功|失敗|致命的失敗|ファンブル)/i);
-  var roll=rollMatch?Number(rollMatch[1]):null;
-
-  var critical=/決定的成功|クリティカル/i.test(msg);
-  var fumble=/致命的失敗|ファンブル/i.test(msg);
-  var special=/スペシャル/i.test(msg);
-  var success=/決定的成功|クリティカル|スペシャル|成功/i.test(msg) && !/失敗|致命的失敗|ファンブル/i.test(msg);
-
-  // 表記のないログへの補助
-  if(roll!=null){
-    if(roll<=5) critical=true;
-    if(roll>=96) fumble=true;
-    if(target!=null && roll<=Math.floor(target/5)) special=true;
-    if(target!=null && roll<=target && !fumble) success=true;
-  }
-
-  return {
-    speaker: trim(speaker)||"発言者不明",
-    skill: trim(skillMatch[1]),
-    target: target,
-    roll: roll,
-    critical: critical,
-    fumble: fumble,
-    special: special,
-    success: success
-  };
+function loadStore(){
+ try{
+  const x=JSON.parse(localStorage.getItem(STORE_KEY)||"{}");
+  return {analyses:Array.isArray(x.analyses)?x.analyses:[],overrides:Array.isArray(x.overrides)?x.overrides:[]};
+ }catch{return {analyses:[],overrides:[]}}
+}
+function saveStore(x){localStorage.setItem(STORE_KEY,JSON.stringify(x))}
+function normSkillName(s){return String(s||"").replace(/[〈〉<>【】［］\[\]\s]/g,"").replace(/：/g,":").toLowerCase()}
+function skillInitialValue(skill,edition){
+ const st=loadStore(),key=normSkillName(skill);
+ const ov=st.overrides.slice().reverse().find(x=>x.edition===String(edition)&&normSkillName(x.skill)===key);
+ if(ov)return {value:Number(ov.value),source:"卓用上書き"};
+ const rows=COC_INITIAL_SKILLS[String(edition)]||[];
+ let hit=rows.find(x=>normSkillName(x[0])===key);
+ if(!hit)hit=rows.find(x=>{const b=normSkillName(x[0]);return key.startsWith(b+"(")||key.startsWith(b+"（")||b.startsWith(key+"(")});
+ return hit?{value:hit[1],formula:hit[2]||"",source:"初期値表"}:null;
+}
+function selectedGrowthResults(){return new Set([...document.querySelectorAll(".growthRule:checked")].map(x=>x.value))}
+function resultRank(text){
+ const s=String(text||"");
+ if(/致命的失敗|ファンブル/i.test(s))return "致命的失敗";
+ if(/決定的成功|クリティカル/i.test(s))return "決定的成功";
+ if(/スペシャル/i.test(s))return "スペシャル";
+ if(/成功/i.test(s))return "成功";
+ if(/失敗/i.test(s))return "失敗";
+ return s.trim()||"不明";
+}
+function resultClass(r){
+ if(r==="決定的成功"||r==="スペシャル")return "result-critical";
+ if(r==="致命的失敗")return "result-fumble";
+ if(r==="成功")return "result-success";
+ return "result-failure";
 }
 
-function parseHtml(raw){
-  var doc=new DOMParser().parseFromString(raw,"text/html");
-  var out=[];
-  var ps=doc.getElementsByTagName("p");
-  for(var i=0;i<ps.length;i++){
-    var spans=ps[i].getElementsByTagName("span");
-    if(spans.length<3) continue;
-    var r=parseMessage(spans[1].textContent,spans[2].textContent);
-    if(r) out.push(r);
-  }
-  return out;
-}
-
-function parseText(raw){
-  var out=[];
-  var lines=String(raw||"").replace(/\r\n?/g,"\n").split("\n");
-  var speaker="";
-  for(var i=0;i<lines.length;i++){
-    var line=trim(lines[i]);
-    if(!line) continue;
-    var sm=line.match(/^(.+?)\s+-\s+(?:(?:今日|昨日)\s+)?\d{1,2}:\d{2}(?::\d{2})?\s*$/);
-    if(sm){speaker=trim(sm[1]);continue;}
-    var r=parseMessage(speaker,line);
-    if(r) out.push(r);
-  }
-  return out;
-}
-
-function readFile(file,done,fail){
-  var fr=new FileReader();
-  fr.onload=function(){done(String(fr.result||""));};
-  fr.onerror=function(){fail(fr.error||new Error("ファイルを読み込めませんでした"));};
-  fr.readAsText(file);
-}
-
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g,function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
-  });
-}
-
-function renderCharacters(){
-  var names=[];
-  for(var i=0;i<rows.length;i++) if(names.indexOf(rows[i].speaker)===-1) names.push(rows[i].speaker);
-
-  var html="";
-  for(var j=0;j<names.length;j++){
-    var name=names[j],n=0;
-    for(var k=0;k<rows.length;k++) if(rows[k].speaker===name)n++;
-    html+='<label class="dl-character"><input class="charCheck" type="checkbox" value="'+escapeHtml(name)+'"><span>'+escapeHtml(name)+' <small>('+n+'件)</small></span></label>';
-  }
-  q("characters").innerHTML=html;
-  var checks=document.getElementsByClassName("charCheck");
-  for(var x=0;x<checks.length;x++) checks[x].onchange=renderAll;
-}
-
-function selected(){
-  var a=[],checks=document.getElementsByClassName("charCheck");
-  for(var i=0;i<checks.length;i++) if(checks[i].checked)a.push(checks[i].value);
-  return a;
-}
-
-function selectedRows(){
-  var chosen=selected(),out=[];
-  for(var i=0;i<rows.length;i++) if(chosen.indexOf(rows[i].speaker)!==-1) out.push(rows[i]);
-  return out;
-}
-
-function groupSkillRolls(list,flag){
-  var map={};
-  for(var i=0;i<list.length;i++){
-    var r=list[i];
-    if(!r[flag]) continue;
-    if(!map[r.skill]) map[r.skill]=[];
-    if(r.roll!=null) map[r.skill].push(r.roll);
-  }
-  return map;
-}
-
-function detailList(map){
-  var keys=Object.keys(map);
-  if(!keys.length) return '<div class="dl-muted">なし</div>';
-  var html='<ul class="dl-detail">';
-  for(var i=0;i<keys.length;i++){
-    var vals=map[keys[i]];
-    html+='<li>'+escapeHtml(keys[i])+(vals.length?'　'+escapeHtml(vals.join(", ")):"")+'</li>';
-  }
-  return html+'</ul>';
-}
-
-function renderStats(){
-  var list=selectedRows();
-  var c=0,f=0,s=0;
-  for(var i=0;i<list.length;i++){
-    if(list[i].critical)c++;
-    if(list[i].fumble)f++;
-    if(list[i].special)s++;
-  }
-
-  q("sessionStats").innerHTML=
-    '<div class="dl-stat">クリティカル<b>'+c+'回</b></div>'+
-    '<div class="dl-stat">ファンブル<b>'+f+'回</b></div>'+
-    '<div class="dl-stat">スペシャル<b>'+s+'回</b></div>';
-
-  var names=selected();
-  var html="";
-  for(var n=0;n<names.length;n++){
-    var name=names[n],part=[];
-    for(var j=0;j<list.length;j++) if(list[j].speaker===name) part.push(list[j]);
-
-    var cc=0,ff=0,ss=0;
-    for(var k=0;k<part.length;k++){
-      if(part[k].critical)cc++;
-      if(part[k].fumble)ff++;
-      if(part[k].special)ss++;
-    }
-
-    html+='<div class="dl-charstat"><strong>'+escapeHtml(name)+'</strong>';
-    html+='<div class="dl-muted">クリティカル '+cc+'回 ／ ファンブル '+ff+'回 ／ スペシャル '+ss+'回</div>';
-    html+='<div style="margin-top:10px"><b>クリティカル</b>'+detailList(groupSkillRolls(part,"critical"))+'</div>';
-    html+='<div style="margin-top:10px"><b>ファンブル</b>'+detailList(groupSkillRolls(part,"fumble"))+'</div>';
-    html+='</div>';
-  }
-  q("characterStats").innerHTML=html || '<div class="dl-muted">キャラクターを選んでください。</div>';
-}
-
-function growthRules(){
-  var rules={};
-  var els=document.getElementsByClassName("growthRule");
-  for(var i=0;i<els.length;i++) if(els[i].checked) rules[els[i].value]=true;
-  return rules;
-}
-
-function resultKind(r){
-  if(r.fumble) return "fumble";
-  if(r.critical) return "critical";
-  if(r.special) return "special";
-  if(r.success) return "success";
-  return "failure";
-}
-
-function isGrowthCandidate(r){
-  var rules=growthRules();
-  return !!rules[resultKind(r)];
-}
-
-function candidateLabel(r){
-  var notes=[];
-  if(r.critical) notes.push("クリティカル"+(r.roll!=null?"："+r.roll:""));
-  if(r.fumble) notes.push("ファンブル"+(r.roll!=null?"："+r.roll:""));
-  if(r.special && !r.critical) notes.push("スペシャル"+(r.roll!=null?"："+r.roll:""));
-  return r.speaker+"："+r.skill+(notes.length?"（"+notes.join("／")+"）":"");
-}
-
-function renderResults(){
-  var list=selectedRows(),filtered=[];
-  for(var i=0;i<list.length;i++) if(isGrowthCandidate(list[i])) filtered.push(list[i]);
-
-  if(q("uniqueSkills").checked){
-    var seen={},merged=[];
-    for(var j=0;j<filtered.length;j++){
-      var x=filtered[j],key=x.speaker+"\n"+x.skill;
-      if(!seen[key]){
-        seen[key]={
-          speaker:x.speaker,skill:x.skill,roll:x.roll,
-          critical:x.critical,fumble:x.fumble,special:x.special,success:x.success
-        };
-        merged.push(seen[key]);
-      }else{
-        seen[key].critical=seen[key].critical||x.critical;
-        seen[key].fumble=seen[key].fumble||x.fumble;
-        seen[key].special=seen[key].special||x.special;
-        seen[key].success=seen[key].success||x.success;
-        if((x.critical||x.fumble||x.special)&&x.roll!=null) seen[key].roll=x.roll;
-      }
-    }
-    filtered=merged;
-  }
-
-  var lines=[];
-  for(var k=0;k<filtered.length;k++) lines.push(candidateLabel(filtered[k]));
-  q("result").textContent=lines.length?lines.join("\n"):"条件に一致する成長候補はありません。";
-  q("count").textContent=filtered.length+"件";
-}
-
-function renderAll(){
-  renderStats();
-  renderResults();
-}
-
-function finish(raw,isHtml){
-  try{
-    rows=isHtml?parseHtml(raw):parseText(raw);
-    if(!rows.length && isHtml){
-      var doc=new DOMParser().parseFromString(raw,"text/html");
-      rows=parseText(doc.body?doc.body.textContent:raw);
-    }
-
-    if(!rows.length){
-      q("status").textContent="技能判定を見つけられませんでした。";
-      q("charactersPanel").hidden=true;
-      q("optionsPanel").hidden=true;
-      q("statsPanel").hidden=true;
-      q("resultsPanel").hidden=true;
-      return;
-    }
-
-    renderCharacters();
-    q("charactersPanel").hidden=false;
-    q("optionsPanel").hidden=false;
-    q("statsPanel").hidden=false;
-    q("resultsPanel").hidden=false;
-    q("status").textContent="技能判定 "+rows.length+"件を読み込みました。";
-    renderAll();
-  }catch(e){
-    console.error(e);
-    q("status").textContent="解析エラー："+(e&&e.message?e.message:String(e));
-  }
-}
-
-q("analyze").onclick=function(){
-  var f=q("logFile").files&&q("logFile").files[0];
-  var pasted=q("logText").value;
-  q("status").textContent="読み込み中…";
-
-  if(f){
-    readFile(f,function(raw){
-      finish(raw,/\.html?$/i.test(f.name)||/html/i.test(f.type));
-    },function(e){
-      q("status").textContent="ファイル読み込みエラー："+(e&&e.message?e.message:String(e));
-    });
-  }else if(trim(pasted)){
-    finish(pasted,/<p[\s>]/i.test(pasted)||/<html/i.test(pasted));
+/* ココフォリアHTMLから、発言者と本文を壊さずテキスト化 */
+function cocofoliaHtmlToText(raw){
+ const doc=new DOMParser().parseFromString(raw,"text/html");
+ const ps=[...doc.querySelectorAll("p")];
+ if(!ps.length)return (doc.body?.innerText||raw).replace(/\r/g,"");
+ const out=[];
+ for(const p of ps){
+  const spans=p.querySelectorAll("span");
+  if(spans.length>=3){
+   const speaker=(spans[1].textContent||"").trim();
+   const msg=(spans[2].textContent||"").trim();
+   if(speaker)out.push(speaker);
+   if(msg)out.push(msg);
   }else{
-    q("status").textContent="HTML/TXTファイルを選ぶか、ログを貼り付けてください。";
+   const t=(p.innerText||p.textContent||"").trim();
+   if(t)out.push(t);
   }
-};
+ }
+ return out.join("\n");
+}
 
-q("clear").onclick=function(){
-  q("logFile").value="";
-  q("logText").value="";
-  q("status").textContent="";
-  rows=[];
-  q("charactersPanel").hidden=true;
-  q("optionsPanel").hidden=true;
-  q("statsPanel").hidden=true;
-  q("resultsPanel").hidden=true;
-};
+function selectLogRange(raw){
+ const all=String(raw||"").replace(/\r/g,"").split("\n");
+ const startMark=$("trpgStartMarker").value.trim(),endMark=$("trpgEndMarker").value.trim();
+ let start=0,end=all.length,startFound=!startMark,endFound=!endMark;
+ if(startMark){const i=all.findIndex(x=>x.includes(startMark));if(i>=0){start=i;startFound=true}}
+ if(endMark){const i=all.findIndex((x,n)=>n>start&&x.includes(endMark));if(i>=0){end=i;endFound=true}}
+ if(end<start)end=all.length;
+ currentSourceRange={lines:all.slice(start,end),start,end,startFound,endFound,startMark,endMark};
+ return currentSourceRange;
+}
+function parseDiceLines(lineObjects){
+ let speaker="不明";
+ const out=[];
+ const commandRe=/(?:CCB|CC|CBR|RESB|1D100)\s*(?:<=?|≦)\s*(\d+)?/i;
+ const rollRe=/[＞>]\s*(\d+)\s*[＞>]\s*([^\n]+)$/;
+ const isDiceLine=line=>commandRe.test(line)&&rollRe.test(line);
+ const rules=selectedGrowthResults();
+ const lines=lineObjects.map((x,idx)=>typeof x==="string"?{text:x.trim(),sourceLine:idx+1}:{text:String(x.text||"").trim(),sourceLine:x.sourceLine||idx+1}).filter(x=>x.text);
+ for(let i=0;i<lines.length;i++){
+  const lineObj=lines[i],line=lineObj.text;
+  const prefix=line.match(/^(.+?)\s+-\s+(?:昨日|今日|\d{1,2}:\d{2}|\d{4}[\/.-]\d{1,2})/);
+  if(prefix)speaker=prefix[1].trim();
 
-q("selectAll").onclick=function(){
-  var c=document.getElementsByClassName("charCheck");
-  for(var i=0;i<c.length;i++) c[i].checked=true;
-  renderAll();
-};
-q("selectNone").onclick=function(){
-  var c=document.getElementsByClassName("charCheck");
-  for(var i=0;i<c.length;i++) c[i].checked=false;
-  renderAll();
-};
-
-var growthEls=document.getElementsByClassName("growthRule");
-for(var gi=0;gi<growthEls.length;gi++) growthEls[gi].onchange=renderResults;
-q("uniqueSkills").onchange=renderResults;
-
-q("copy").onclick=function(){
-  var text=q("result").textContent;
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(text).then(function(){
-      q("copy").textContent="コピーしました";
-      setTimeout(function(){q("copy").textContent="結果をコピー";},1200);
-    });
+  if(!isDiceLine(line)){
+   if(i+1<lines.length&&isDiceLine(lines[i+1].text)&&!/^(KP|system|システム)$/i.test(line)&&line.length<100){
+    speaker=line.replace(/\s+-.*$/,"").trim();
+   }
+   continue;
   }
+  const command=line.match(commandRe),rollMatch=line.match(rollRe);
+  const target=Number(command?.[1])||null,roll=Number(rollMatch?.[1]),result=resultRank(rollMatch?.[2]||"");
+  let skill="";
+  const brackets=[...line.matchAll(/【([^】]+)】/g)];
+  if(brackets.length)skill=brackets[brackets.length-1][1].trim();
+  if(!skill){
+   const beforeRoll=line.slice(0,rollMatch.index);
+   const afterCommand=beforeRoll.slice((command.index||0)+command[0].length).replace(/\([^)]*\)/g," ").replace(/[：:＝=<>＜＞]/g," ").trim();
+   if(afterCommand)skill=afterCommand.split(/\s{2,}|\t/)[0].trim();
+  }
+  if(!skill)skill="技能名を取得できず";
+  out.push({id:uid(),speaker,skill,target,roll,result,raw:line,sourceLine:lineObj.sourceLine,growth:rules.has(result),manualGrowth:false,manualExcluded:false});
+ }
+ return out;
+}
+function parseDiceLog(raw){
+ const range=selectLogRange(raw);
+ return parseDiceLines(range.lines.map((text,idx)=>({text,sourceLine:range.start+idx+1})));
+}
+function parseDiceLogTotal(raw){
+ const all=String(raw||"").replace(/\r/g,"").split("\n");
+ return parseDiceLines(all.map((text,idx)=>({text,sourceLine:idx+1})));
+}
+function markInitialGrowth(rows){
+ const ed=$("trpgEdition").value,enabled=$("trpgInitialGrowth").checked;
+ for(const x of rows){
+  const iv=skillInitialValue(x.skill,ed);
+  x.initialValue=iv?.value??null;x.initialFormula=iv?.formula||"";
+  x.initialSuccess=!!(enabled&&iv&&iv.value!==null&&Number(x.target)===Number(iv.value)&&["成功","決定的成功","スペシャル"].includes(x.result));
+  if(x.initialSuccess&&!x.manualGrowth)x.growth=true;
+ }
+}
+function growthExcludedSkillSet(){
+ return new Set(String($("trpgGrowthExcludeSkills").value||"").split(/\r?\n|,/).map(x=>x.trim().toLowerCase()).filter(Boolean));
+}
+function isAbilityGrowthRoll(skill){
+ const s=String(skill||"").trim().toUpperCase().replace(/\s+/g," ");
+ return /^(STR|CON|POW|DEX|APP|SIZ|INT|EDU)(?:\s*[×X*]\s*\d+(?:\.\d+)?)?$/.test(s);
+}
+function growthAutoExcluded(x){
+ if($("trpgExcludeAbilityGrowth").checked&&isAbilityGrowthRoll(x.skill))return "能力値ロール";
+ if(growthExcludedSkillSet().has(String(x.skill||"").trim().toLowerCase()))return "除外技能";
+ return "";
+}
+function applyGrowthExclusions(results=currentDiceResults){
+ for(const x of results){
+  const reason=x.manualExcluded?"個別除外":growthAutoExcluded(x);
+  x.growthExcluded=!!reason;x.growthExcludeReason=reason;
+  if(reason)x.growth=false;
+ }
+}
+function filteredDiceResults(){
+ let a=currentDiceResults.slice();
+ const ch=$("trpgCharacterFilter").value,res=$("trpgResultFilter").value;
+ if(ch)a=a.filter(x=>x.speaker===ch);
+ if(res)a=a.filter(x=>x.result===res);
+ if($("trpgGrowthOnly").checked)a=a.filter(x=>x.growth);
+ if($("trpgMergeSkills").checked){
+  const map=new Map();
+  for(const x of a){
+   const k=x.speaker+"\u0000"+x.skill;
+   if(!map.has(k))map.set(k,{...x,count:1,rolls:[x.roll],results:[x.result],sourceIds:[x.id]});
+   else{
+    const y=map.get(k);y.count++;y.rolls.push(x.roll);y.results.push(x.result);y.sourceIds.push(x.id);y.growth=y.growth||x.growth;
+   }
+  }
+  a=[...map.values()];
+ }
+ return a;
+}
+function renderSourcePreview(){
+ const r=currentSourceRange,box=$("trpgSourcePreview"),sum=$("trpgRangeSummary");
+ if(!r.lines.length){sum.textContent="解析対象の範囲が空です。目印を確認してください。";box.innerHTML='<div class="empty">表示できる行がありません。</div>';$("trpgJumpFirst").disabled=true;return}
+ const hitLines=new Set(currentDiceResults.map(x=>x.sourceLine));
+ const startText=r.startMark?(r.startFound?`開始目印を ${r.start+1} 行目で確認`:`開始目印「${esc(r.startMark)}」が見つからず、先頭から解析`):"先頭から解析";
+ const endText=r.endMark?(r.endFound?`終了目印の直前 ${r.end} 行目まで`:`終了目印「${esc(r.endMark)}」が見つからず、末尾まで解析`):"末尾まで解析";
+ sum.innerHTML=`<b>${startText}</b> ／ <b>${endText}</b><br><span class="small">対象：${r.lines.length}行・判定抽出：${currentDiceResults.length}件</span>`;
+ box.innerHTML=r.lines.map((line,i)=>{const no=r.start+i+1,hit=hitLines.has(no);return `<div id="sourceLine${no}" class="source-line ${hit?'hit dice':''}"><span class="line-no">${no}</span><span>${esc(line)||'&nbsp;'}</span></div>`}).join("");
+ $("trpgJumpFirst").disabled=!currentDiceResults.length;
+}
+function critFumbleBySpeaker(results){
+ const map=new Map();
+ for(const r of results){
+  const name=r.speaker||"不明",skill=r.skill||"技能名不明";
+  if(r.result!=="決定的成功"&&r.result!=="致命的失敗")continue;
+  if(!map.has(name))map.set(name,{speaker:name,critical:0,fumble:0,total:0,criticalSkills:{},fumbleSkills:{}});
+  const x=map.get(name),bucket=r.result==="決定的成功"?x.criticalSkills:x.fumbleSkills;
+  if(!bucket[skill])bucket[skill]=[];
+  if(Number.isFinite(Number(r.roll)))bucket[skill].push(Number(r.roll));
+  if(r.result==="決定的成功")x.critical++;else x.fumble++;
+  x.total++;
+ }
+ return [...map.values()].sort((a,b)=>b.total-a.total||a.speaker.localeCompare(b.speaker,"ja"));
+}
+function critFumbleSkillHtml(obj,label){
+ const entries=Object.entries(obj||{});
+ if(!entries.length)return `<div class="small">${label}なし</div>`;
+ return entries.map(([skill,rolls])=>`<div class="listitem"><b>${esc(skill)}</b><div class="small">出目：${rolls.join(", ")}</div></div>`).join("");
+}
+function renderCritFumbleSummary(targetId,results){
+ const rows=critFumbleBySpeaker(results);
+ const critical=rows.reduce((n,x)=>n+x.critical,0),fumble=rows.reduce((n,x)=>n+x.fumble,0),total=critical+fumble;
+ $(targetId).innerHTML=
+ `<div class="stats"><div class="stat">クリティカル<b>${critical}</b></div><div class="stat">ファンブル<b>${fumble}</b></div><div class="stat">合計<b>${total}</b></div></div>`+
+ (rows.length?rows.map(x=>`<details class="listitem cf-details"><summary><span><b>${esc(x.speaker)}</b></span><span class="wrap"><span class="badge gold">クリ ${x.critical}</span><span class="badge">ファン ${x.fumble}</span></span></summary><div class="tool-grid2" style="margin-top:8px"><div><b>✨ クリティカル ${x.critical}回</b>${critFumbleSkillHtml(x.criticalSkills,"クリティカル")}</div><div><b>💥 ファンブル ${x.fumble}回</b>${critFumbleSkillHtml(x.fumbleSkills,"ファンブル")}</div></div></details>`).join(""):'<div class="empty">クリティカル／ファンブルはありません。</div>');
+}
+function renderDiceResults(){
+ applyGrowthExclusions(currentDiceResults);
+ const a=filteredDiceResults(),growthCount=currentDiceResults.filter(x=>x.growth).length;
+ $("trpgAnalyzeSummary").innerHTML=`抽出：<b>${currentDiceResults.length}件</b> ／ 表示：<b>${a.length}件</b> ／ 成長候補：<b>${growthCount}件</b>`;
+ $("trpgCopyResults").disabled=!a.length;$("trpgSaveAnalysis").disabled=!currentDiceResults.length;
+ if(!a.length){$("trpgResults").innerHTML='<div class="empty">条件に一致する判定はありません。</div>';return}
+ $("trpgResults").innerHTML=`<div style="overflow:auto"><table class="dice-table"><thead><tr><th>人物</th><th>技能</th><th>目標</th><th>出目</th><th>結果</th><th>元ログ</th><th>成長候補</th></tr></thead><tbody>${a.map(x=>`<tr class="${resultClass(x.result)}"><td>${esc(x.speaker)}</td><td><b>${esc(x.skill)}</b>${x.initialSuccess?'<div class="badge green">🌱 初期値成功</div>':""}${x.growthExcluded?`<div class="badge">🚫 ${esc(x.growthExcludeReason)}</div>`:""}${x.initialFormula&&x.initialValue===null?`<div class="small">初期値：${esc(x.initialFormula)}（上書き未設定）</div>`:""}${x.count?`<div class="small">${x.count}回</div>`:""}</td><td>${x.target??"-"}</td><td>${x.rolls?x.rolls.join(", "):x.roll}</td><td>${x.results?x.results.map(esc).join("・"):esc(x.result)}</td><td>${x.sourceLine?`<button class="ghost jumpSource" data-line="${x.sourceLine}">${x.sourceLine}行</button>`:"-"}</td><td>${x.count?`<span class="badge ${x.growth?"green":""}">${x.growth?"候補あり":"候補なし"}</span>`:`<label class="checkline" style="margin:0"><input class="diceGrowthToggle" type="checkbox" data-id="${x.id}" ${x.growth?"checked":""}> 候補</label><button class="ghost diceGrowthExclude" data-id="${x.id}" style="margin-top:5px">${x.manualExcluded?"除外を解除":"この判定を除外"}</button>`}</td></tr>`).join("")}</tbody></table></div>`;
+ document.querySelectorAll(".jumpSource").forEach(b=>b.onclick=()=>{$("sourceLine"+b.dataset.line)?.scrollIntoView({behavior:"smooth",block:"center"})});
+ document.querySelectorAll(".diceGrowthToggle").forEach(c=>c.onchange=()=>{const row=currentDiceResults.find(v=>v.id===c.dataset.id);if(row){row.growth=c.checked;row.manualGrowth=true;if(c.checked)row.manualExcluded=false;renderDiceResults()}});
+ document.querySelectorAll(".diceGrowthExclude").forEach(b=>b.onclick=()=>{const row=currentDiceResults.find(v=>v.id===b.dataset.id);if(!row)return;row.manualExcluded=!row.manualExcluded;if(row.manualExcluded){row.growth=false;row.manualGrowth=true}else{row.manualGrowth=false;row.growth=selectedGrowthResults().has(row.result);markInitialGrowth([row])}renderDiceResults()});
+}
+function renderSkillOnlySpeakers(){
+ const names=[];
+ for(const x of currentDiceResults)if(x.speaker&&!names.includes(x.speaker))names.push(x.speaker);
+ const selected=new Set([...document.querySelectorAll(".trpgSkillOnlySpeaker:checked")].map(x=>x.value));
+ $("trpgSkillOnlySpeakers").innerHTML=names.length?names.map(n=>`<label class="checkline"><input class="trpgSkillOnlySpeaker" type="checkbox" value="${esc(n)}" ${selected.has(n)?"checked":""}> ${esc(n)}</label>`).join(""):'<span class="small">ログを解析すると発言者が表示されます。</span>';
+}
+function makeSkillOnlyOutput(){
+ const selected=new Set([...document.querySelectorAll(".trpgSkillOnlySpeaker:checked")].map(x=>x.value));
+ if(!selected.size)return alert("発言者を選択してください。");
+ const unique=$("trpgSkillOnlyUnique").checked,order=$("trpgSkillOnlyOrder").value;
+ if(order==="appearance"){
+  const seen=new Set(),lines=[];
+  for(const x of currentDiceResults){if(!selected.has(x.speaker)||!x.skill)continue;const k=x.speaker+"\u0000"+x.skill;if(unique&&seen.has(k))continue;seen.add(k);lines.push(`${x.speaker}：${x.skill}`)}
+  $("trpgSkillOnlyOutput").value=lines.join("\n");return;
+ }
+ const groups=new Map();
+ for(const x of currentDiceResults){if(!selected.has(x.speaker)||!x.skill)continue;if(!groups.has(x.speaker))groups.set(x.speaker,[]);const a=groups.get(x.speaker);if(!unique||!a.includes(x.skill))a.push(x.skill)}
+ $("trpgSkillOnlyOutput").value=[...groups].map(([n,a])=>`${n}\n${a.join("\n")}`).join("\n\n");
+}
+function applyGrowthRules(){
+ const rules=selectedGrowthResults();
+ currentDiceResults.forEach(x=>{if(!x.manualGrowth)x.growth=rules.has(x.result)});
+ currentDiceTotalResults.forEach(x=>{if(!x.manualGrowth)x.growth=rules.has(x.result)});
+ markInitialGrowth(currentDiceResults);markInitialGrowth(currentDiceTotalResults);
+ applyGrowthExclusions(currentDiceResults);applyGrowthExclusions(currentDiceTotalResults);
+ renderDiceResults();
+}
+function analyzeTRPG(){
+ const raw=currentRawText||$("trpgLogText").value;
+ if(!raw.trim())return alert("ログを貼り付けるか、ファイルを選択してください。");
+ currentDiceResults=parseDiceLog(raw);
+ currentDiceTotalResults=parseDiceLogTotal(raw);
+ markInitialGrowth(currentDiceResults);markInitialGrowth(currentDiceTotalResults);
+ applyGrowthExclusions(currentDiceResults);applyGrowthExclusions(currentDiceTotalResults);
+ const names=[...new Set(currentDiceResults.map(x=>x.speaker))].sort((a,b)=>a.localeCompare(b,"ja"));
+ $("trpgCharacterFilter").innerHTML='<option value="">全員</option>'+names.map(x=>`<option>${esc(x)}</option>`).join("");
+ renderDiceResults();renderSourcePreview();renderCritFumbleSummary("trpgRangeCritFumble",currentDiceResults);renderCritFumbleSummary("trpgTotalCritFumble",currentDiceTotalResults);renderSkillOnlySpeakers();
+ if((currentSourceRange.startMark&&!currentSourceRange.startFound)||(currentSourceRange.endMark&&!currentSourceRange.endFound))alert("指定した区切りの目印が一部見つかりませんでした。抽出範囲の確認欄を確認してください。");
+ if(!currentDiceResults.length)alert("技能判定を見つけられませんでした。ログ形式を確認してください。");
+}
+function copyText(text,button,normal){
+ navigator.clipboard?.writeText(text).then(()=>{if(button){button.textContent="コピーしました";setTimeout(()=>button.textContent=normal,900)}}).catch(()=>alert("コピーできませんでした。"));
+}
+function saveAnalysis(){
+ if(!currentDiceResults.length)return;
+ const st=loadStore();
+ st.analyses.push({
+  id:uid(),campaign:$("trpgCampaign").value.trim()||"単発・未分類",
+  scenario:$("trpgScenario").value.trim()||"区切り未設定",time:Date.now(),
+  growthRules:[...selectedGrowthResults()],
+  results:currentDiceResults.map(x=>({...x})),
+  criticalFumble:{range:critFumbleBySpeaker(currentDiceResults),scenario:critFumbleBySpeaker(currentDiceTotalResults)}
+ });
+ saveStore(st);renderSavedAnalyses();
+}
+function renderSavedAnalyses(){
+ const st=loadStore(),a=st.analyses.slice().sort((x,y)=>y.time-x.time);
+ $("trpgAnalysisList").innerHTML=a.length?a.map(x=>`<div class="card"><div class="row"><div><b>${esc(x.campaign)}</b><div class="small">${esc(x.scenario)} ／ ${new Date(x.time).toLocaleString("ja-JP")}</div></div><span class="badge gold">${(x.results||[]).length}件</span></div><div class="small">成長候補：${(x.results||[]).filter(r=>r.growth).length}件</div><div class="wrap" style="margin-top:8px"><button class="secondary savedCopy" data-id="${x.id}">コピー</button><button class="danger savedDelete" data-id="${x.id}">削除</button></div></div>`).join(""):'<div class="empty">保存済み解析はまだありません。</div>';
+ document.querySelectorAll(".savedCopy").forEach(b=>b.onclick=()=>{const x=loadStore().analyses.find(v=>v.id===b.dataset.id);if(x)copyText((x.results||[]).map(r=>`${r.speaker}｜${r.skill}｜${r.target??"-"}｜${r.roll}｜${r.result}${r.growth?"｜成長候補":""}`).join("\n"),b,"コピー")});
+ document.querySelectorAll(".savedDelete").forEach(b=>b.onclick=()=>{if(!confirm("この保存済み解析を削除しますか？"))return;const st=loadStore();st.analyses=st.analyses.filter(v=>v.id!==b.dataset.id);saveStore(st);renderSavedAnalyses()});
+}
+function renderOverrides(){
+ const st=loadStore();
+ $("overrideList").innerHTML=st.overrides.length?st.overrides.slice().reverse().map(x=>`<div class="listitem"><div class="row"><div><b>${esc(x.skill)}</b><div class="small">${esc(x.edition)}版 ／ ${x.value}%</div></div><button class="danger overrideDelete" data-id="${x.id}">削除</button></div></div>`).join(""):'<div class="empty">初期値上書きはありません。</div>';
+ document.querySelectorAll(".overrideDelete").forEach(b=>b.onclick=()=>{const st=loadStore();st.overrides=st.overrides.filter(x=>x.id!==b.dataset.id);saveStore(st);renderOverrides();applyGrowthRules()});
+}
+
+/* events */
+$("trpgLogFile").addEventListener("change",()=>{
+ const f=$("trpgLogFile").files?.[0];
+ if(!f){$("fileStatus").textContent="";return}
+ const reader=new FileReader();
+ reader.onload=()=>{
+  let raw=String(reader.result||"");
+  if(/\.html?$/i.test(f.name)||/html/i.test(f.type))raw=cocofoliaHtmlToText(raw);
+  currentRawText=raw;$("trpgLogText").value=raw;$("fileStatus").textContent=`${f.name} を読み込みました。`;
+ };
+ reader.onerror=()=>{$("fileStatus").textContent="ファイルを読み込めませんでした。"};
+ reader.readAsText(f);
+});
+$("trpgAnalyze").onclick=analyzeTRPG;
+$("trpgClear").onclick=()=>{
+ currentRawText="";currentDiceResults=[];currentDiceTotalResults=[];$("trpgLogText").value="";$("trpgLogFile").value="";$("fileStatus").textContent="";
+ $("trpgCharacterFilter").innerHTML='<option value="">全員</option>';$("trpgAnalyzeSummary").textContent="まだ解析していません。";
+ $("trpgRangeCritFumble").innerHTML='<div class="empty">解析後に表示します。</div>';$("trpgTotalCritFumble").innerHTML='<div class="empty">解析後に表示します。</div>';
+ $("trpgRangeSummary").textContent="まだ解析していません。";$("trpgSourcePreview").innerHTML='<div class="empty">解析後、使用したログ範囲がここに表示されます。</div>';
+ $("trpgResults").innerHTML='<div class="empty">ログを解析すると、ここに判定一覧が表示されます。</div>';$("trpgSkillOnlySpeakers").innerHTML="";$("trpgSkillOnlyOutput").value="";
+};
+document.querySelectorAll(".growthRule").forEach(x=>x.onchange=applyGrowthRules);
+["trpgInitialGrowth","trpgExcludeAbilityGrowth"].forEach(id=>$(id).onchange=applyGrowthRules);
+$("trpgGrowthExcludeSkills").oninput=()=>{applyGrowthExclusions();renderDiceResults()};
+["trpgCharacterFilter","trpgResultFilter","trpgGrowthOnly","trpgMergeSkills"].forEach(id=>$(id).onchange=renderDiceResults);
+$("trpgEdition").onchange=applyGrowthRules;
+$("trpgJumpFirst").onclick=()=>{const x=currentDiceResults[0];if(x)$("sourceLine"+x.sourceLine)?.scrollIntoView({behavior:"smooth",block:"center"})};
+$("trpgCopyResults").onclick=()=>{const a=filteredDiceResults();copyText(a.map(r=>`${r.speaker}｜${r.skill}｜${r.target??"-"}｜${r.rolls?r.rolls.join(","):r.roll}｜${r.results?r.results.join("・"):r.result}${r.growth?"｜成長候補":""}`).join("\n"),$("trpgCopyResults"),"一覧をコピー")};
+$("trpgSkillOnlyRefresh").onclick=renderSkillOnlySpeakers;
+$("trpgSkillOnlyMake").onclick=makeSkillOnlyOutput;
+$("trpgSkillOnlyCopy").onclick=()=>copyText($("trpgSkillOnlyOutput").value,$("trpgSkillOnlyCopy"),"コピー");
+$("trpgSaveAnalysis").onclick=saveAnalysis;
+$("overrideAdd").onclick=()=>{
+ const skill=$("overrideSkill").value.trim(),value=Number($("overrideValue").value),edition=$("overrideEdition").value;
+ if(!skill||!Number.isFinite(value)||value<0||value>100)return alert("技能名と0～100の初期値を入力してください。");
+ const st=loadStore();st.overrides.push({id:uid(),skill,value,edition});saveStore(st);$("overrideSkill").value="";$("overrideValue").value="";renderOverrides();applyGrowthRules();
 };
 
-var y=document.querySelector("[data-year]");
-if(y&&!y.textContent)y.textContent=new Date().getFullYear();
+renderSavedAnalyses();renderOverrides();
+const y=document.querySelector("[data-year]");if(y)y.textContent=new Date().getFullYear();
 })();
 </script>
 </body>

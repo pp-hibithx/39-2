@@ -232,6 +232,84 @@ p{
 }
 </style>
 
+
+<style id="trpgthxLayoutFix75">
+/* ヘッダー区切り線 → ページタイトルの空きを詰める */
+main>.wrap{
+  padding-top:8px!important;
+}
+.hero{
+  margin-top:0!important;
+  margin-bottom:6px!important;
+}
+.hero h2{
+  margin-top:0!important;
+  padding-top:0!important;
+}
+
+/* 解析結果ヘッダーの崩れを防止 */
+.panel>.row{
+  display:flex!important;
+  flex-direction:row!important;
+  justify-content:space-between!important;
+  align-items:center!important;
+  gap:10px!important;
+  width:100%;
+}
+.panel>.row>h2{
+  margin:0!important;
+  flex:1 1 auto;
+}
+#trpgCopyResults{
+  width:auto!important;
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+
+/* 解析結果の表をパネル内に収める */
+#trpgResults{
+  width:100%;
+  min-width:0;
+  overflow-x:auto;
+  margin-top:8px;
+}
+#trpgResults>div{
+  max-width:100%;
+}
+.dice-table{
+  width:100%!important;
+  min-width:720px;
+  table-layout:auto;
+}
+.dice-table th,
+.dice-table td{
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+
+/* 技能抽出カードも幅からはみ出さない */
+#trpgSkillOnlyOutput{
+  box-sizing:border-box;
+  max-width:100%;
+}
+@media(max-width:650px){
+  .panel>.row{
+    align-items:flex-start!important;
+  }
+  #trpgCopyResults{
+    font-size:.78rem!important;
+  }
+}
+</style>
+
+
+<style id="trpgthxTopSpacing76">
+/* 区切り線とタイトルの間に、約1行分のゆとり */
+main>.wrap{
+  padding-top:18px!important;
+}
+</style>
+
 </head>
 <body>
 <header class="site-header"><div class="wrap">

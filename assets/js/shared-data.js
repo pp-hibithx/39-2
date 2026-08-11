@@ -158,3 +158,26 @@ window.TRPG39 = {
     };
   }
 })();
+
+;(function(){
+ const api=window.TRPG39=window.TRPG39||{};
+ const KEY="39x2_players_enabled_v1";
+ api.playersEnabled=function(){return localStorage.getItem(KEY)==="1"};
+ api.setPlayersEnabled=function(v){localStorage.setItem(KEY,v?"1":"0");window.dispatchEvent(new CustomEvent("39x2:players-setting",{detail:{enabled:!!v}}))};
+})();
+
+;(function(){
+ const api=window.TRPG39=window.TRPG39||{};
+ const norm=s=>String(s||"").normalize("NFKC").trim().toLowerCase();
+ if(!api.ensurePlayer){
+   api.ensurePlayer=function(name){
+     const clean=String(name||"").trim();if(!clean)return null;
+     let xs=api.loadPlayers?api.loadPlayers():JSON.parse(localStorage.getItem("39x2_players_v1")||"[]");
+     let found=xs.find(x=>norm(x.name)===norm(clean));if(found)return found;
+     const item={id:api.uuid?api.uuid():crypto.randomUUID(),name:clean,memo:"",autoCreated:true};
+     xs.unshift(item);
+     if(api.savePlayers)api.savePlayers(xs);else localStorage.setItem("39x2_players_v1",JSON.stringify(xs));
+     return item;
+   };
+ }
+})();

@@ -198,3 +198,6 @@ async function initAutoSync(){
 
 window.TRPG39Sync={configured,getSyncId,setSyncId,ensureSyncId,getAutoSync,setAutoSync,getLastSyncAt,getStatus,saveCloud,loadCloud,scheduleAutoPush,autoPullIfNewer,initAutoSync};
 })();
+
+// v0.2.26 optional feature preference bridge
+window.addEventListener("39x2:players-setting",()=>{ try{ window.TRPG39Sync?.scheduleSync?.(); }catch{} });

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LIBRARY | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=02244">
+<link rel="stylesheet" href="../assets/css/style.css?v=0226">
 <style>
 .album-grid{display:grid;grid-template-columns:1fr;gap:28px;align-items:start}
 .album-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}
@@ -60,7 +60,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 <script src="../assets/js/theme.js?v=02243"></script>
 
 <style>
-/* v0.2.24.4.2.1 — LIBRARY thumbnail display */
+/* v0.2.26.2.1 — LIBRARY thumbnail display */
 .lib-child-thumb{
   width:72px;
   aspect-ratio:16/10;
@@ -78,6 +78,14 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 }
 </style>
 
+
+<style>
+.lib-article-body{margin-top:10px;line-height:1.8;white-space:normal}
+.lib-spoiler{margin-top:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.lib-spoiler summary{cursor:pointer;padding:9px 11px;font-weight:700;user-select:none}
+.lib-spoiler .spoiler-body{padding:10px 12px;border-top:1px solid var(--line);line-height:1.8}
+</style>
+<script src="../assets/js/optional-features.js?v=0226" defer></script>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -123,7 +131,17 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   </div>
   <div class="lib-form-grid">
     <div><label>自分の役割</label><select id="role"><option>PL</option><option>KP</option><option>SKP</option><option>その他</option></select></div>
-    <div><label>PC</label><select id="pcSelect"><option value="">直接入力</option></select><input id="pc" placeholder="未登録PCは保存時にPC LIBRARYへ自動登録"></div>
+    
+<div class="field">
+  <label for="articleBody">卓記事・感想</label>
+  <textarea id="articleBody" rows="6" placeholder="卓の感想、印象に残ったこと、あとで読み返したいメモなど"></textarea>
+</div>
+<div class="field">
+  <label for="spoilerBody">ネタバレ</label>
+  <textarea id="spoilerBody" rows="6" placeholder="シナリオの核心、秘匿、エンディングなど。表示時は折り畳まれます"></textarea>
+  <p class="small muted">ここに書いた内容は、LIBRARYと共有ページでは閉じた状態で表示されます。</p>
+</div>
+<div><label>PC</label><select id="pcSelect"><option value="">直接入力</option></select><input id="pc" placeholder="未登録PCは保存時にPC LIBRARYへ自動登録"></div>
   </div>
 
   <label>一緒に遊んだ人</label><input id="people" placeholder="名前をカンマ区切り">
@@ -230,7 +248,9 @@ async function uploadLibraryImage(){
   const r=await fetch(base.replace(/\/$/,"")+"/functions/v1/image-upload",{method:"POST",headers:{apikey:key},body:fd});
   const body=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(body.error||("アップロードエラー "+r.status));
-  q("image").value=body.publicUrl||""; updateImagePreview(); q("imageFile").value=""; return body.publicUrl;
+  q("image").value=body.publicUrl||"";
+ q("articleBody").value=x.articleBody||"";
+ q("spoilerBody").value=x.spoilerBody||""; updateImagePreview(); q("imageFile").value=""; return body.publicUrl;
 }
 function save(){
  let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");
@@ -242,7 +262,10 @@ function save(){
    if(created){scenarioId=created.id;title=created.title;fillScenarioSelect();q("scenarioSelect").value=created.id;}
  }
  let id=q("editId").value||TRPG39.uuid(),old=data.find(x=>x.id===id);
- let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,date:q("date").value,system:q("system").value.trim(),role:q("role").value,pcName:q("pc").value.trim(),pcId:(()=>{const sid=q("pcSelect").value;if(sid)return sid;const typed=q("pc").value.trim();if(!typed)return "";const pc=TRPG39.ensurePC?TRPG39.ensurePC(typed,{system:q("system").value.trim()}):null;return pc?.id||""})(),participants:q("people").value.split(",").map(x=>x.trim()).filter(Boolean),imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoiler:q("spoiler").value.trim(),spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
+ let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,date:q("date").value,
+   articleBody:q("articleBody")?.value.trim()||"",
+   spoilerBody:q("spoilerBody")?.value.trim()||"",system:q("system").value.trim(),role:q("role").value,pcName:q("pc").value.trim(),pcId:(()=>{const sid=q("pcSelect").value;if(sid)return sid;const typed=q("pc").value.trim();if(!typed)return "";const pc=TRPG39.ensurePC?TRPG39.ensurePC(typed,{system:q("system").value.trim()}):null;return pc?.id||""})(),participants:q("people").value.split(",").map(x=>x.trim()).filter(Boolean),
+ participantIds:(()=>{if(!TRPG39.playersEnabled?.())return [];return q("people").value.split(",").map(x=>x.trim()).filter(Boolean).map(name=>{const p=TRPG39.ensurePlayer?TRPG39.ensurePlayer(name):null;return p?.id||""}).filter(Boolean)})(),imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoiler:q("spoiler").value.trim(),spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
  let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);
  persist();reset();render();hideEditor();
 }
@@ -311,6 +334,16 @@ async function shareAlbum(id){
 function addForScenario(id){
  reset(id);showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
+
+function participantHtml(x){
+ const names=x.participants||[];
+ if(!TRPG39.playersEnabled?.())return names.map(esc).join("、");
+ const ids=x.participantIds||[];
+ return names.map((name,i)=>{
+   const id=ids[i]||"";
+   return id?`<a class="participant-link" href="../players/index.html?focus=${encodeURIComponent(id)}">${esc(name)}</a>`:esc(name);
+ }).join("、");
+}
 function render(){
  const term=q("search").value.trim().toLowerCase(),role=q("filter").value;
  let xs=data.filter(x=>(!role||x.role===role)&&(!term||[x.title,x.system,x.pcName,(x.participants||[]).join(" ")].join(" ").toLowerCase().includes(term)));
@@ -327,7 +360,7 @@ function render(){
      ${g.items.map((x,i)=>`<article class="lib-child">
        <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}</div>
        <div>${(x.imageUrls||[])[0]?`<img class="lib-child-thumb" src="${esc((x.imageUrls||[])[0])}" alt="" loading="lazy">`:""}
-         <div class="lib-child-title">${esc(x.pcName?`PC：${x.pcName}`:(x.role||"開催記録"))}</div>
+         <div class="lib-child-title">${esc(x.pcName?`PC：${x.pcName}`:(x.role||"開催記録"))}</div>${x.articleBody?`<div class="lib-article-body">${esc(x.articleBody).replace(/\n/g,"<br>")}</div>`:""}${x.spoilerBody?`<details class="lib-spoiler"><summary>ネタバレを表示</summary><div class="spoiler-body">${esc(x.spoilerBody).replace(/\n/g,"<br>")}</div></details>`:""}
          <div class="lib-child-meta">${x.role?esc(x.role):""}${(x.participants||[]).length?`　参加：${esc(x.participants.join(" / "))}`:""}　${esc(vis[x.visibility]||"自分のみ")}</div>
          ${x.comment?`<div class="lib-child-note">${esc(x.comment)}</div>`:""}${linksHtml(x)}
          ${x.spoiler?`<details class="spoiler"><summary>⚠ ネタバレ</summary><div class="spoiler-body">${esc(x.spoiler)}</div></details>`:""}

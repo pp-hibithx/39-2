@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LIBRARY | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=0218">
+<link rel="stylesheet" href="../assets/css/style.css?v=0219">
 <style>
 .album-grid{display:grid;grid-template-columns:1fr;gap:28px;align-items:start}
 .album-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}
@@ -108,7 +108,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   <button id="addExternalLink" type="button">＋ 外部リンクを追加</button>
 
   <label>公開範囲</label>
-  <select id="visibility"><option value="private">自分のみ</option><option value="table">同卓者のみ</option><option value="link">リンク限定</option><option value="public">公開</option></select>
+  <select id="visibility"><option value="private">自分のみ</option><option value="link">リンク限定</option><option value="public">公開</option><option value="table">同卓者のみ（準備中）</option></select>
 
   <label>ひとこと</label><textarea id="comment" placeholder="楽しかった！ など、ネタバレなしの思い出"></textarea>
   <label>⚠ ネタバレ枠</label><textarea id="spoiler" placeholder="シナリオ内容に触れる感想はこちら"></textarea>
@@ -129,7 +129,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 <script>
 (()=>{"use strict";
 const q=id=>document.getElementById(id);
-const vis={private:"自分のみ",table:"同卓者のみ",link:"リンク限定",public:"公開"};
+const vis={private:"自分のみ",table:"同卓者のみ（準備中）",link:"リンク限定",public:"公開"};
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const normTitle=s=>String(s||"").normalize("NFKC").replace(/\s+/g,"").toLowerCase();
 
@@ -233,14 +233,23 @@ function showShareUrl(url,message){
 }
 async function shareAlbum(id){
  const x=data.find(v=>v.id===id);if(!x)return;
- const payload={kind:"album",version:1,title:x.title,date:x.date,system:x.system,role:x.role,pcName:x.pcName,participants:x.participants||[],imageUrls:x.imageUrls||[],comment:x.comment||"",spoiler:x.spoiler||"",externalLinks:x.externalLinks||[]};
+ if((x.visibility||"private")==="private"){
+   alert("この記録は「自分のみ」です。共有するには公開範囲を「リンク限定」または「公開」に変更してください。");
+   return;
+ }
+ if(x.visibility==="table"){
+   alert("「同卓者のみ」は今後のアカウント共有用です。現在はリンク限定を使ってください。");
+   return;
+ }
+ const payload={kind:"library-session",version:1,title:x.title,date:x.date,system:x.system,role:x.role,pcName:x.pcName,participants:x.participants||[],image:(x.imageUrls||[])[0]||"",comment:x.comment||"",spoiler:x.spoiler||"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
  try{
    if(TRPG39Cloud&&TRPG39Cloud.configured()){
      const shareId=await TRPG39Cloud.createSharedPage(payload);
-     const url=TRPG39.makeShortShareUrl(shareId);showShareUrl(url,"この開催記録の共有URLを作成しました。");return;
+     const url=new URL("../share/index.html",location.href);url.searchParams.set("id",shareId);
+     showShareUrl(url.href,"この開催記録の共有URLを作成しました。");
+     return;
    }
- }catch(e){console.error(e)}
- showShareUrl(TRPG39.makeShareUrl(payload),"この開催記録の共有URLを作成しました。");
+ }catch(e){console.error(e);alert("共有URLを作成できませんでした: "+(e.message||e));}
 }
 function addForScenario(id){
  reset(id);showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});

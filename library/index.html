@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LIBRARY | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=0224">
+<link rel="stylesheet" href="../assets/css/style.css?v=02241">
 <style>
 .album-grid{display:grid;grid-template-columns:1fr;gap:28px;align-items:start}
 .album-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}
@@ -58,6 +58,26 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 </style>
 
 <script src="../assets/js/theme.js?v=0224"></script>
+
+<style>
+/* v0.2.24.1.1 — LIBRARY thumbnail display */
+.lib-child-thumb{
+  width:72px;
+  aspect-ratio:16/10;
+  object-fit:cover;
+  border-radius:7px;
+  border:1px solid var(--line);
+  display:block;
+  margin-bottom:6px;
+}
+.lib-parent-thumb{
+  object-fit:cover;
+}
+@media(max-width:760px){
+  .lib-child-thumb{width:64px}
+}
+</style>
+
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -245,7 +265,7 @@ function groupData(xs){
  return [...map.values()].map(g=>{
    g.items.sort((a,b)=>String(a.date||"9999").localeCompare(String(b.date||"9999")));
    const s=scenarioById(g.scenarioId);
-   if(s){g.title=s.title||g.title;g.system=s.system||"";g.thumbnailUrl=s.thumbnailUrl||""}
+   if(s){g.title=s.title||g.title;g.system=s.system||"";g.thumbnailUrl=s.thumbnailUrl||((g.items.find(x=>(x.imageUrls||[])[0])?.imageUrls||[])[0]||"")}
    else{
      g.system=g.items.find(x=>x.system)?.system||"";
      g.thumbnailUrl=(g.items.find(x=>(x.imageUrls||[])[0])?.imageUrls||[])[0]||"";
@@ -306,7 +326,7 @@ function render(){
      <div class="lib-parent-actions">${g.scenarioId?`<a class="link" href="../scenario/?focus=${encodeURIComponent(g.scenarioId)}">SCENARIOを見る</a>`:""}<button type="button" data-add-scenario="${esc(g.scenarioId)}" data-add-title="${esc(g.title)}">＋ 開催記録</button></div>
      ${g.items.map((x,i)=>`<article class="lib-child">
        <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}</div>
-       <div>
+       <div>${(x.imageUrls||[])[0]?`<img class="lib-child-thumb" src="${esc((x.imageUrls||[])[0])}" alt="" loading="lazy">`:""}
          <div class="lib-child-title">${esc(x.pcName?`PC：${x.pcName}`:(x.role||"開催記録"))}</div>
          <div class="lib-child-meta">${x.role?esc(x.role):""}${(x.participants||[]).length?`　参加：${esc(x.participants.join(" / "))}`:""}　${esc(vis[x.visibility]||"自分のみ")}</div>
          ${x.comment?`<div class="lib-child-note">${esc(x.comment)}</div>`:""}${linksHtml(x)}

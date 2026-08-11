@@ -18,8 +18,8 @@
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/migrate-v02.js"></script>
 <script src="../assets/js/shared-data.js"></script>
-<script src="../assets/js/supabase-config.js?v=029"></script>
-<script src="../assets/js/supabase-sync.js?v=029"></script>
+<script src="../assets/js/supabase-config.js?v=0210"></script>
+<script src="../assets/js/supabase-sync.js?v=0210"></script>
 <script>
 (()=>{const q=id=>document.getElementById(id);
 q("export").onclick=()=>{let payload={app:"39*2",schemaVersion:1,exportedAt:new Date().toISOString(),scenarios:TRPG39.loadScenarios(),events:TRPG39.loadEvents(),album:TRPG39.loadAlbum()},b=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="39x2-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};

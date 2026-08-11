@@ -14,7 +14,7 @@
 .daynum{font-size:.8rem;color:var(--muted);margin-bottom:5px}
 .event-chip{display:block;border:1px solid var(--line);border-radius:7px;padding:5px 6px;margin:4px 0;font-size:.78rem;background:rgba(255,255,255,.025);cursor:pointer}
 .event-chip.done{border-color:#557c68}.event-chip.cancelled{opacity:.5;text-decoration:line-through}
-.event-form{display:grid;grid-template-columns:1fr 1fr;gap:8px}.event-form .full{grid-column:1/-1}
+.event-form{display:grid;grid-template-columns:1fr 1fr;gap:8px}.event-form .full{grid-column:1/-1}.event-editor[hidden]{display:none}.event-editor-actions{font-size:11px}.event-editor-actions button{padding:3px 5px;font-size:11px}.event-editor-actions button+button::before{content:""}
 @media(max-width:760px){.calendar-grid{gap:3px}.calendar-day{min-height:82px;padding:5px}.event-form{grid-template-columns:1fr}}
 </style>
 </head>
@@ -41,7 +41,7 @@
 <div class="calendar-grid" id="calendar"></div>
 </section>
 
-<section class="panel event-editor" id="eventPanel">
+<section class="panel event-editor" id="eventPanel" hidden>
 <h2 id="eventHeading">卓予定を登録</h2>
 <input id="eventId" type="hidden">
 <div class="event-form">
@@ -68,8 +68,8 @@
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/migrate-v02.js"></script>
 <script src="../assets/js/shared-data.js"></script>
-<script src="../assets/js/supabase-config.js?v=029"></script>
-<script src="../assets/js/supabase-sync.js?v=029"></script>
+<script src="../assets/js/supabase-config.js?v=0210"></script>
+<script src="../assets/js/supabase-sync.js?v=0210"></script>
 <script>TRPG39Sync.initAutoSync();</script>
 <script>
 (() => {
@@ -90,6 +90,8 @@ function fillScenarioSelect(){
  const s=scenarios();
  $("scenarioSelect").innerHTML='<option value="">直接入力</option>'+s.map(x=>`<option value="${esc(x.id)}">${esc(x.title)}</option>`).join("");
 }
+function showEditor(){$("eventPanel").hidden=false}
+function hideEditor(){$("eventPanel").hidden=true}
 function resetForm(dateStr=""){
  ["eventId","eventTitle","eventEnd","eventSystem","eventPc","eventPeople"].forEach(id=>$(id).value="");
  $("scenarioSelect").value=""; $("eventStatus").value="planned"; $("eventRole").value="";
@@ -102,7 +104,7 @@ function editEvent(id){
  $("eventStart").value=x.start?x.start.slice(0,16):"";$("eventEnd").value=x.end?x.end.slice(0,16):"";
  $("eventStatus").value=x.status||"planned";$("eventRole").value=x.role||"";$("eventSystem").value=x.system||"";
  $("eventPc").value=x.pcName||"";$("eventPeople").value=(x.participants||[]).join(", ");
- $("eventHeading").textContent="卓予定を編集";$("deleteEvent").hidden=false;$("toAlbum").hidden=!!x.linkedAlbumId;
+ $("eventHeading").textContent="卓予定を編集";$("deleteEvent").hidden=false;$("toAlbum").hidden=!!x.linkedAlbumId;showEditor();
  $("eventPanel").scrollIntoView({behavior:"smooth",block:"start"});
 }
 function renderCalendar(){
@@ -122,7 +124,7 @@ function renderCalendar(){
    </div>`;
  }
  $("calendar").innerHTML=html;
- document.querySelectorAll(".calendar-day").forEach(x=>x.ondblclick=()=>{resetForm(x.dataset.date);$("eventPanel").scrollIntoView({behavior:"smooth"})});
+ document.querySelectorAll(".calendar-day").forEach(x=>x.ondblclick=()=>{resetForm(x.dataset.date);showEditor();$("eventPanel").scrollIntoView({behavior:"smooth"})});
  document.querySelectorAll(".event-chip").forEach(x=>x.onclick=e=>{e.stopPropagation();editEvent(x.dataset.id)});
 }
 $("scenarioSelect").onchange=()=>{
@@ -139,11 +141,11 @@ $("saveEvent").onclick=()=>{
    pcName:$("eventPc").value.trim(),participants:$("eventPeople").value.split(",").map(x=>x.trim()).filter(Boolean)
  });
  const i=list.findIndex(x=>x.id===id); if(i>=0)list[i]=item; else list.push(item);
- saveEvents(list); resetForm(); renderCalendar();
+ saveEvents(list); resetForm(); hideEditor(); renderCalendar();
 };
 $("deleteEvent").onclick=()=>{
  const id=$("eventId").value;if(!id||!confirm("この卓予定を削除しますか？"))return;
- saveEvents(events().filter(x=>x.id!==id));resetForm();renderCalendar();
+ saveEvents(events().filter(x=>x.id!==id));resetForm();hideEditor();renderCalendar();
 };
 $("toAlbum").onclick=()=>{
  const id=$("eventId").value,x=events().find(v=>v.id===id);if(!x)return;
@@ -154,14 +156,14 @@ $("toAlbum").onclick=()=>{
  });
  album.unshift(a);TRPG39.saveAlbum(album);
  let list=events(),i=list.findIndex(v=>v.id===x.id);if(i>=0){list[i]={...x,status:"done",linkedAlbumId:a.id,updatedAt:new Date().toISOString()};saveEvents(list)}
- alert("LIBRARYに卓記録を作成しました。");resetForm();renderCalendar();
+ alert("LIBRARYに卓記録を作成しました。");resetForm();hideEditor();renderCalendar();
 };
 $("prevMonth").onclick=()=>{current.setMonth(current.getMonth()-1);renderCalendar()};
 $("nextMonth").onclick=()=>{current.setMonth(current.getMonth()+1);renderCalendar()};
 $("todayBtn").onclick=()=>{current=new Date();current.setDate(1);renderCalendar()};
-$("newEventBtn").onclick=()=>{resetForm();$("eventPanel").scrollIntoView({behavior:"smooth"})};
-$("resetEvent").onclick=()=>resetForm();
-fillScenarioSelect();resetForm();renderCalendar();
+$("newEventBtn").onclick=()=>{resetForm();showEditor();$("eventPanel").scrollIntoView({behavior:"smooth"})};
+$("resetEvent").onclick=()=>{resetForm();hideEditor()};
+fillScenarioSelect();resetForm();hideEditor();renderCalendar();
 })();
 </script>
 </body>

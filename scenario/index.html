@@ -35,6 +35,10 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <div class="hero"><h2>SCENARIO</h2><p>所持・通過済み・通過予定・KP予定など、 シナリオの状況をまとめて管理できます。</p></div>
 <div class="notice small">登録内容は、お使いのブラウザ内に保存されます。 他の利用者には共有されません。</div>
 <div class="sc-layout">
+<section>
+<div class="sc-toolbar"><div class="sc-toolbar-main"><div><label>検索</label><input id="search" type="search" placeholder="シナリオを検索"></div><div><label>絞り込み</label><select id="filter"><option value="">すべて</option><option value="owned">所持</option><option value="played">通過済み</option><option value="planned">通過予定</option><option value="kpDone">KP済み</option><option value="kpPlanned">KP予定</option><option value="wish">気になる</option></select></div></div><div class="sc-tools"><button id="shareScenarioList" type="button">共有</button><button id="openForm" type="button">＋ 追加</button></div></div><div id="summary" class="small" style="margin-top:8px"></div>
+<div id="list" class="sc-list"></div>
+</section>
 <section id="scenarioForm" class="sc-panel sc-form">
 <h2 id="formHeading">シナリオを登録</h2><input id="editId" type="hidden">
 <label>シナリオ名</label><input id="title">
@@ -55,10 +59,6 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 </div>
 <div class="sc-tools"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-<section>
-<div class="sc-toolbar"><div class="sc-toolbar-main"><div><label>検索</label><input id="search" type="search" placeholder="シナリオを検索"></div><div><label>絞り込み</label><select id="filter"><option value="">すべて</option><option value="owned">所持</option><option value="played">通過済み</option><option value="planned">通過予定</option><option value="kpDone">KP済み</option><option value="kpPlanned">KP予定</option><option value="wish">気になる</option></select></div></div><div class="sc-tools"><button id="shareScenarioList" type="button">共有</button><button id="openForm" type="button">＋ 追加</button></div></div><div id="summary" class="small" style="margin-top:8px"></div>
-<div id="list" class="sc-list"></div>
-</section>
 </div>
 </div></main>
 <dialog id="detailDialog" class="sc-detail"><div id="detailContent"></div></dialog>
@@ -67,9 +67,9 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <script src="../assets/js/main.js"></script>
 <script src="../assets/js/migrate-v02.js"></script>
 <script src="../assets/js/shared-data.js"></script>
-<script src="../assets/js/supabase-config.js?v=029"></script>
-<script src="../assets/js/supabase-sync.js?v=028"></script>
-<script src="../assets/js/og-preview.js?v=028"></script>
+<script src="../assets/js/supabase-config.js?v=0210"></script>
+<script src="../assets/js/supabase-sync.js?v=0210"></script>
+<script src="../assets/js/og-preview.js?v=0210"></script>
 <script>TRPG39Sync.initAutoSync();</script>
 <script src="../assets/js/supabase-share.js"></script>
 <script>

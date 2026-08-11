@@ -51,7 +51,7 @@
 
   function normalizeAlbum(input = {}) {
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       id: input.id || uuid(),
       eventId: input.eventId || "",
       scenarioId: input.scenarioId || "",

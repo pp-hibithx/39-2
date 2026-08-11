@@ -136,3 +136,25 @@ window.TRPG39 = {
     pcs.push(pc); api.savePCs&&api.savePCs(pcs); return pc;
   };
 })();
+
+;(function(){
+  const api=window.TRPG39=window.TRPG39||{};
+  const norm=s=>String(s||"").normalize("NFKC").replace(/\s+/g,"").toLowerCase();
+  if(!api.findScenarioByTitle){
+    api.findScenarioByTitle=function(title){
+      const xs=api.loadScenarios?api.loadScenarios():[];
+      return xs.find(x=>norm(x.title)===norm(title))||null;
+    };
+  }
+  if(!api.ensureScenario){
+    api.ensureScenario=function(title,defaults={}){
+      const clean=String(title||"").trim(); if(!clean)return null;
+      let xs=api.loadScenarios?api.loadScenarios():[];
+      let found=xs.find(x=>norm(x.title)===norm(clean));
+      if(found)return found;
+      const id=api.uuid?api.uuid():(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());
+      const item={id,title:clean,system:defaults.system||"",author:"",status:"owned",sourceUrl:"",thumbnailUrl:"",playersMin:null,playersMax:null,hoursMin:null,hoursMax:null,flags:{},memo:"",autoCreated:true};
+      xs.unshift(item); api.saveScenarios&&api.saveScenarios(xs); return item;
+    };
+  }
+})();

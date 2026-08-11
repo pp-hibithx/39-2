@@ -34,7 +34,8 @@ function getLastSyncAt(){ return localStorage.getItem(LAST_SYNC_KEY) || ""; }
 function setLastSyncAt(v){ if(v) localStorage.setItem(LAST_SYNC_KEY, v); }
 function snapshot(){
   return {app:"39*2",schemaVersion:1,savedAt:new Date().toISOString(),
-    scenarios:TRPG39.loadScenarios(),events:TRPG39.loadEvents(),album:TRPG39.loadAlbum()};
+    scenarios:TRPG39.loadScenarios(),events:TRPG39.loadEvents(),album:TRPG39.loadAlbum(),
+    pcs:TRPG39.loadPCs?TRPG39.loadPCs():[],players:TRPG39.loadPlayers?TRPG39.loadPlayers():[]};
 }
 function emitStatus(state, message){
   currentStatus={state,message:message||""};
@@ -93,6 +94,8 @@ async function loadCloud(id=getSyncId()){
     suppressAutoPush=true;
     try {
       TRPG39.saveScenarios(data.scenarios); TRPG39.saveEvents(data.events); TRPG39.saveAlbum(data.album);
+      if(TRPG39.savePCs) TRPG39.savePCs(Array.isArray(data.pcs)?data.pcs:[]);
+      if(TRPG39.savePlayers) TRPG39.savePlayers(Array.isArray(data.players)?data.players:[]);
     } finally { suppressAutoPush=false; }
     setSyncId(id); setLastSyncAt(data.savedAt || new Date().toISOString());
     emitStatus("synced","同期済み");
@@ -112,8 +115,9 @@ function scheduleAutoPush(){
 }
 function patchSaves(){
   if(!window.TRPG39 || TRPG39.__cloudPatched) return;
-  ["saveScenarios","saveEvents","saveAlbum"].forEach(name=>{
+  ["saveScenarios","saveEvents","saveAlbum","savePCs","savePlayers"].forEach(name=>{
     const original=TRPG39[name];
+    if(typeof original!=="function") return;
     TRPG39[name]=function(v){ const out=original.call(TRPG39,v); scheduleAutoPush(); return out; };
   });
   TRPG39.__cloudPatched=true;
@@ -129,6 +133,8 @@ async function autoPullIfNewer(){
   suppressAutoPush=true;
   try {
     TRPG39.saveScenarios(data.scenarios); TRPG39.saveEvents(data.events); TRPG39.saveAlbum(data.album);
+      if(TRPG39.savePCs) TRPG39.savePCs(Array.isArray(data.pcs)?data.pcs:[]);
+      if(TRPG39.savePlayers) TRPG39.savePlayers(Array.isArray(data.players)?data.players:[]);
   } finally { suppressAutoPush=false; }
   setLastSyncAt(cloudAt || new Date().toISOString());
   emitStatus("synced","同期済み");

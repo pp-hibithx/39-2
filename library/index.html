@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LIBRARY | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=02232">
+<link rel="stylesheet" href="../assets/css/style.css?v=0224">
 <style>
 .album-grid{display:grid;grid-template-columns:1fr;gap:28px;align-items:start}
 .album-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}
@@ -57,7 +57,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 }
 </style>
 
-<script src="../assets/js/theme.js?v=02232"></script>
+<script src="../assets/js/theme.js?v=0224"></script>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -107,7 +107,12 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   </div>
 
   <label>一緒に遊んだ人</label><input id="people" placeholder="名前をカンマ区切り">
-  <label>スクリーンショットURL</label><input id="image" type="url" placeholder="https://...">
+  <label>スクリーンショット</label>
+<div class="lib-form-grid">
+  <div><input id="image" type="url" placeholder="画像URLを貼る"></div>
+  <div><input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif"><button id="uploadImage" type="button">画像をアップロード</button></div>
+</div>
+<p class="small muted">URL貼り付けと直接アップロードの両方に対応します。直接アップロードは公開・リンク共有向けです。</p>
   <div id="imagePreview" class="image-preview" hidden><img id="imagePreviewImg" alt="スクリーンショットのプレビュー"><div class="small muted">画像URLを貼ると、保存前にここで確認できます。</div></div>
 
   <label>外部リンク</label>
@@ -191,11 +196,31 @@ function reset(prefillScenarioId=""){
    if(s){q("title").value=s.title||"";q("system").value=s.system||""}
  }
 }
+
+async function uploadLibraryImage(){
+  const file=q("imageFile")?.files?.[0];
+  if(!file)return alert("画像ファイルを選んでください。");
+  const cfg=window.SUPABASE_CONFIG||{};
+  const base=String(cfg.projectUrl||"").trim();
+  const key=String(cfg.publishableKey||"").trim();
+  if(!base||!key)return alert("Supabase設定がありません。");
+  const syncId=window.TRPG39Sync?.getSyncId?.()||localStorage.getItem("39x2_cloud_sync_id_v1")||"";
+  if(!syncId)return alert("同期コードが見つかりません。先にBACKUPでクラウド同期を設定してください。");
+  const fd=new FormData(); fd.append("file",file); fd.append("sync_id",syncId);
+  const r=await fetch(base.replace(/\/$/,"")+"/functions/v1/image-upload",{method:"POST",headers:{apikey:key},body:fd});
+  const body=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(body.error||("アップロードエラー "+r.status));
+  q("image").value=body.publicUrl||""; updateImagePreview(); q("imageFile").value=""; return body.publicUrl;
+}
 function save(){
  let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");
- const scenarioId=q("scenarioSelect").value;
+ let scenarioId=q("scenarioSelect").value;
  const selected=scenarioById(scenarioId);
  if(selected)title=selected.title;
+ else if(title){
+   const created=TRPG39.ensureScenario?TRPG39.ensureScenario(title,{system:q("system").value.trim()}):null;
+   if(created){scenarioId=created.id;title=created.title;fillScenarioSelect();q("scenarioSelect").value=created.id;}
+ }
  let id=q("editId").value||TRPG39.uuid(),old=data.find(x=>x.id===id);
  let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,date:q("date").value,system:q("system").value.trim(),role:q("role").value,pcName:q("pc").value.trim(),pcId:(()=>{const sid=q("pcSelect").value;if(sid)return sid;const typed=q("pc").value.trim();if(!typed)return "";const pc=TRPG39.ensurePC?TRPG39.ensurePC(typed,{system:q("system").value.trim()}):null;return pc?.id||""})(),participants:q("people").value.split(",").map(x=>x.trim()).filter(Boolean),imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoiler:q("spoiler").value.trim(),spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
  let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);
@@ -308,6 +333,7 @@ q("scenarioSelect").onchange=()=>{
  const s=scenarioById(q("scenarioSelect").value);
  if(s){q("title").value=s.title||"";q("system").value=s.system||""}
 };
+q("uploadImage").onclick=async()=>{try{q("uploadImage").disabled=true;q("uploadImage").textContent="アップロード中…";await uploadLibraryImage()}catch(e){console.error(e);alert(e.message||e)}finally{q("uploadImage").disabled=false;q("uploadImage").textContent="画像をアップロード"}};
 q("save").onclick=save;
 q("cancel").onclick=()=>{reset();hideEditor()};
 q("image").oninput=updateImagePreview;

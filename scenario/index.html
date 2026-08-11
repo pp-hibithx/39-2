@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SCENARIO | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=02232">
+<link rel="stylesheet" href="../assets/css/style.css?v=0224">
 <style>
 .sc-layout{display:grid;gap:16px}
 .sc-panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
@@ -24,7 +24,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 @media(max-width:620px){.sc-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.sc-body{padding:9px}.sc-head h3{font-size:.92rem}.sc-author{display:none}.sc-inline{align-items:stretch;flex-direction:column}.sc-inline button{width:100%}.sc-row{grid-template-columns:1fr}.sc-toolbar-main{width:100%}.sc-toolbar-main>div{min-width:0;flex:1}.sc-add-card{min-height:160px}}
 @media(max-width:390px){.sc-list{grid-template-columns:1fr}}
 </style>
-<script src="../assets/js/theme.js?v=02232"></script>
+<script src="../assets/js/theme.js?v=0224"></script>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -164,7 +164,7 @@ async function fetchThumbnail(){
 function detail(id){
  const x=data.find(v=>v.id===id);if(!x)return;
  const labels=Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("");
- q("detailContent").innerHTML=`${x.thumbnailUrl?`<img class="sc-detail-img" src="${esc(x.thumbnailUrl)}" alt="">`:""}<div class="sc-detail-body"><div class="sc-detail-top"><div><h2>${esc(x.title)}</h2><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${labels}</div></div><button class="sc-detail-close" data-close type="button">×</button></div>${x.author?`<p>作者・サークル：${esc(x.author)}</p>`:""}${(x.playersMin||x.playersMax||x.hoursMin||x.hoursMax)?`<p class="small muted">${rangeText(x.playersMin,x.playersMax,"人")}${(x.playersMin||x.playersMax)&&(x.hoursMin||x.hoursMax)?" ／ ":""}${rangeText(x.hoursMin,x.hoursMax,"時間")}</p>`:""}<div class="sc-detail-actions">${x.url?`<a class="button" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・販売ページ</a>`:""}<button data-detail-schedule="${x.id}">卓予定を作る</button><button data-detail-edit="${x.id}">編集</button></div></div>`;
+ q("detailContent").innerHTML=`${x.thumbnailUrl?`<img class="sc-detail-img" src="${esc(x.thumbnailUrl)}" alt="">`:""}<div class="sc-detail-body"><div class="sc-detail-top"><div><h2>${esc(x.title)}</h2><div class="sc-meta">${x.autoCreated?`<span class="badge">仮登録</span>`:""}${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${labels}</div></div><button class="sc-detail-close" data-close type="button">×</button></div>${x.author?`<p>作者・サークル：${esc(x.author)}</p>`:""}${(x.playersMin||x.playersMax||x.hoursMin||x.hoursMax)?`<p class="small muted">${rangeText(x.playersMin,x.playersMax,"人")}${(x.playersMin||x.playersMax)&&(x.hoursMin||x.hoursMax)?" ／ ":""}${rangeText(x.hoursMin,x.hoursMax,"時間")}</p>`:""}<div class="sc-detail-actions">${x.url?`<a class="button" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・販売ページ</a>`:""}<button data-detail-schedule="${x.id}">卓予定を作る</button><button data-detail-edit="${x.id}">編集</button></div></div>`;
  q("detailDialog").showModal();
  q("detailContent").querySelector("[data-close]").onclick=()=>q("detailDialog").close();
  const eb=q("detailContent").querySelector("[data-detail-edit]");if(eb)eb.onclick=()=>{q("detailDialog").close();edit(id)};

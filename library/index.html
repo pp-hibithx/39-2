@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LIBRARY | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=0220">
+<link rel="stylesheet" href="../assets/css/style.css?v=0221">
 <style>
 .album-grid{display:grid;grid-template-columns:1fr;gap:28px;align-items:start}
 .album-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}
@@ -111,7 +111,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   <select id="visibility"><option value="private">自分のみ</option><option value="link">リンク限定</option><option value="public">公開</option><option value="table">同卓者のみ（準備中）</option></select>
 
   <label>ひとこと</label><textarea id="comment" placeholder="楽しかった！ など、ネタバレなしの思い出"></textarea>
-  <label>⚠ ネタバレ枠</label><textarea id="spoiler" placeholder="シナリオ内容に触れる感想はこちら"></textarea>
+  <label>⚠ ネタバレ枠</label><textarea id="spoiler" placeholder="シナリオ内容に触れる感想はこちら"></textarea><label>ネタバレ部分の公開範囲</label><select id="spoilerVisibility"><option value="private">自分のみ</option><option value="link">共有リンクに含める</option></select>
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
@@ -171,7 +171,7 @@ function updateImagePreview(){const u=q("image").value.trim();q("imagePreview").
 function reset(prefillScenarioId=""){
  q("editId").value="";
  ["title","date","system","pc","people","image","comment","spoiler"].forEach(x=>q(x).value="");
- q("role").value="PL";q("visibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
+ q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
  q("externalLinks").innerHTML="";addLinkRow();updateImagePreview();fillScenarioSelect();
  q("scenarioSelect").value=prefillScenarioId||"";
  if(prefillScenarioId){
@@ -185,13 +185,13 @@ function save(){
  const selected=scenarioById(scenarioId);
  if(selected)title=selected.title;
  let id=q("editId").value||TRPG39.uuid(),old=data.find(x=>x.id===id);
- let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,date:q("date").value,system:q("system").value.trim(),role:q("role").value,pcName:q("pc").value.trim(),participants:q("people").value.split(",").map(x=>x.trim()).filter(Boolean),imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoiler:q("spoiler").value.trim(),externalLinks:getLinks()});
+ let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,date:q("date").value,system:q("system").value.trim(),role:q("role").value,pcName:q("pc").value.trim(),participants:q("people").value.split(",").map(x=>x.trim()).filter(Boolean),imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoiler:q("spoiler").value.trim(),spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
  let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);
  persist();reset();render();hideEditor();
 }
 function edit(id){
  let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("scenarioSelect").value=x.scenarioId||"";q("title").value=x.title||"";q("date").value=x.date||"";q("system").value=x.system||"";q("role").value=x.role||"PL";q("pc").value=x.pcName||"";q("people").value=(x.participants||[]).join(", ");q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoiler").value=x.spoiler||"";
+ q("editId").value=x.id;q("scenarioSelect").value=x.scenarioId||"";q("title").value=x.title||"";q("date").value=x.date||"";q("system").value=x.system||"";q("role").value=x.role||"PL";q("pc").value=x.pcName||"";q("people").value=(x.participants||[]).join(", ");q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoiler").value=x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -241,7 +241,7 @@ async function shareAlbum(id){
    alert("「同卓者のみ」は今後のアカウント共有用です。現在はリンク限定を使ってください。");
    return;
  }
- const payload={kind:"library-session",version:1,title:x.title,date:x.date,system:x.system,role:x.role,pcName:x.pcName,participants:x.participants||[],image:(x.imageUrls||[])[0]||"",comment:x.comment||"",spoiler:x.spoiler||"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
+ const payload={kind:"library-session",version:1,title:x.title,date:x.date,system:x.system,role:x.role,pcName:x.pcName,participants:x.participants||[],image:(x.imageUrls||[])[0]||"",comment:x.comment||"",spoiler:x.spoilerVisibility==="link"?(x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
  try{
    if(TRPG39Cloud&&TRPG39Cloud.configured()){
      const shareId=await TRPG39Cloud.createSharedPage(payload);

@@ -109,3 +109,12 @@ window.TRPG39 = {
     makeShortShareUrl
   };
 })();
+;(function(){
+  const api=window.TRPG39=window.TRPG39||{};
+  const parse=(k)=>{try{return JSON.parse(localStorage.getItem(k)||"[]")}catch{return []}};
+  const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+  if(!api.loadPCs) api.loadPCs=()=>parse("trpg39_pcs");
+  if(!api.savePCs) api.savePCs=v=>save("trpg39_pcs",v);
+  if(!api.loadPlayers) api.loadPlayers=()=>parse("trpg39_players");
+  if(!api.savePlayers) api.savePlayers=v=>save("trpg39_players",v);
+})();

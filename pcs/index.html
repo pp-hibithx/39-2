@@ -1,0 +1,99 @@
+<!doctype html><html lang="ja"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LIBRARY | 39*2</title>
+<link rel="stylesheet" href="../assets/css/style.css?v=0221">
+<style>
+.album-grid{display:grid;grid-template-columns:1fr;gap:28px;align-items:start}
+.album-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}
+.album-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.album-list{display:grid;gap:12px;margin-top:10px}
+.album-card{border:1px solid var(--line);border-radius:11px;overflow:hidden}.album-cover{min-height:74px;padding:15px;background:rgba(255,255,255,.025)}
+.album-body{padding:12px}.album-meta{display:flex;gap:5px;flex-wrap:wrap}.album-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.spoiler{margin-top:9px;border:1px solid var(--line);border-radius:8px;overflow:hidden}.spoiler summary{cursor:pointer;padding:8px 10px;font-weight:700}.spoiler-body{padding:0 10px 10px;white-space:pre-wrap}
+textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;margin:7px 0 3px}
+@media(max-width:850px){.album-row{grid-template-columns:1fr}}
+.image-preview{margin-top:8px;display:flex;align-items:flex-start;gap:10px}.image-preview[hidden]{display:none}.image-preview img{width:150px;aspect-ratio:16/10;object-fit:cover;border:1px solid var(--line);border-radius:8px}.library-editor{border-top:1px solid var(--line);padding-top:22px}
+</style>
+
+<style>
+.library-page{display:grid;gap:14px}
+.lib-panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.lib-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 150px auto;gap:8px;align-items:end}
+.lib-list{display:grid;gap:9px;margin-top:10px}
+.lib-group{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.012)}
+.lib-group[open]{background:rgba(255,255,255,.018)}
+.lib-group-summary{list-style:none;cursor:pointer;padding:10px 12px;display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:10px;align-items:center}
+.lib-group-summary::-webkit-details-marker{display:none}
+.lib-parent-thumb{width:72px;aspect-ratio:16/10;object-fit:cover;border-radius:7px;border:1px solid var(--line);background:rgba(255,255,255,.025)}
+.lib-parent-placeholder{display:grid;place-items:center}
+.lib-parent-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.lib-parent-meta{display:flex;gap:5px;flex-wrap:wrap}
+.lib-count{font-size:12px;color:var(--muted);white-space:nowrap}
+.lib-children{border-top:1px solid var(--line);padding:7px 10px 10px}
+.lib-child{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:10px;align-items:start;padding:8px 2px;border-bottom:1px solid rgba(255,255,255,.06)}
+.lib-child:last-child{border-bottom:0}
+.lib-child-date{font-size:12px;color:var(--muted);padding-top:2px}
+.lib-child-title{font-size:13px;font-weight:650}
+.lib-child-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.lib-child-note{font-size:12px;margin-top:5px;white-space:pre-wrap}
+.lib-child-actions{display:flex;gap:6px;align-items:center}
+.lib-child-actions button,.lib-parent-actions button,.lib-parent-actions a{font-size:12px}
+.lib-parent-actions{display:flex;gap:7px;flex-wrap:wrap;margin:7px 0 2px}
+.library-editor{border-top:1px solid var(--line);padding-top:14px}
+.lib-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.image-preview{margin-top:8px;display:flex;align-items:flex-start;gap:10px}.image-preview[hidden]{display:none}
+.image-preview img{width:150px;aspect-ratio:16/10;object-fit:cover;border:1px solid var(--line);border-radius:8px}
+.ext-row{padding:8px;margin:6px 0}
+textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;margin:6px 0 3px}
+@media(max-width:760px){
+  .lib-toolbar{grid-template-columns:1fr}
+  .lib-group-summary{grid-template-columns:58px minmax(0,1fr)}
+  .lib-parent-thumb{width:58px}
+  .lib-count{grid-column:2}
+  .lib-child{grid-template-columns:76px minmax(0,1fr)}
+  .lib-child-actions{grid-column:2}
+  .lib-form-grid{grid-template-columns:1fr}
+}
+</style>
+
+
+<style>
+.directory-page{display:grid;gap:14px}.dir-panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.dir-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:9px}.dir-card{border:1px solid var(--line);border-radius:9px;padding:10px}
+.dir-card h3{font-size:14px;margin:0 0 5px}.dir-meta{font-size:12px;color:var(--muted);margin:3px 0}.dir-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.dir-form{display:grid;gap:7px}.dir-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dir-thumb{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:7px;border:1px solid var(--line)}
+@media(max-width:700px){.dir-two{grid-template-columns:1fr}}
+</style>
+</head><body><header class="site-header"><div class="wrap">
+<h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
+<div class="tagline">TRPG Scenario &amp; Tools</div>
+<nav class="nav"><a href="../">HOME</a><a href="../scenario/">SCENARIO</a><a href="../calendar/">CALENDAR</a><a href="./" aria-current="page">LIBRARY</a><a href="../tools/">TOOLS</a><a href="../backup/">BACKUP</a><a href="../about/">ABOUT</a></nav>
+</div></header>
+<main><div class="wrap directory-page">
+<div class="hero"><h2>PC LIBRARY</h2><p>自分のキャラクターと、遊んだシナリオをまとめて管理できます。</p></div>
+<section class="dir-panel"><div class="row"><div><h2>MY PCs</h2><div id="pcSummary" class="small"></div></div><button id="addPc">＋ PCを追加</button></div><div id="pcList" class="dir-grid" style="margin-top:10px"></div></section>
+<section id="pcEditor" class="dir-panel" hidden><h2 id="pcHeading">PCを追加</h2><input id="pcId" type="hidden">
+<div class="dir-two"><div><label>PC名</label><input id="pcName"></div><div><label>読み方</label><input id="pcReading"></div></div>
+<div class="dir-two"><div><label>システム</label><input id="pcSystem" placeholder="CoC6版 など"></div><div><label>職業・肩書き</label><input id="pcJob"></div></div>
+<label>立ち絵・画像URL</label><input id="pcImage" type="url" placeholder="https://...">
+<label>キャラクターシートURL</label><input id="pcSheet" type="url" placeholder="https://...">
+<label>公開範囲</label><select id="pcVisibility"><option value="private">自分のみ</option><option value="link">リンク限定</option><option value="public">公開</option></select>
+<label>紹介</label><textarea id="pcBio"></textarea>
+<div class="dir-actions"><button id="pcSave">保存</button><button id="pcCancel">編集をやめる</button></div></section>
+</div></main><footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
+<script src="../assets/js/main.js"></script><script src="../assets/js/shared-data.js"></script>
+<script src="../assets/js/supabase-config.js?v=0210"></script><script src="../assets/js/supabase-share.js?v=0221"></script>
+<script>
+(()=>{"use strict";
+const q=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let pcs=TRPG39.loadPCs(),album=TRPG39.loadAlbum();
+const uuid=()=>TRPG39.uuid?TRPG39.uuid():crypto.randomUUID();
+function stats(name){const xs=album.filter(x=>(x.pcName||"").trim()===name.trim());return {count:new Set(xs.map(x=>x.scenarioId||x.title)).size,first:xs.map(x=>x.date).filter(Boolean).sort()[0]||"",titles:[...new Set(xs.map(x=>x.title).filter(Boolean))]}}
+function reset(){["pcId","pcName","pcReading","pcSystem","pcJob","pcImage","pcSheet","pcBio"].forEach(x=>q(x).value="");q("pcVisibility").value="private";q("pcHeading").textContent="PCを追加"}
+function render(){q("pcSummary").textContent=`登録 ${pcs.length}人`;q("pcList").innerHTML=pcs.length?pcs.map(x=>{const st=stats(x.name);return `<article class="dir-card">${x.image?`<img class="dir-thumb" src="${esc(x.image)}" alt="">`:`<div class="dir-thumb" style="display:grid;place-items:center;font-size:30px">🌺</div>`}<h3>${esc(x.name)}</h3><div class="dir-meta">${esc(x.system||"")}${x.job?` ／ ${esc(x.job)}`:""}</div><div class="dir-meta">参加シナリオ ${st.count}本${st.first?` ／ 初卓 ${esc(st.first)}`:""}</div><div class="dir-actions"><button data-edit="${x.id}">編集</button><button data-share="${x.id}">共有</button></div></article>`}).join(""):'<div class="empty">まだPCが登録されていません。</div>';
+document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));document.querySelectorAll("[data-share]").forEach(b=>b.onclick=()=>share(b.dataset.share));}
+function edit(id){const x=pcs.find(v=>v.id===id);if(!x)return;q("pcId").value=x.id;q("pcName").value=x.name||"";q("pcReading").value=x.reading||"";q("pcSystem").value=x.system||"";q("pcJob").value=x.job||"";q("pcImage").value=x.image||"";q("pcSheet").value=x.sheet||"";q("pcVisibility").value=x.visibility||"private";q("pcBio").value=x.bio||"";q("pcHeading").textContent="PCを編集";q("pcEditor").hidden=false;}
+function save(){const name=q("pcName").value.trim();if(!name)return alert("PC名を入力してください。");const id=q("pcId").value||uuid();const x={id,name,reading:q("pcReading").value.trim(),system:q("pcSystem").value.trim(),job:q("pcJob").value.trim(),image:q("pcImage").value.trim(),sheet:q("pcSheet").value.trim(),visibility:q("pcVisibility").value,bio:q("pcBio").value.trim()};const i=pcs.findIndex(v=>v.id===id);if(i>=0)pcs[i]=x;else pcs.push(x);TRPG39.savePCs(pcs);reset();q("pcEditor").hidden=true;render();}
+async function share(id){const x=pcs.find(v=>v.id===id);if(!x)return;if(x.visibility==="private")return alert("このPCは「自分のみ」です。");const st=stats(x.name);try{const sid=await TRPG39Cloud.createSharedPage({kind:"pc-profile",version:1,...x,stats:st});const u=new URL("../share/index.html",location.href);u.searchParams.set("id",sid);prompt("PC紹介の共有URLです。",u.href)}catch(e){alert("共有URLを作成できませんでした: "+(e.message||e))}}
+q("addPc").onclick=()=>{reset();q("pcEditor").hidden=false};q("pcSave").onclick=save;q("pcCancel").onclick=()=>q("pcEditor").hidden=true;render();
+})();
+</script></body></html>

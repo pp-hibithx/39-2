@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CALENDAR | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=02212">
+<link rel="stylesheet" href="../assets/css/style.css?v=02221">
 <style>
 .calendar-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
 .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
@@ -52,7 +52,7 @@
 <div><label>状態</label><select id="eventStatus"><option value="planned">予定</option><option value="confirmed">確定</option><option value="done">完了</option><option value="cancelled">中止</option><option value="postponed">延期</option></select></div>
 <div><label>役割</label><select id="eventRole"><option value="">未設定</option><option>PL</option><option>KP</option><option>SKP</option><option>その他</option></select></div>
 <div><label>システム</label><input id="eventSystem"></div>
-<div><label>PC名</label><input id="eventPc"></div>
+<div><label>PC</label><select id="eventPcSelect"><option value="">直接入力</option></select><input id="eventPc" placeholder="未登録PCは保存時にPC LIBRARYへ自動登録"></div>
 <div class="full"><label>参加者</label><input id="eventPeople" placeholder="名前をカンマ区切り"><div class="small muted">カンマごとに個別の参加者として保存します。参加者図鑑・同卓履歴への連携用です。</div></div>
 </div>
 <div class="event-editor-actions">
@@ -75,6 +75,23 @@
 (() => {
 "use strict";
 const $=id=>document.getElementById(id);
+function fillEventPcSelect(selectedId=""){
+ const sel=$("eventPcSelect"); if(!sel)return;
+ const pcs=(window.TRPG39&&TRPG39.loadPCs)?TRPG39.loadPCs():[];
+ sel.innerHTML='<option value="">直接入力</option>'+pcs.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ja")).map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
+ sel.value=selectedId||"";
+}
+function ensureEventPc(){
+ const sel=$("eventPcSelect"), inp=$("eventPc");
+ const selected=sel?.value||"";
+ if(selected)return selected;
+ const typed=inp?.value.trim()||"";
+ if(!typed)return "";
+ const pc=window.TRPG39?.ensurePC?.(typed,{system:$("eventSystem")?.value.trim()||""});
+ if(pc){fillEventPcSelect(pc.id);return pc.id}
+ return "";
+}
+
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let current=new Date(); current.setDate(1);
 
@@ -93,7 +110,7 @@ function fillScenarioSelect(){
 function showEditor(){$("eventPanel").hidden=false}
 function hideEditor(){$("eventPanel").hidden=true}
 function resetForm(dateStr=""){
- ["eventId","eventTitle","eventEnd","eventSystem","eventPc","eventPeople"].forEach(id=>$(id).value="");
+ ["eventId","eventTitle","eventEnd","eventSystem","eventPc","eventPeople"].forEach(id=>$(id).value="");fillEventPcSelect();
  $("scenarioSelect").value=""; $("eventStatus").value="planned"; $("eventRole").value="";
  $("eventHeading").textContent="卓予定を登録"; $("deleteEvent").hidden=true; $("toAlbum").hidden=true;
  if(dateStr){$("eventStart").value=dateStr+"T21:00"} else $("eventStart").value="";
@@ -103,7 +120,7 @@ function editEvent(id){
  $("eventId").value=x.id;$("eventTitle").value=x.title;$("scenarioSelect").value=x.scenarioId||"";
  $("eventStart").value=x.start?x.start.slice(0,16):"";$("eventEnd").value=x.end?x.end.slice(0,16):"";
  $("eventStatus").value=x.status||"planned";$("eventRole").value=x.role||"";$("eventSystem").value=x.system||"";
- $("eventPc").value=x.pcName||"";$("eventPeople").value=(x.participants||[]).join(", ");
+ $("eventPc").value=x.pcName||"";fillEventPcSelect(x.pcId||"");$("eventPeople").value=(x.participants||[]).join(", ");
  $("eventHeading").textContent="卓予定を編集";$("deleteEvent").hidden=false;$("toAlbum").hidden=!!x.linkedAlbumId;showEditor();
  $("eventPanel").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -131,6 +148,11 @@ $("scenarioSelect").onchange=()=>{
  const x=scenarios().find(v=>v.id===$("scenarioSelect").value);
  if(x){$("eventTitle").value=x.title||"";$("eventSystem").value=x.system||""}
 };
+$("eventPcSelect").onchange=()=>{
+ const id=$("eventPcSelect").value;
+ const pc=(window.TRPG39?.loadPCs?.()||[]).find(p=>p.id===id);
+ if(pc)$("eventPc").value=pc.name||"";
+};
 $("saveEvent").onclick=()=>{
  const title=$("eventTitle").value.trim(),start=$("eventStart").value;
  if(!title||!start)return alert("タイトルと開始日時を入力してください。");
@@ -138,7 +160,7 @@ $("saveEvent").onclick=()=>{
  const item=TRPG39.normalizeEvent({
    ...(old||{}),id,title,scenarioId:$("scenarioSelect").value,scenarioTitle:title,start,end:$("eventEnd").value,
    status:$("eventStatus").value,role:$("eventRole").value,system:$("eventSystem").value.trim(),
-   pcName:$("eventPc").value.trim(),participants:$("eventPeople").value.split(",").map(x=>x.trim()).filter(Boolean)
+   pcName:$("eventPc").value.trim(),pcId:ensureEventPc(),participants:$("eventPeople").value.split(",").map(x=>x.trim()).filter(Boolean)
  });
  const i=list.findIndex(x=>x.id===id); if(i>=0)list[i]=item; else list.push(item);
  saveEvents(list); resetForm(); hideEditor(); renderCalendar();

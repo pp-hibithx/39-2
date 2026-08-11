@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>39*2</title><link rel="stylesheet" href="../assets/css/style.css?v=02212">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>39*2</title><link rel="stylesheet" href="../assets/css/style.css?v=02221">
 <style>
 .share-page{display:grid;gap:14px}
 .share-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
@@ -33,20 +33,55 @@
  if(!id){box.innerHTML="<p>共有IDがありません。</p>";return;}
  try{
    const payload=await TRPG39Cloud.getSharedPage(id);
+   const legacyPayload=Array.isArray(payload)?{kind:"scenario-list",items:payload}:payload;
+   const p=legacyPayload;
    if(!payload)throw new Error("共有データが見つかりません");
-   if(payload.kind==="library-session"){
-     box.innerHTML=`<h2>${esc(payload.title||"LIBRARY")}</h2>
-       <div class="share-meta">${payload.system?`<span class="badge">${esc(payload.system)}</span>`:""}${payload.role?`<span class="badge">${esc(payload.role)}</span>`:""}${payload.date?`<span class="badge">${esc(payload.date)}</span>`:""}</div>
-       ${payload.image?`<img src="${esc(payload.image)}" alt="" style="max-width:420px;width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:10px">`:""}
-       ${payload.pcName?`<p><strong>PC</strong>　${esc(payload.pcName)}</p>`:""}
-       ${(payload.participants||[]).length?`<p><strong>参加者</strong>　${esc(payload.participants.join(" / "))}</p>`:""}
-       ${payload.comment?`<p style="white-space:pre-wrap">${esc(payload.comment)}</p>`:""}
-       ${payload.spoiler?`<details class="spoiler"><summary>⚠ ネタバレ</summary><div class="spoiler-body">${esc(payload.spoiler)}</div></details>`:""}`;
-   } else if(payload.kind==="calendar-availability"){
-     const days=payload.days||[];
-     box.innerHTML=`<h2>${esc(payload.label||"空き日カレンダー")}</h2>
+   if(legacyPayload.kind==="library-session"){
+     box.innerHTML=`<h2>${esc(legacyPayload.title||"LIBRARY")}</h2>
+       <div class="share-meta">${legacyPayload.system?`<span class="badge">${esc(legacyPayload.system)}</span>`:""}${p.role?`<span class="badge">${esc(p.role)}</span>`:""}${p.date?`<span class="badge">${esc(p.date)}</span>`:""}</div>
+       ${p.image?`<img src="${esc(p.image)}" alt="" style="max-width:420px;width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:10px">`:""}
+       ${p.pcName?`<p><strong>PC</strong>　${esc(p.pcName)}</p>`:""}
+       ${(p.participants||[]).length?`<p><strong>参加者</strong>　${esc(p.participants.join(" / "))}</p>`:""}
+       ${p.comment?`<p style="white-space:pre-wrap">${esc(p.comment)}</p>`:""}
+       ${p.spoiler?`<details class="spoiler"><summary>⚠ ネタバレ</summary><div class="spoiler-body">${esc(p.spoiler)}</div></details>`:""}`;
+   } else if(legacyPayload.kind==="calendar-availability"){
+     const days=p.days||[];
+     box.innerHTML=`<h2>${esc(legacyPayload.label||"空き日カレンダー")}</h2>
        <p class="small">共有されているのは空き状況だけです。予定の内容は表示されません。</p>
        <div class="share-cal">${days.map(d=>`<div class="share-day"><div class="num">${esc(d.date)}</div><div class="${d.state==="free"?"free":"busy"}">${d.state==="free"?"○ 空き":"予定あり"}</div></div>`).join("")}</div>`;
+
+   } else if(legacyPayload.kind==="scenario-list" || legacyPayload.kind==="scenarios" || Array.isArray(legacyPayload.scenarios) || Array.isArray(legacyPayload.items)){
+     const items=Array.isArray(legacyPayload.scenarios)?legacyPayload.scenarios:(Array.isArray(legacyPayload.items)?legacyPayload.items:[]);
+     const title=legacyPayload.title||legacyPayload.label||"SCENARIO";
+     box.innerHTML=`<h2>${esc(title)}</h2>
+       <p class="small">共有されたシナリオ一覧です。</p>
+       <div class="share-list">${items.length?items.map(x=>`
+         <article class="share-row">
+           <div style="display:flex;gap:10px;align-items:flex-start">
+             ${x.thumbnailUrl||x.image||x.imageUrl?`<img src="${esc(x.thumbnailUrl||x.image||x.imageUrl)}" alt="" style="width:120px;aspect-ratio:16/10;object-fit:cover;border-radius:7px;border:1px solid var(--line)">`:`<div style="width:120px;aspect-ratio:16/10;display:grid;place-items:center;border:1px solid var(--line);border-radius:7px;font-size:28px">🌺</div>`}
+             <div>
+               <h3 style="margin:0 0 5px">${esc(x.title||x.name||"名称未設定")}</h3>
+               <div class="share-meta">
+                 ${x.system?`<span class="badge">${esc(x.system)}</span>`:""}
+                 ${x.status?`<span class="badge">${esc(x.status)}</span>`:""}
+                 ${x.playerCount||x.minPlayers||x.maxPlayers?`<span class="badge">${esc(x.playerCount||((x.minPlayers||"")+"〜"+(x.maxPlayers||"")+"人"))}</span>`:""}
+                 ${x.playTime||x.minHours||x.maxHours?`<span class="badge">${esc(x.playTime||((x.minHours||"")+"〜"+(x.maxHours||"")+"h"))}</span>`:""}
+               </div>
+               ${x.author?`<div class="small">${esc(x.author)}</div>`:""}
+             </div>
+           </div>
+         </article>`).join(""):`<p>共有されたシナリオはありません。</p>`}</div>`;
+   } else if(legacyPayload.kind==="scenario" || legacyPayload.scenario || (legacyPayload.title && (legacyPayload.system || legacyPayload.author || legacyPayload.thumbnailUrl || legacyPayload.status))){
+     const x=legacyPayload.scenario||payload;
+     box.innerHTML=`<h2>${esc(x.title||x.name||"SCENARIO")}</h2>
+       <div class="share-meta">
+         ${x.system?`<span class="badge">${esc(x.system)}</span>`:""}
+         ${x.status?`<span class="badge">${esc(x.status)}</span>`:""}
+       </div>
+       ${x.thumbnailUrl||x.image||x.imageUrl?`<img src="${esc(x.thumbnailUrl||x.image||x.imageUrl)}" alt="" style="max-width:520px;width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:10px">`:`<div style="font-size:52px;margin:8px 0">🌺</div>`}
+       ${x.author?`<p><strong>作者</strong>　${esc(x.author)}</p>`:""}
+       ${x.description||x.memo?`<p style="white-space:pre-wrap">${esc(x.description||x.memo)}</p>`:""}`;
+
    } else {
      box.innerHTML="<p>この共有データ形式には対応していません。</p>";
    }

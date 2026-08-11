@@ -118,3 +118,21 @@ window.TRPG39 = {
   if(!api.loadPlayers) api.loadPlayers=()=>parse("trpg39_players");
   if(!api.savePlayers) api.savePlayers=v=>save("trpg39_players",v);
 })();
+
+;(function(){
+  const api=window.TRPG39=window.TRPG39||{};
+  const norm=s=>String(s||"").normalize("NFKC").trim().toLowerCase();
+  api.findPCByName=api.findPCByName||function(name){
+    const pcs=api.loadPCs?api.loadPCs():[];
+    return pcs.find(p=>norm(p.name)===norm(name))||null;
+  };
+  api.ensurePC=api.ensurePC||function(name,defaults={}){
+    const clean=String(name||"").trim(); if(!clean)return null;
+    let pcs=api.loadPCs?api.loadPCs():[];
+    let found=pcs.find(p=>norm(p.name)===norm(clean));
+    if(found)return found;
+    const id=api.uuid?api.uuid():crypto.randomUUID();
+    const pc={id,name:clean,reading:"",system:defaults.system||"",job:"",image:"",sheet:"",visibility:"private",bio:"",autoCreated:true};
+    pcs.push(pc); api.savePCs&&api.savePCs(pcs); return pc;
+  };
+})();

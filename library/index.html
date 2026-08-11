@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LIBRARY | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=02212">
+<link rel="stylesheet" href="../assets/css/style.css?v=02221">
 <style>
 .album-grid{display:grid;grid-template-columns:1fr;gap:28px;align-items:start}
 .album-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}
@@ -96,7 +96,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   </div>
   <div class="lib-form-grid">
     <div><label>自分の役割</label><select id="role"><option>PL</option><option>KP</option><option>SKP</option><option>その他</option></select></div>
-    <div><label>PC名</label><input id="pc"></div>
+    <div><label>PC</label><select id="pcSelect"><option value="">直接入力</option></select><input id="pc" placeholder="未登録PCは保存時にPC LIBRARYへ自動登録"></div>
   </div>
 
   <label>一緒に遊んだ人</label><input id="people" placeholder="名前をカンマ区切り">
@@ -154,6 +154,11 @@ const persist=()=>TRPG39.saveAlbum(data);
 const showEditor=()=>q("libraryEditor").hidden=false;
 const hideEditor=()=>q("libraryEditor").hidden=true;
 
+function fillPCSelect(selectedId=""){
+ const pcs=TRPG39.loadPCs?TRPG39.loadPCs():[];
+ q("pcSelect").innerHTML='<option value="">直接入力</option>'+pcs.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ja")).map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+ q("pcSelect").value=selectedId||"";
+}
 function fillScenarioSelect(){
   scenarios=TRPG39.loadScenarios();
   q("scenarioSelect").innerHTML='<option value="">直接入力</option>'+scenarios
@@ -172,7 +177,7 @@ function reset(prefillScenarioId=""){
  q("editId").value="";
  ["title","date","system","pc","people","image","comment","spoiler"].forEach(x=>q(x).value="");
  q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
- q("externalLinks").innerHTML="";addLinkRow();updateImagePreview();fillScenarioSelect();
+ q("externalLinks").innerHTML="";addLinkRow();updateImagePreview();fillScenarioSelect();fillPCSelect();
  q("scenarioSelect").value=prefillScenarioId||"";
  if(prefillScenarioId){
    const s=scenarioById(prefillScenarioId);
@@ -185,13 +190,13 @@ function save(){
  const selected=scenarioById(scenarioId);
  if(selected)title=selected.title;
  let id=q("editId").value||TRPG39.uuid(),old=data.find(x=>x.id===id);
- let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,date:q("date").value,system:q("system").value.trim(),role:q("role").value,pcName:q("pc").value.trim(),participants:q("people").value.split(",").map(x=>x.trim()).filter(Boolean),imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoiler:q("spoiler").value.trim(),spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
+ let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,date:q("date").value,system:q("system").value.trim(),role:q("role").value,pcName:q("pc").value.trim(),pcId:(()=>{const sid=q("pcSelect").value;if(sid)return sid;const typed=q("pc").value.trim();if(!typed)return "";const pc=TRPG39.ensurePC?TRPG39.ensurePC(typed,{system:q("system").value.trim()}):null;return pc?.id||""})(),participants:q("people").value.split(",").map(x=>x.trim()).filter(Boolean),imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoiler:q("spoiler").value.trim(),spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
  let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);
  persist();reset();render();hideEditor();
 }
 function edit(id){
  let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("scenarioSelect").value=x.scenarioId||"";q("title").value=x.title||"";q("date").value=x.date||"";q("system").value=x.system||"";q("role").value=x.role||"PL";q("pc").value=x.pcName||"";q("people").value=(x.participants||[]).join(", ");q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoiler").value=x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
+ q("editId").value=x.id;q("scenarioSelect").value=x.scenarioId||"";q("title").value=x.title||"";q("date").value=x.date||"";q("system").value=x.system||"";q("role").value=x.role||"PL";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");q("people").value=(x.participants||[]).join(", ");q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoiler").value=x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -291,6 +296,7 @@ function render(){
  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));
  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>del(b.dataset.del));
 }
+q("pcSelect").onchange=()=>{const id=q("pcSelect").value;if(!id)return;const pc=(TRPG39.loadPCs?TRPG39.loadPCs():[]).find(p=>p.id===id);if(pc)q("pc").value=pc.name||""};
 q("scenarioSelect").onchange=()=>{
  const s=scenarioById(q("scenarioSelect").value);
  if(s){q("title").value=s.title||"";q("system").value=s.system||""}

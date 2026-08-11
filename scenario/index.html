@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SCENARIO | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=02241">
+<link rel="stylesheet" href="../assets/css/style.css?v=02243">
 <style>
 .sc-layout{display:grid;gap:16px}
 .sc-panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
@@ -24,13 +24,13 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 @media(max-width:620px){.sc-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.sc-body{padding:9px}.sc-head h3{font-size:.92rem}.sc-author{display:none}.sc-inline{align-items:stretch;flex-direction:column}.sc-inline button{width:100%}.sc-row{grid-template-columns:1fr}.sc-toolbar-main{width:100%}.sc-toolbar-main>div{min-width:0;flex:1}.sc-add-card{min-height:160px}}
 @media(max-width:390px){.sc-list{grid-template-columns:1fr}}
 </style>
-<script src="../assets/js/theme.js?v=0224"></script>
+<script src="../assets/js/theme.js?v=02243"></script>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
 <div class="tagline">TRPG Scenario &amp; Tools</div>
-<nav class="nav"><a href="../">HOME</a><a href="./" aria-current="page">SCENARIO</a><a href="../calendar/">CALENDAR</a><a href="../library/">LIBRARY</a><a href="../pcs/">PC</a><a href="../players/">PLAYERS</a><a href="../tools/">TOOLS</a><a href="../backup/">BACKUP</a><a href="../about/">ABOUT</a></nav><div class="theme-switcher" aria-label="テーマ">
+<nav class="nav"><a href="../index.html">HOME</a><a href="index.html" aria-current="page">SCENARIO</a><a href="../calendar/index.html">CALENDAR</a><a href="../library/index.html">LIBRARY</a><a href="../pcs/index.html">PC</a><a href="../players/index.html">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../about/index.html">ABOUT</a></nav><div class="theme-switcher" aria-label="テーマ">
 <button type="button" data-theme-choice="system">端末</button>
 <span>·</span>
 <button type="button" data-theme-choice="dark">ダーク</button>
@@ -101,9 +101,9 @@ function del(id){if(confirm("このシナリオを削除しますか？")){data=
 function schedule(id){
  const x=data.find(v=>v.id===id);if(!x)return;
  const list=TRPG39.loadEvents(),e=TRPG39.normalizeEvent({scenarioId:x.id,title:x.title,scenarioTitle:x.title,system:x.system,status:"planned"});
- list.push(e);TRPG39.saveEvents(list);location.href="../calendar/";
+ list.push(e);TRPG39.saveEvents(list);location.href="../calendar/index.html";
 }
-function library(id){location.href="../library/?scenario="+encodeURIComponent(id)}
+function library(id){location.href="../library/index.html?scenario="+encodeURIComponent(id)}
 
 
 
@@ -126,7 +126,7 @@ async function shareScenarioList(){
  try{
    if(TRPG39Cloud && TRPG39Cloud.configured()){
      const shareId=await TRPG39Cloud.createSharedPage(payload);
-     const url=(TRPG39 && typeof TRPG39.makeShortShareUrl==="function") ? TRPG39.makeShortShareUrl(shareId) : new URL("../share/?id="+encodeURIComponent(shareId), location.href).href;
+     const url=(TRPG39 && typeof TRPG39.makeShortShareUrl==="function") ? TRPG39.makeShortShareUrl(shareId) : new URL("../share/index.html?id="+encodeURIComponent(shareId), location.href).href;
      showShareUrl(url,"短い共有URLを作成しました。現在表示しているシナリオ一覧を共有できます。");
      return;
    }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LIBRARY | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=02241">
+<link rel="stylesheet" href="../assets/css/style.css?v=02243">
 <style>
 .album-grid{display:grid;grid-template-columns:1fr;gap:28px;align-items:start}
 .album-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}
@@ -57,10 +57,10 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 }
 </style>
 
-<script src="../assets/js/theme.js?v=0224"></script>
+<script src="../assets/js/theme.js?v=02243"></script>
 
 <style>
-/* v0.2.24.1.1 — LIBRARY thumbnail display */
+/* v0.2.24.3.2.1 — LIBRARY thumbnail display */
 .lib-child-thumb{
   width:72px;
   aspect-ratio:16/10;
@@ -83,7 +83,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
 <div class="tagline">TRPG Scenario &amp; Tools</div>
-<nav class="nav"><a href="../">HOME</a><a href="../scenario/">SCENARIO</a><a href="../calendar/">CALENDAR</a><a href="./" aria-current="page">LIBRARY</a><a href="../pcs/">PC</a><a href="../players/">PLAYERS</a><a href="../tools/">TOOLS</a><a href="../backup/">BACKUP</a><a href="../about/">ABOUT</a></nav><div class="theme-switcher" aria-label="テーマ">
+<nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html">SCENARIO</a><a href="../calendar/index.html">CALENDAR</a><a href="index.html" aria-current="page">LIBRARY</a><a href="../pcs/index.html">PC</a><a href="../players/index.html">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../about/index.html">ABOUT</a></nav><div class="theme-switcher" aria-label="テーマ">
 <button type="button" data-theme-choice="system">端末</button>
 <span>·</span>
 <button type="button" data-theme-choice="dark">ダーク</button>
@@ -323,7 +323,7 @@ function render(){
      <div class="lib-count">${g.items.length}回</div>
    </summary>
    <div class="lib-children">
-     <div class="lib-parent-actions">${g.scenarioId?`<a class="link" href="../scenario/?focus=${encodeURIComponent(g.scenarioId)}">SCENARIOを見る</a>`:""}<button type="button" data-add-scenario="${esc(g.scenarioId)}" data-add-title="${esc(g.title)}">＋ 開催記録</button></div>
+     <div class="lib-parent-actions">${g.scenarioId?`<a class="link" href="../scenario/index.html?focus=${encodeURIComponent(g.scenarioId)}">SCENARIOを見る</a>`:""}<button type="button" data-add-scenario="${esc(g.scenarioId)}" data-add-title="${esc(g.title)}">＋ 開催記録</button></div>
      ${g.items.map((x,i)=>`<article class="lib-child">
        <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}</div>
        <div>${(x.imageUrls||[])[0]?`<img class="lib-child-thumb" src="${esc((x.imageUrls||[])[0])}" alt="" loading="lazy">`:""}

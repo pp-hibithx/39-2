@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SETTINGS | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=02264">
+<link rel="stylesheet" href="../assets/css/style.css?v=02265">
 <script src="../assets/js/theme.js?v=02263"></script>
-<script src="../assets/js/optional-features.js?v=02264" defer></script>
+<script src="../assets/js/optional-features.js?v=02265" defer></script>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -49,16 +49,29 @@
 <script src="../assets/js/shared-data.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
+  const KEY="39x2_players_enabled_v1";
   const toggle=document.getElementById("playersFeatureToggle");
   const status=document.getElementById("settingsStatus");
-  if(!toggle || !window.TRPG39) return;
+  if(!toggle)return;
 
-  toggle.checked=TRPG39.playersEnabled?.() || false;
+  toggle.checked=localStorage.getItem(KEY)==="1";
+
   toggle.addEventListener("change",()=>{
-    TRPG39.setPlayersEnabled?.(toggle.checked);
+    localStorage.setItem(KEY,toggle.checked?"1":"0");
+
+    if(window.TRPG39?.setPlayersEnabled){
+      TRPG39.setPlayersEnabled(toggle.checked);
+    }else{
+      window.dispatchEvent(new CustomEvent("39x2:players-setting",{
+        detail:{enabled:toggle.checked}
+      }));
+    }
+
+    window.TRPG39OptionalFeatures?.apply?.();
+
     status.textContent=toggle.checked
-      ? "PLAYERS管理をONにしました。"
-      : "PLAYERS管理をOFFにしました。";
+      ?"PLAYERS管理をONにしました。"
+      :"PLAYERS管理をOFFにしました。";
   });
 });
 </script>

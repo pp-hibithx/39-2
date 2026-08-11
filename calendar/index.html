@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CALENDAR | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/style.css?v=0213">
 <style>
 .calendar-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
 .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
@@ -53,7 +53,7 @@
 <div><label>役割</label><select id="eventRole"><option value="">未設定</option><option>PL</option><option>KP</option><option>SKP</option><option>その他</option></select></div>
 <div><label>システム</label><input id="eventSystem"></div>
 <div><label>PC名</label><input id="eventPc"></div>
-<div class="full"><label>参加者</label><input id="eventPeople" placeholder="名前をカンマ区切り"></div>
+<div class="full"><label>参加者</label><input id="eventPeople" placeholder="名前をカンマ区切り"><div class="small muted">カンマごとに個別の参加者として保存します。参加者図鑑・同卓履歴への連携用です。</div></div>
 </div>
 <div class="event-editor-actions">
 <button id="saveEvent" type="button">保存</button>

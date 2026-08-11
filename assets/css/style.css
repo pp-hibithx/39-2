@@ -235,3 +235,146 @@ label{font-size:12px;color:var(--muted)}
   .calendar-toolbar .month-nav strong{min-width:7.5em}
   .event-editor-actions,.backup-actions,.album-actions{gap:2px}
 }
+
+/* v0.2.12 — 39*2 global compact UI, based on dice-log v0.2.11 */
+body{font-size:14px;line-height:1.65}
+main{padding-top:12px}
+.hero{padding:22px 0 10px}
+.hero h2{font-size:20px!important;line-height:1.4;margin:0 0 4px;font-weight:700}
+.hero p{font-size:12.5px;line-height:1.65;margin-top:0;color:var(--muted)}
+section{margin-top:20px}
+.section-title{font-size:15px;padding-bottom:7px;margin-bottom:12px}
+.panel{padding:14px;margin:12px 0;border-radius:9px}
+.panel>h2,.panel>h3,.album-panel>h2,.album-panel h2{font-size:15px!important;line-height:1.45;margin:0 0 8px;font-weight:700;letter-spacing:0}
+.card,.list-item{padding:9px 10px;border-radius:7px}
+.card h3{font-size:13px;line-height:1.45;margin:0 0 5px}
+.card p{font-size:11.5px;line-height:1.55}
+.small,.muted{font-size:11.5px!important;line-height:1.55}
+label{font-size:11.5px!important;margin:7px 0 3px!important}
+input,select,textarea,.field input,.field textarea,.field select{font-size:12.5px!important;padding:7px 8px!important;line-height:1.45!important;border-radius:7px!important}
+textarea,.field textarea{min-height:88px}
+button,.button,.action-link{font-size:11.5px!important;line-height:1.45!important;padding:3px 5px!important;border-radius:4px!important}
+.badge{font-size:10.5px!important;padding:1px 5px!important}
+.notice{font-size:11.5px;padding:7px 10px;border-left-width:2px}
+.empty{font-size:12px;padding:12px}
+table{font-size:11.5px;border-collapse:collapse}
+th{font-size:10.5px;padding:5px 6px}
+td{font-size:11.5px;padding:5px 6px;line-height:1.4}
+
+/* Calendar: one step smaller than v0.2.9 */
+.calendar-toolbar{margin:6px 0 8px!important}
+.calendar-toolbar .month-nav strong{font-size:13px!important;min-width:8.2em!important}
+.calendar-head{font-size:11px!important;padding:2px!important}
+.calendar-grid{gap:4px!important}
+.calendar-day{min-height:88px!important;padding:5px!important;border-radius:6px!important}
+.daynum{font-size:11px!important;margin-bottom:3px!important}
+.event-chip{font-size:10.5px!important;line-height:1.3!important;padding:3px 4px!important;margin:1px 0!important;border-radius:4px!important}
+.event-form{gap:7px!important}
+.event-editor{padding-top:14px!important;margin-top:20px!important}
+.event-editor-actions{margin-top:7px!important;gap:2px!important}
+.event-editor-actions button{font-size:11px!important;padding:2px 4px!important}
+
+/* Scenario: gallery first, editor directly below and aligned with content */
+.sc-layout{gap:20px!important}
+.sc-panel{padding:14px!important;border-radius:9px!important}
+.sc-form{max-width:none!important;width:100%!important;margin:0!important;border-top:1px solid var(--line)!important;border-left:0!important;border-right:0!important;border-bottom:0!important;background:transparent!important;padding:16px 0 0!important;border-radius:0!important}
+.sc-form h2{font-size:15px!important;margin:0 0 8px!important}
+.sc-row{gap:7px!important}
+.sc-checks{gap:4px!important;margin:6px 0!important}
+.sc-checks label{font-size:11.5px!important;padding:3px 6px!important;border-radius:999px!important}
+.sc-toolbar{gap:8px!important}
+.sc-toolbar-main{gap:7px!important}
+.sc-toolbar-main>div{min-width:160px!important}
+.sc-list{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))!important;gap:10px!important;margin-top:12px!important}
+.sc-card{border-radius:9px!important}
+.sc-body{padding:9px!important}
+.sc-head h3{font-size:12.5px!important;line-height:1.45!important}
+.sc-meta{gap:3px!important;margin-top:5px!important}
+.sc-author{margin-top:5px!important}
+.sc-menu-btn{width:26px!important;height:26px!important;font-size:16px!important;border-radius:6px!important}
+.sc-menu{top:30px!important;min-width:120px!important}
+.sc-menu button,.sc-menu a{font-size:11.5px!important;padding:5px 7px!important}
+.sc-add-card{min-height:170px!important;border-radius:9px!important;font-size:11.5px!important}
+.sc-add-plus{font-size:22px!important}
+.sc-preview img{width:110px!important;border-radius:7px!important}
+.sc-detail-body{padding:14px!important}
+.sc-detail-top h2{font-size:17px!important}
+.sc-detail-actions{gap:3px!important;margin-top:10px!important}
+
+/* Library: same density and list -> editor flow */
+.album-grid{gap:20px!important}
+.album-panel{padding:12px!important;border-radius:9px!important}
+.album-list{gap:8px!important;margin-top:8px!important}
+.album-card{border-radius:8px!important}
+.album-cover{min-height:58px!important;padding:10px!important}
+.album-body{padding:9px!important}
+.album-meta{gap:3px!important}
+.album-actions{margin-top:6px!important;gap:2px!important}
+.album-row{gap:7px!important}
+.library-editor{margin-top:18px!important;padding-top:14px!important;border-top:1px solid var(--line)!important;background:transparent!important;border-left:0!important;border-right:0!important;border-bottom:0!important;border-radius:0!important}
+.image-preview{gap:8px!important}.image-preview img{width:120px!important;border-radius:7px!important}
+.spoiler{margin-top:6px!important;border-radius:7px!important}.spoiler summary{font-size:11.5px!important;padding:6px 8px!important}.spoiler-body{font-size:11.5px!important;padding:0 8px 8px!important}
+.ext-row{padding:8px!important;margin:5px 0!important}
+
+/* Backup / tools / home cards */
+.backup-actions{gap:2px!important}
+.toolbox{gap:9px!important}
+.grid{gap:10px!important}
+
+@media(max-width:760px){
+  .calendar-day{min-height:70px!important;padding:3px!important}
+  .calendar-grid{gap:2px!important}
+  .event-chip{font-size:9.5px!important;padding:2px 3px!important}
+  .sc-list{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+}
+@media(max-width:390px){.sc-list{grid-template-columns:1fr!important}}
+
+/* v0.2.13 — compact form scale and alignment */
+:root{--ui-font:11.5px;--ui-control:28px}
+body{font-size:13px;line-height:1.58}
+.wrap{width:min(1000px,calc(100% - 32px))}
+label{font-size:11px!important;line-height:1.3!important;margin:5px 0 3px!important;color:var(--muted)}
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select,textarea,
+.field input,.field textarea,.field select{
+  box-sizing:border-box!important;font-size:11.5px!important;line-height:1.25!important;
+  min-height:28px!important;height:auto;padding:5px 7px!important;border-radius:5px!important
+}
+textarea,.field textarea{min-height:76px!important}
+button,.button,.action-link{font-size:11px!important;line-height:1.3!important;padding:2px 4px!important;border-radius:4px!important;min-height:0!important}
+.panel{padding:12px!important}.panel>h2,.panel>h3{font-size:14px!important}
+.small,.muted{font-size:11px!important}
+
+/* Forms use the same label-above-control rhythm everywhere. */
+.event-form>div,.sc-row>div,.album-row>div{display:flex!important;flex-direction:column!important;align-items:stretch!important;min-width:0}
+.event-form label,.sc-form label,.library-editor label{display:block!important;width:auto!important}
+
+/* Calendar: denser grid and compact editor, matching dice-log scale. */
+.calendar-day{min-height:72px!important;padding:4px!important}
+.calendar-head{font-size:10.5px!important}.daynum{font-size:10.5px!important}
+.event-chip{font-size:9.5px!important;padding:2px 3px!important;margin:1px 0!important}
+.event-editor{max-width:720px!important;margin-left:0!important;margin-right:auto!important}
+.event-form{grid-template-columns:repeat(2,minmax(0,280px))!important;column-gap:18px!important;row-gap:5px!important;align-items:start!important}
+.event-form .full{grid-column:1/-1!important;max-width:578px}
+.event-editor-actions{display:flex!important;gap:7px!important;align-items:center!important;flex-wrap:wrap!important}
+.event-editor-actions button{width:auto!important;background:transparent!important;border-color:transparent!important;color:var(--muted)!important;padding:2px 1px!important}
+.event-editor-actions button:hover{color:var(--text)!important;border-bottom-color:var(--line)!important}
+
+/* Scenario controls: compact toolbar, left-aligned editor, same scale as dice-log. */
+.sc-toolbar{align-items:end!important}.sc-toolbar-main{gap:8px!important}
+.sc-toolbar-main input,.sc-toolbar-main select{width:100%!important}
+.sc-search{width:220px!important}.sc-filter{width:140px!important}.sc-number-filter{width:90px!important}
+.sc-tools button{width:auto!important;background:transparent!important;border-color:transparent!important;color:var(--muted)!important}
+.sc-tools button:hover{color:var(--text)!important}
+.sc-form{max-width:760px!important;margin-left:0!important;margin-right:auto!important}
+.sc-form>.sc-row{grid-template-columns:repeat(2,minmax(0,280px))!important;column-gap:18px!important;row-gap:5px!important;max-width:578px}
+.sc-form>.sc-row .sc-row{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}
+.sc-inline{max-width:578px}.sc-inline button{width:auto!important}
+.sc-form>input{max-width:578px}.sc-checks{max-width:578px}
+.sc-checks label{font-size:10.5px!important;padding:2px 5px!important;margin:0!important}
+.sc-card .badge{font-size:9.5px!important}
+
+@media(max-width:760px){
+  .event-form,.sc-form>.sc-row{grid-template-columns:1fr!important;max-width:none!important}
+  .event-form .full{max-width:none}.sc-search,.sc-filter,.sc-number-filter{width:auto!important;flex:1 1 120px}
+  .calendar-day{min-height:60px!important}
+}

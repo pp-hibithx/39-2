@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PDFテキスト整形 | 39*2</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=02243">
+<link rel="stylesheet" href="../../assets/css/style.css?v=02244">
 <script src="../../assets/js/theme.js?v=02243"></script>
 </head>
 <body>
@@ -46,6 +46,10 @@
           <input type="checkbox" id="joinLines">
           改行をつなぐ
         </label>
+
+<label class="check"><input id="breakPeriod" type="checkbox"> 「。」の後で改行</label>
+<label class="check"><input id="breakQuote" type="checkbox"> 「」」の後で改行</label>
+
       </div>
 
       <div class="pdf-cleaner-grid">
@@ -107,7 +111,7 @@
   }
 
   function format() {
-    output.value = clean(input.value);
+    output.value = applySentenceBreaks(clean(input.value));
     status.textContent = input.value ? '整形しました' : '';
   }
 
@@ -130,6 +134,25 @@
     }
   });
 })();
+
+function applySentenceBreaks(text){
+  const breakPeriod=document.getElementById("breakPeriod")?.checked;
+  const breakQuote=document.getElementById("breakQuote")?.checked;
+  let t=String(text||"");
+
+  if(breakPeriod){
+    // Do not split between 。 and 」; the closing quote remains with the sentence.
+    t=t.replace(/。(?!」)\s*/g,"。\n");
+  }
+  if(breakQuote){
+    t=t.replace(/」\s*/g,"」\n");
+  }
+
+  // Both options may touch the same boundary; never create duplicate blank lines.
+  t=t.replace(/\n{2,}/g,"\n");
+  return t;
+}
+
 </script>
 </body>
 </html>

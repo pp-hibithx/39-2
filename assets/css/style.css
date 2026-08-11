@@ -378,3 +378,9 @@ button,.button,.action-link{font-size:11px!important;line-height:1.3!important;p
   .event-form .full{max-width:none}.sc-search,.sc-filter,.sc-number-filter{width:auto!important;flex:1 1 120px}
   .calendar-day{min-height:60px!important}
 }
+
+
+/* v0.2.14 — ABOUT / LIBRARY behavior alignment */
+.about-page .panel p{max-width:none;margin-right:0}
+.about-page .panel{max-width:none}
+.library-editor[hidden]{display:none!important}

@@ -384,3 +384,40 @@ button,.button,.action-link{font-size:11px!important;line-height:1.3!important;p
 .about-page .panel p{max-width:none;margin-right:0}
 .about-page .panel{max-width:none}
 .library-editor[hidden]{display:none!important}
+
+
+/* v0.2.15 — text wrapping + calendar grid refinement */
+.home-card p,
+.home-card .desc,
+.nav-card p,
+.feature-card p,
+.about-copy,
+.about-copy p,
+.backup-copy,
+.backup-copy p,
+.library-note,
+.library-note p {
+  max-width: none !important;
+  width: auto !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  line-break: strict;
+}
+
+/* Preserve the intended two-line LIBRARY notice without splitting words. */
+.library-note,
+.library-notice,
+[data-library-notice] {
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+}
+
+/* Calendar: visible but quiet cell boundaries. */
+.calendar-grid > *,
+.calendar-day,
+.calendar-cell,
+.cal-day,
+.cal-cell {
+  border: 1px solid rgba(255,255,255,.10) !important;
+  box-sizing: border-box;
+}

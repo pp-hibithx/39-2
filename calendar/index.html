@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CALENDAR | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=0219">
+<link rel="stylesheet" href="../assets/css/style.css?v=0220">
 <style>
 .calendar-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
 .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
@@ -25,7 +25,7 @@
 <nav class="nav"><a href="../">HOME</a><a href="../scenario/">SCENARIO</a><a href="./" aria-current="page">CALENDAR</a><a href="../library/">LIBRARY</a><a href="../tools/">TOOLS</a><a href="../backup/">BACKUP</a><a href="../about/">ABOUT</a></nav>
 </div></header>
 <main><div class="wrap">
-<div class="hero"><h2>CALENDAR</h2><div style="margin-top:6px"><button id="shareAvailability" type="button">空き日を共有</button></div><p>卓予定と遊んだ記録を、日付から確認できます。</p></div>
+<div class="hero"><h2>CALENDAR</h2><p>卓予定と遊んだ記録を、日付から確認できます。</p></div>
 
 <section class="panel">
 <div class="calendar-toolbar">
@@ -35,7 +35,7 @@
     <button id="nextMonth" type="button" aria-label="次の月">→</button>
     <button id="todayBtn" type="button">今月</button>
   </div>
-  <button id="newEventBtn" type="button">＋ 予定を追加</button>
+  <div class="calendar-top-actions"><button id="newEventBtn" type="button">＋ 予定を追加</button><button id="shareAvailability" type="button" class="text-action">空き日を共有</button></div>
 </div>
 <div class="calendar-grid" id="weekdayHead"></div>
 <div class="calendar-grid" id="calendar"></div>

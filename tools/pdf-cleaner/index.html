@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PDFテキスト整形 | 39*2</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=02161">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>39*2</h1>
+    <nav class="nav"><a href="../">HOME</a><a href="../scenario/">SCENARIO</a><a href="../calendar/">CALENDAR</a><a href="../library/">LIBRARY</a><a href="../tools/" aria-current="page">TOOLS</a><a href="../backup/">BACKUP</a><a href="../about/">ABOUT</a></nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap pdf-cleaner-page">
+    <div class="hero">
+      <h2>PDFテキスト整形</h2>
+      <p>PDFからコピーした文章に混ざる半角スペースや不要な改行を整えます。</p>
+    </div>
+
+    <section class="panel pdf-cleaner-panel">
+      <div class="pdf-cleaner-options">
+        <label class="compact-option">
+          <input type="radio" name="spaceMode" value="ja" checked>
+          日本語間の半角スペースだけ削除
+        </label>
+        <label class="compact-option">
+          <input type="radio" name="spaceMode" value="all">
+          半角スペースをすべて削除
+        </label>
+        <label class="compact-option">
+          <input type="radio" name="spaceMode" value="collapse">
+          連続する空白だけ1つに整理
+        </label>
+        <label class="compact-option">
+          <input type="checkbox" id="joinLines">
+          改行をつなぐ
+        </label>
+      </div>
+
+      <div class="pdf-cleaner-grid">
+        <div class="field">
+          <div class="field-head">
+            <label for="pdfInput">元の文章</label>
+            <button type="button" class="text-action" id="clearInput">入力を消す</button>
+          </div>
+          <textarea id="pdfInput" rows="15" placeholder="PDFからコピーした文章を貼り付け"></textarea>
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <label for="pdfOutput">整形後</label>
+            <button type="button" class="text-action" id="copyOutput">コピー</button>
+          </div>
+          <textarea id="pdfOutput" rows="15" readonly placeholder="ここに整形結果が表示されます"></textarea>
+        </div>
+      </div>
+
+      <div class="tool-actions">
+        <button type="button" class="primary compact-primary" id="formatText">整形する</button>
+      </div>
+      <p class="small muted" id="pdfStatus" aria-live="polite"></p>
+    </section>
+  </div>
+</main>
+
+<script>
+(() => {
+  const input = document.getElementById('pdfInput');
+  const output = document.getElementById('pdfOutput');
+  const status = document.getElementById('pdfStatus');
+
+  const JA = '\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uff00-\\uffef';
+
+  function clean(text) {
+    let s = text.replace(/\r\n?/g, '\n');
+    const mode = document.querySelector('input[name="spaceMode"]:checked')?.value || 'ja';
+
+    if (document.getElementById('joinLines').checked) {
+      // Keep paragraph breaks, join ordinary PDF line wraps.
+      s = s.replace(/([^\n])\n(?!\n)/g, '$1');
+      s = s.replace(/\n{3,}/g, '\n\n');
+    }
+
+    if (mode === 'all') {
+      s = s.replace(/ /g, '');
+    } else if (mode === 'collapse') {
+      s = s.replace(/ {2,}/g, ' ');
+    } else {
+      // Remove spaces that are between Japanese characters / punctuation.
+      const jaLeft = new RegExp('([' + JA + '、。！？「」『』（）［］【】〈〉《》…・：；]) +(?=[' + JA + '、。！？「」『』（）［］【】〈〉《》…・：；])', 'g');
+      s = s.replace(jaLeft, '$1');
+      // Repeat once for chains split by the first replacement.
+      s = s.replace(jaLeft, '$1');
+    }
+    return s;
+  }
+
+  function format() {
+    output.value = clean(input.value);
+    status.textContent = input.value ? '整形しました' : '';
+  }
+
+  document.getElementById('formatText').addEventListener('click', format);
+  document.getElementById('clearInput').addEventListener('click', () => {
+    input.value = '';
+    output.value = '';
+    status.textContent = '';
+    input.focus();
+  });
+  document.getElementById('copyOutput').addEventListener('click', async () => {
+    if (!output.value) return;
+    try {
+      await navigator.clipboard.writeText(output.value);
+      status.textContent = 'コピーしました';
+    } catch {
+      output.select();
+      document.execCommand('copy');
+      status.textContent = 'コピーしました';
+    }
+  });
+})();
+</script>
+</body>
+</html>

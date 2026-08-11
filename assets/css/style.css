@@ -653,3 +653,66 @@ html[data-theme="light"] button.primary{
   text-decoration:underline;
   text-underline-offset:3px;
 }
+
+
+/* v0.2.23.1 — brighter light theme */
+html[data-theme="light"]{
+  --bg:#fbfaf7;
+  --panel:#ffffff;
+  --panel-2:#fdfcf9;
+  --text:#2a2926;
+  --muted:#757169;
+  --line:rgba(54,49,41,.12);
+  --accent:#a9791f;
+  --accent-2:#c59a3d;
+  --danger:#a64b4b;
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] .site-header,
+html[data-theme="light"] header,
+html[data-theme="light"] footer{
+  background:#fbfaf7 !important;
+}
+
+html[data-theme="light"] .panel,
+html[data-theme="light"] .card,
+html[data-theme="light"] .sc-panel,
+html[data-theme="light"] .lib-panel,
+html[data-theme="light"] .dir-panel,
+html[data-theme="light"] .share-card,
+html[data-theme="light"] .lib-group,
+html[data-theme="light"] .calendar-day,
+html[data-theme="light"] .calendar-cell,
+html[data-theme="light"] .cal-day,
+html[data-theme="light"] .cal-cell{
+  background:#ffffff !important;
+  border-color:rgba(54,49,41,.12) !important;
+  box-shadow:0 1px 2px rgba(38,34,27,.025);
+}
+
+html[data-theme="light"] input,
+html[data-theme="light"] textarea,
+html[data-theme="light"] select{
+  background:#ffffff !important;
+  color:#2a2926 !important;
+  border-color:rgba(54,49,41,.14) !important;
+}
+
+html[data-theme="light"] input:focus,
+html[data-theme="light"] textarea:focus,
+html[data-theme="light"] select:focus{
+  border-color:rgba(169,121,31,.38) !important;
+}
+
+html[data-theme="light"] .notice,
+html[data-theme="light"] .empty,
+html[data-theme="light"] .spoiler-body{
+  background:#fffdf8 !important;
+}
+
+html[data-theme="light"] .badge{
+  background:#fff9ea !important;
+  color:#7b5a18 !important;
+  border-color:#e1c57e !important;
+}

@@ -1,12 +1,23 @@
 (()=>{
  const apply=()=>{
   const enabled=window.TRPG39?.playersEnabled?.()||false;
-  document.querySelectorAll('[data-home-players-card]').forEach(el=>{el.hidden=!enabled;});
+
+  document.querySelectorAll('[data-home-players-card]').forEach(el=>{
+    el.hidden=!enabled;
+  });
+
   document.querySelectorAll('.nav a').forEach(a=>{
-   const t=(a.textContent||"").trim();
-   if(t==="PLAYERS")a.hidden=!enabled;
+    if((a.textContent||"").trim()==="PLAYERS"){
+      a.hidden=!enabled;
+    }
   });
  };
- if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",apply);else apply();
+
+ if(document.readyState==="loading"){
+   document.addEventListener("DOMContentLoaded",apply);
+ }else{
+   apply();
+ }
+
  window.addEventListener("39x2:players-setting",apply);
 })();

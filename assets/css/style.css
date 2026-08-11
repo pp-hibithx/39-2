@@ -716,3 +716,194 @@ html[data-theme="light"] .badge{
   color:#7b5a18 !important;
   border-color:#e1c57e !important;
 }
+
+
+/* v0.2.23.2 — definitive light theme fix */
+html[data-theme="light"]{
+  color-scheme: light !important;
+
+  --bg:#ffffff !important;
+  --bg2:#ffffff !important;
+  --surface:#ffffff !important;
+  --surface2:#f8f9fa !important;
+  --panel:#ffffff !important;
+  --panel2:#f7f7f8 !important;
+  --panel-2:#f7f7f8 !important;
+  --card:#ffffff !important;
+  --input:#ffffff !important;
+
+  --text:#222222 !important;
+  --fg:#222222 !important;
+  --muted:#6f7278 !important;
+  --subtle:#8a8d93 !important;
+
+  --line:#dddddf !important;
+  --border:#dddddf !important;
+
+  --accent:#a9791f !important;
+  --accent2:#c49a42 !important;
+  --accent-2:#c49a42 !important;
+}
+
+html[data-theme="light"],
+html[data-theme="light"] body{
+  background:#ffffff !important;
+  background-color:#ffffff !important;
+  color:#222222 !important;
+}
+
+html[data-theme="light"] .site-header,
+html[data-theme="light"] header,
+html[data-theme="light"] main,
+html[data-theme="light"] footer,
+html[data-theme="light"] .wrap,
+html[data-theme="light"] .page,
+html[data-theme="light"] .hero{
+  background-color:transparent !important;
+  color:#222222 !important;
+}
+
+/* Main surfaces */
+html[data-theme="light"] .panel,
+html[data-theme="light"] .card,
+html[data-theme="light"] .sc-panel,
+html[data-theme="light"] .lib-panel,
+html[data-theme="light"] .dir-panel,
+html[data-theme="light"] .share-card,
+html[data-theme="light"] .lib-group,
+html[data-theme="light"] .tool-card,
+html[data-theme="light"] details,
+html[data-theme="light"] article{
+  background:#ffffff !important;
+  color:#222222 !important;
+  border-color:#dddddf !important;
+}
+
+/* Inputs */
+html[data-theme="light"] input,
+html[data-theme="light"] textarea,
+html[data-theme="light"] select{
+  background:#ffffff !important;
+  color:#222222 !important;
+  border-color:#d8dadd !important;
+}
+
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder{
+  color:#9a9da3 !important;
+}
+
+/* Calendar: force every layer out of dark mode */
+html[data-theme="light"] .calendar,
+html[data-theme="light"] .calendar-wrap,
+html[data-theme="light"] .calendar-panel,
+html[data-theme="light"] .calendar-grid,
+html[data-theme="light"] .calendar-body,
+html[data-theme="light"] .month-grid,
+html[data-theme="light"] .cal-grid{
+  background:#ffffff !important;
+  color:#222222 !important;
+  border-color:#dddddf !important;
+}
+
+html[data-theme="light"] .calendar-day,
+html[data-theme="light"] .calendar-cell,
+html[data-theme="light"] .calendar-grid > *,
+html[data-theme="light"] .month-grid > *,
+html[data-theme="light"] .cal-day,
+html[data-theme="light"] .cal-cell{
+  background:#ffffff !important;
+  color:#222222 !important;
+  border-color:#e2e3e5 !important;
+}
+
+html[data-theme="light"] .calendar-day:hover,
+html[data-theme="light"] .calendar-cell:hover,
+html[data-theme="light"] .cal-day:hover,
+html[data-theme="light"] .cal-cell:hover{
+  background:#f7f7f8 !important;
+}
+
+html[data-theme="light"] .calendar-day.is-outside,
+html[data-theme="light"] .calendar-cell.is-outside,
+html[data-theme="light"] .other-month,
+html[data-theme="light"] .muted-day{
+  background:#fafafa !important;
+  color:#a2a5aa !important;
+}
+
+/* Common inline dark backgrounds that otherwise survive variables */
+html[data-theme="light"] [style*="background:#0"],
+html[data-theme="light"] [style*="background: #0"],
+html[data-theme="light"] [style*="background-color:#0"],
+html[data-theme="light"] [style*="background-color: #0"]{
+  background:#ffffff !important;
+  background-color:#ffffff !important;
+}
+
+/* Typography */
+html[data-theme="light"] h1,
+html[data-theme="light"] h2,
+html[data-theme="light"] h3,
+html[data-theme="light"] h4,
+html[data-theme="light"] p,
+html[data-theme="light"] label,
+html[data-theme="light"] summary{
+  color:#222222;
+}
+
+html[data-theme="light"] .muted,
+html[data-theme="light"] .small,
+html[data-theme="light"] .dir-meta,
+html[data-theme="light"] .lib-child-meta,
+html[data-theme="light"] .lib-child-date,
+html[data-theme="light"] .lib-count{
+  color:#74777d !important;
+}
+
+/* Navigation / accent */
+html[data-theme="light"] .nav{
+  border-color:#dedfe1 !important;
+}
+
+html[data-theme="light"] .nav a{
+  color:#585b60 !important;
+}
+
+html[data-theme="light"] .nav a[aria-current="page"],
+html[data-theme="light"] .theme-switcher button[aria-pressed="true"]{
+  color:#a9791f !important;
+}
+
+html[data-theme="light"] a{
+  color:#8d681f;
+}
+
+/* Buttons remain quiet, not dark slabs */
+html[data-theme="light"] button{
+  background:transparent;
+  color:#50545a;
+  border-color:#d8dadd;
+}
+
+html[data-theme="light"] button.primary,
+html[data-theme="light"] .primary{
+  background:#f2e3bd !important;
+  color:#5b4314 !important;
+  border-color:#d7bb76 !important;
+}
+
+/* Badges / notice */
+html[data-theme="light"] .badge{
+  background:#fff8e8 !important;
+  color:#795919 !important;
+  border-color:#dfc378 !important;
+}
+
+html[data-theme="light"] .notice,
+html[data-theme="light"] .empty,
+html[data-theme="light"] .spoiler-body{
+  background:#fafafa !important;
+  color:#333333 !important;
+  border-color:#e1e2e4 !important;
+}

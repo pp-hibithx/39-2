@@ -15,6 +15,8 @@ function currentMode(){
 function apply(mode){
   const safe=valid.has(mode)?mode:"system";
   root.dataset.theme=resolve(safe);
+  document.documentElement.classList.toggle("theme-light", root.dataset.theme==="light");
+  document.documentElement.classList.toggle("theme-dark", root.dataset.theme==="dark");
   root.dataset.themeMode=safe;
   document.querySelectorAll("[data-theme-choice]").forEach(b=>{
     b.setAttribute("aria-pressed",String(b.dataset.themeChoice===safe));

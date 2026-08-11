@@ -421,3 +421,38 @@ button,.button,.action-link{font-size:11px!important;line-height:1.3!important;p
   border: 1px solid rgba(255,255,255,.10) !important;
   box-sizing: border-box;
 }
+
+
+/* v0.2.15.1 — definitive HOME/BACKUP wrapping fix */
+.card p,
+.card .muted,
+.card .small,
+.home-grid p,
+.home-grid .muted,
+.home-grid .small,
+.page p,
+.panel p,
+.backup p,
+#backup p {
+  max-width: none !important;
+}
+
+/* Japanese UI prose: do not strand inflection endings such as られ/ます or でき/ます. */
+.home-grid p,
+.card p,
+.backup p,
+#backup p {
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+}
+
+/* Allow wrapping at sensible phrase boundaries when the viewport truly becomes narrow. */
+@media (max-width: 700px) {
+  .home-grid p,
+  .card p,
+  .backup p,
+  #backup p {
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+}

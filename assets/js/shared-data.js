@@ -108,6 +108,7 @@
 
   function syncEventToAlbum(event) {
     const e = normalizeEvent(event);
+    if (e.type === "blocked") return null;
     const album = load(KEYS.album);
     const existing = album.find(a => a.eventId === e.id || (e.linkedAlbumId && a.id === e.linkedAlbumId));
     const item = albumFromEvent(e, existing || {});
@@ -122,6 +123,7 @@
     let album = load(KEYS.album);
     let changed = false;
     events = events.map(e => {
+      if (e.type === "blocked") return e;
       const existing = album.find(a => a.eventId === e.id || (e.linkedAlbumId && a.id === e.linkedAlbumId));
       const item = albumFromEvent(e, existing || {});
       if (existing) {

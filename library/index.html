@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LIBRARY | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=0282">
+<link rel="stylesheet" href="../assets/css/style.css?v=0283">
 <style>
 .album-grid{display:grid;grid-template-columns:1fr;gap:28px;align-items:start}
 .album-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}
@@ -14,7 +14,12 @@
 textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;margin:7px 0 3px}
 @media(max-width:850px){.album-row{grid-template-columns:1fr}}
 .image-preview{margin-top:8px;display:flex;align-items:flex-start;gap:10px}.image-preview[hidden]{display:none}.image-preview img{width:150px;aspect-ratio:16/10;object-fit:cover;border:1px solid var(--line);border-radius:8px}.library-editor{border-top:1px solid var(--line);padding-top:22px}
-.lib-run{margin:10px 0 16px;border-top:1px solid var(--line);padding-top:10px}.lib-run-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:3px 0 8px;padding:8px 10px;border-left:3px solid var(--accent);background:rgba(255,255,255,.025);border-radius:6px}.lib-run-heading button{white-space:nowrap}
+.lib-run{margin:10px 0 16px;border-top:1px solid var(--line);padding-top:10px}
+.lib-run-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:3px 0 8px;padding:8px 10px;border-left:3px solid var(--accent);background:rgba(255,255,255,.025);border-radius:6px;cursor:pointer;list-style:none}
+.lib-run-heading::-webkit-details-marker{display:none}.lib-run-heading::before{content:"▶";font-size:11px;flex:0 0 auto}.lib-run[open]>.lib-run-heading::before{content:"▼"}
+.lib-run-heading button{white-space:nowrap}.lib-run-summary{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.lib-run-thumbs{display:inline-flex;align-items:center;gap:4px;margin-left:6px}.lib-run-thumbs img{width:46px;height:34px;object-fit:cover;border-radius:5px;border:1px solid var(--line)}
+.lib-run-more{display:grid;place-items:center;min-width:34px;height:34px;padding:0 5px;border-radius:5px;background:rgba(255,255,255,.06);font-size:12px}
 </style>
 
 <style>
@@ -59,10 +64,10 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 }
 </style>
 
-<script src="../assets/js/theme.js?v=0282"></script>
+<script src="../assets/js/theme.js?v=0283"></script>
 
 <style>
-/* v0.2.28.2.2.2.1 — LIBRARY thumbnail display */
+/* v0.2.28.3.2.2.1 — LIBRARY thumbnail display */
 .lib-child-thumb{
   width:72px;
   aspect-ratio:16/10;
@@ -87,13 +92,13 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-spoiler summary{cursor:pointer;padding:9px 11px;font-weight:700;user-select:none}
 .lib-spoiler .spoiler-body{padding:10px 12px;border-top:1px solid var(--line);line-height:1.8}
 </style>
-<script src="../assets/js/optional-features.js?v=0282" defer></script>
+<script src="../assets/js/optional-features.js?v=0283" defer></script>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
 <div class="tagline">探す・遊ぶ・残す・共有する<br>TRPG Scenario &amp; Tools</div>
-<nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0282">SCENARIO</a><a href="../calendar/index.html?v=0282">CALENDAR</a><a href="index.html" aria-current="page">LIBRARY</a><a href="../pcs/index.html?v=0282">PC</a><a href="../players/index.html?v=0282">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
+<nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0283">SCENARIO</a><a href="../calendar/index.html?v=0283">CALENDAR</a><a href="index.html" aria-current="page">LIBRARY</a><a href="../pcs/index.html?v=0283">PC</a><a href="../players/index.html?v=0283">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
 <button type="button" data-theme-choice="system">端末</button>
 <span>·</span>
 <button type="button" data-theme-choice="dark">ダーク</button>
@@ -173,17 +178,17 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="0282">build v0.2.28.2</div></main>
+</div><div class="wrap small muted" data-build-marker="0283">build v0.2.28.3</div></main>
 
 <footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
 
-<script src="../assets/js/main.js?v=0282"></script>
-<script src="../assets/js/migrate-v02.js?v=0282"></script>
-<script src="../assets/js/shared-data.js?v=0282"></script>
-<script src="../assets/js/supabase-config.js?v=0282"></script>
-<script src="../assets/js/supabase-sync.js?v=0282"></script>
+<script src="../assets/js/main.js?v=0283"></script>
+<script src="../assets/js/migrate-v02.js?v=0283"></script>
+<script src="../assets/js/shared-data.js?v=0283"></script>
+<script src="../assets/js/supabase-config.js?v=0283"></script>
+<script src="../assets/js/supabase-sync.js?v=0283"></script>
 <script>TRPG39Sync.initAutoSync();</script>
-<script src="../assets/js/supabase-share.js?v=0282"></script>
+<script src="../assets/js/supabase-share.js?v=0283"></script>
 <script>
 (()=>{"use strict";
 const q=id=>document.getElementById(id);
@@ -435,8 +440,17 @@ function render(){
    </summary>
    <div class="lib-children">
      <div class="lib-parent-actions">${g.scenarioId?`<a class="link" href="../scenario/index.html?focus=${encodeURIComponent(g.scenarioId)}">SCENARIOを見る</a>`:""}<button type="button" data-add-scenario="${esc(g.scenarioId)}" data-add-title="${esc(g.title)}">＋ 新しい陣</button></div>
-     ${g.runs.map((r,ri)=>`<section class="lib-run">
-       <div class="lib-run-heading"><div><strong>${esc(r.label)}</strong><span class="small muted">　${r.items.length}日</span></div><button type="button" data-add-run="${esc(r.id)}" data-run-label="${esc(r.label)}" data-run-scenario="${esc(g.scenarioId)}">＋ この陣に日程</button></div>
+     ${g.runs.map((r,ri)=>{
+       const runImages=[...new Set(r.items.flatMap(x=>x.imageUrls||[]).filter(Boolean))];
+       const runDates=r.items.map(x=>x.date).filter(Boolean).sort();
+       const dateRange=runDates.length?(runDates[0]+(runDates.length>1&&runDates.at(-1)!==runDates[0]?`〜${runDates.at(-1)}`:"")):"";
+       return `<details class="lib-run">
+       <summary class="lib-run-heading">
+         <div class="lib-run-summary"><strong>${esc(r.label)}</strong><span class="small muted">　${r.items.length}日${dateRange?` ／ ${esc(dateRange)}`:""}</span>
+           ${runImages.length?`<span class="lib-run-thumbs">${runImages.slice(0,3).map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}${runImages.length>3?`<span class="lib-run-more">＋${runImages.length-3}</span>`:""}</span>`:""}
+         </div>
+         <button type="button" data-add-run="${esc(r.id)}" data-run-label="${esc(r.label)}" data-run-scenario="${esc(g.scenarioId)}">＋ この陣に日程</button>
+       </summary>
        ${r.items.map((x,i)=>`<article class="lib-child" id="record-${esc(x.id)}">
          <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}${x.start&&String(x.start).slice(11,16)?` ${esc(String(x.start).slice(11,16))}`:""}<br><span class="badge">${esc(statusLabel[x.status]||"完了")}</span></div>
          <div>${(x.imageUrls||[])[0]?`<img class="lib-child-thumb" src="${esc((x.imageUrls||[])[0])}" alt="" loading="lazy">`:""}
@@ -446,7 +460,7 @@ function render(){
          </div>
          <div class="lib-child-actions"><button data-share="${x.id}">共有</button><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div>
        </article>`).join("")}
-     </section>`).join("")}
+     </details>`}).join("")}
    </div>
  </details>`).join(""):'<div class="empty">まだ記録がありません。</div>';
 

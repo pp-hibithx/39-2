@@ -161,7 +161,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   <select id="visibility"><option value="private">自分のみ</option><option value="link">リンク限定</option><option value="public">公開</option><option value="table">同卓者のみ（準備中）</option></select>
 
   <label>ひとこと</label><textarea id="comment" placeholder="楽しかった！ など、ネタバレなしの思い出"></textarea>
-  <label>⚠ ネタバレ枠</label><textarea id="spoiler" placeholder="シナリオ内容に触れる感想はこちら"></textarea><label>ネタバレ部分の公開範囲</label><select id="spoilerVisibility"><option value="private">自分のみ</option><option value="link">共有リンクに含める</option></select>
+  <label>ネタバレ部分の公開範囲</label><select id="spoilerVisibility"><option value="private">自分のみ</option><option value="link">共有リンクに含める</option></select>
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
@@ -185,6 +185,7 @@ const normTitle=s=>String(s||"").normalize("NFKC").replace(/\s+/g,"").toLowerCas
 
 let scenarios=TRPG39.loadScenarios();
 let data=TRPG39.loadAlbum();
+{let changed=false;data=data.map(x=>{if(!x.spoilerBody&&x.spoiler){changed=true;return TRPG39.normalizeAlbum({...x,spoilerBody:x.spoiler,spoiler:""})}return x});if(changed)TRPG39.saveAlbum(data);}
 
 function migrateScenarioLinks(){
   let changed=false;
@@ -225,7 +226,7 @@ function getLinks(){return [...document.querySelectorAll(".ext-row")].map(r=>({l
 function updateImagePreview(){const u=q("image").value.trim();q("imagePreview").hidden=!u;q("imagePreviewImg").src=u||""}
 function reset(prefillScenarioId=""){
  q("editId").value="";
- ["title","date","system","pc","people","image","comment","spoiler"].forEach(x=>q(x).value="");
+ ["title","date","system","pc","people","image","comment","articleBody","spoilerBody"].forEach(x=>q(x).value="");
  q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
  q("externalLinks").innerHTML="";addLinkRow();updateImagePreview();fillScenarioSelect();fillPCSelect();
  q("scenarioSelect").value=prefillScenarioId||"";
@@ -248,9 +249,7 @@ async function uploadLibraryImage(){
   const r=await fetch(base.replace(/\/$/,"")+"/functions/v1/image-upload",{method:"POST",headers:{apikey:key},body:fd});
   const body=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(body.error||("アップロードエラー "+r.status));
-  q("image").value=body.publicUrl||"";
- q("articleBody").value=x.articleBody||"";
- q("spoilerBody").value=x.spoilerBody||""; updateImagePreview(); q("imageFile").value=""; return body.publicUrl;
+  q("image").value=body.publicUrl||""; updateImagePreview(); q("imageFile").value=""; return body.publicUrl;
 }
 function save(){
  let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");
@@ -264,14 +263,14 @@ function save(){
  let id=q("editId").value||TRPG39.uuid(),old=data.find(x=>x.id===id);
  let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,date:q("date").value,
    articleBody:q("articleBody")?.value.trim()||"",
-   spoilerBody:q("spoilerBody")?.value.trim()||"",system:q("system").value.trim(),role:q("role").value,pcName:q("pc").value.trim(),pcId:(()=>{const sid=q("pcSelect").value;if(sid)return sid;const typed=q("pc").value.trim();if(!typed)return "";const pc=TRPG39.ensurePC?TRPG39.ensurePC(typed,{system:q("system").value.trim()}):null;return pc?.id||""})(),participants:q("people").value.split(",").map(x=>x.trim()).filter(Boolean),
- participantIds:(()=>{if(!TRPG39.playersEnabled?.())return [];return q("people").value.split(",").map(x=>x.trim()).filter(Boolean).map(name=>{const p=TRPG39.ensurePlayer?TRPG39.ensurePlayer(name):null;return p?.id||""}).filter(Boolean)})(),imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoiler:q("spoiler").value.trim(),spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
+   spoilerBody:q("spoilerBody")?.value.trim()||"",spoiler:"",system:q("system").value.trim(),role:q("role").value,pcName:q("pc").value.trim(),pcId:(()=>{const sid=q("pcSelect").value;if(sid)return sid;const typed=q("pc").value.trim();if(!typed)return "";const pc=TRPG39.ensurePC?TRPG39.ensurePC(typed,{system:q("system").value.trim()}):null;return pc?.id||""})(),participants:q("people").value.split(",").map(x=>x.trim()).filter(Boolean),
+ participantIds:(()=>{if(!TRPG39.playersEnabled?.())return [];return q("people").value.split(",").map(x=>x.trim()).filter(Boolean).map(name=>{const p=TRPG39.ensurePlayer?TRPG39.ensurePlayer(name):null;return p?.id||""}).filter(Boolean)})(),imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
  let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);
  persist();reset();render();hideEditor();
 }
 function edit(id){
  let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("scenarioSelect").value=x.scenarioId||"";q("title").value=x.title||"";q("date").value=x.date||"";q("system").value=x.system||"";q("role").value=x.role||"PL";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");q("people").value=(x.participants||[]).join(", ");q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoiler").value=x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
+ q("editId").value=x.id;q("scenarioSelect").value=x.scenarioId||"";q("title").value=x.title||"";q("date").value=x.date||"";q("system").value=x.system||"";q("role").value=x.role||"PL";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");q("people").value=(x.participants||[]).join(", ");q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("articleBody").value=x.articleBody||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -321,7 +320,7 @@ async function shareAlbum(id){
    alert("「同卓者のみ」は今後のアカウント共有用です。現在はリンク限定を使ってください。");
    return;
  }
- const payload={kind:"library-session",version:1,title:x.title,date:x.date,system:x.system,role:x.role,pcName:x.pcName,participants:x.participants||[],image:(x.imageUrls||[])[0]||"",comment:x.comment||"",spoiler:x.spoilerVisibility==="link"?(x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
+ const payload={kind:"library-session",version:2,title:x.title,date:x.date,system:x.system,role:x.role,pcName:x.pcName,participants:x.participants||[],image:(x.imageUrls||[])[0]||"",comment:x.comment||"",articleBody:x.articleBody||"",spoiler:x.spoilerVisibility==="link"?(x.spoilerBody||x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
  try{
    if(TRPG39Cloud&&TRPG39Cloud.configured()){
      const shareId=await TRPG39Cloud.createSharedPage(payload);
@@ -363,7 +362,7 @@ function render(){
          <div class="lib-child-title">${esc(x.pcName?`PC：${x.pcName}`:(x.role||"開催記録"))}</div>${x.articleBody?`<div class="lib-article-body">${esc(x.articleBody).replace(/\n/g,"<br>")}</div>`:""}${x.spoilerBody?`<details class="lib-spoiler"><summary>ネタバレを表示</summary><div class="spoiler-body">${esc(x.spoilerBody).replace(/\n/g,"<br>")}</div></details>`:""}
          <div class="lib-child-meta">${x.role?esc(x.role):""}${(x.participants||[]).length?`　参加：${esc(x.participants.join(" / "))}`:""}　${esc(vis[x.visibility]||"自分のみ")}</div>
          ${x.comment?`<div class="lib-child-note">${esc(x.comment)}</div>`:""}${linksHtml(x)}
-         ${x.spoiler?`<details class="spoiler"><summary>⚠ ネタバレ</summary><div class="spoiler-body">${esc(x.spoiler)}</div></details>`:""}
+         
        </div>
        <div class="lib-child-actions"><button data-share="${x.id}">共有</button><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div>
      </article>`).join("")}

@@ -142,10 +142,10 @@ function renderCalendar(){
  for(let i=0;i<42;i++){
    const d=new Date(start);d.setDate(start.getDate()+i);
    const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-   const dayEvents=ev.filter(x=>String(x.start||"").slice(0,10)===ds);
+   const dayEvents=ev.filter(x=>String(x.start||"").slice(0,10)===ds).sort((a,b)=>String(a.start||"").localeCompare(String(b.start||"")));
    html+=`<div class="calendar-day ${d.getMonth()!==m?"out":""} ${d.toDateString()===today.toDateString()?"today":""}" data-date="${ds}">
      <div class="daynum">${d.getDate()}</div>
-     ${dayEvents.map(x=>`<button type="button" class="event-chip ${x.status}" data-id="${x.id}">${esc(x.title||"卓")} <span class="small">${esc(statusLabel[x.status]||"")}</span></button>`).join("")}
+     ${dayEvents.map(x=>{const tm=String(x.start||"").slice(11,16);return `<button type="button" class="event-chip ${x.status}" data-id="${x.id}">${tm?`<strong>${esc(tm)}</strong> `:""}${esc(x.title||"卓")} <span class="small">${esc(statusLabel[x.status]||"")}</span></button>`}).join("")}
    </div>`;
  }
  $("calendar").innerHTML=html;

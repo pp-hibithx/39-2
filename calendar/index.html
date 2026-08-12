@@ -143,7 +143,7 @@ $("saveEvent").onclick=()=>{
  else{
    const ranges=[{start,end:$("eventEnd").value}];if(!id0){[...document.querySelectorAll(".bulk-row")].forEach(r=>{const s=r.querySelector(".bulk-start").value;if(s)ranges.push({start:s,end:r.querySelector(".bulk-end").value})})}
    const pending=[];for(let n=0;n<ranges.length;n++){const id=n===0?(id0||TRPG39.uuid()):TRPG39.uuid(),old=n===0?list.find(x=>x.id===id):null,item=buildTrpgEvent(id,ranges[n].start,ranges[n].end,old);const warning=conflictMessage(item,list.concat(pending));if(warning&&!confirm((ranges.length>1?`${n+1}日目：\n`:"")+warning))return;pending.push(item)}
-   pending.forEach(item=>{const albumItem=TRPG39.syncEventToAlbum(item);item.linkedAlbumId=albumItem.id;const i=list.findIndex(x=>x.id===item.id);if(i>=0)list[i]=item;else list.push(item)});saveEvents(list)
+   pending.forEach(item=>{const i=list.findIndex(x=>x.id===item.id);if(i>=0)list[i]=item;else list.push(item)});saveEvents(list);pending.forEach(item=>{const albumItem=TRPG39.syncEventToAlbum(item);if(albumItem)item.linkedAlbumId=albumItem.id});saveEvents(list)
  }
  resetForm();hideEditor();renderCalendar();
 };

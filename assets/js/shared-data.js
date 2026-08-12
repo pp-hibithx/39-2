@@ -122,8 +122,21 @@
     let events = load(KEYS.events).map(normalizeEvent);
     let album = load(KEYS.album);
     let changed = false;
+
+    // CALENDAR-only blocked entries must never remain in LIBRARY.
+    // v0.2.27.2 could have created linked album rows before blocked events
+    // were separated, so clean those legacy linked rows during migration.
+    const blockedEventIds = new Set(events.filter(e => e.type === "blocked" || e.status === "blocked").map(e => e.id));
+    const blockedAlbumIds = new Set(events.filter(e => e.type === "blocked" || e.status === "blocked").map(e => e.linkedAlbumId).filter(Boolean));
+    const beforeCleanup = album.length;
+    album = album.filter(a => !(a.eventId && blockedEventIds.has(a.eventId)) && !blockedAlbumIds.has(a.id));
+    if (album.length !== beforeCleanup) changed = true;
+
     events = events.map(e => {
-      if (e.type === "blocked") return e;
+      if (e.type === "blocked" || e.status === "blocked") {
+        if (e.linkedAlbumId) { e.linkedAlbumId = ""; changed = true; }
+        return e;
+      }
       const existing = album.find(a => a.eventId === e.id || (e.linkedAlbumId && a.id === e.linkedAlbumId));
       const item = albumFromEvent(e, existing || {});
       if (existing) {

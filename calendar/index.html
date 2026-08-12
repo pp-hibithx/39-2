@@ -139,9 +139,9 @@ function conflictMessage(item,list){
  const active=item.type==="blocked"||["tentative","planned"].includes(item.status);if(!active)return "";const r=eventRange(item);if(!r)return "";const hits=list.filter(x=>x.id!==item.id).filter(x=>x.type==="blocked"||["tentative","planned"].includes(x.status)).filter(x=>{const q=eventRange(x);return q&&r[0]<q[1]&&q[0]<r[1]});if(!hits.length)return "";
  const blocked=hits.filter(x=>x.type==="blocked"),fixed=hits.filter(x=>x.type!=="blocked"&&x.status==="planned"),tent=hits.filter(x=>x.type!=="blocked"&&x.status==="tentative");let msg="";if(blocked.length)msg+="× 卓以外の予定が入っています。\n"+blocked.map(x=>`・${x.title||"予定あり"} ${String(x.start||"").slice(0,10)}`).join("\n")+"\n\n";if(fixed.length)msg+="⚠ 確定済みの卓と時間が重複しています。\n"+fixed.map(x=>`・${x.title} ${String(x.start||"").replace("T"," ")}`).join("\n")+"\n\n";if(tent.length)msg+="△ 仮押さえ中の卓と時間が重複しています。\n"+tent.map(x=>`・${x.title} ${String(x.start||"").replace("T"," ")}`).join("\n")+"\n\n";return msg+"それでも保存しますか？"
 }
-function buildTrpgEvent(id,start,end,old=null){
+function buildTrpgEvent(id,start,end,old=null,runId=""){
  const title=$("eventTitle").value.trim();let scenarioId=$("scenarioSelect").value;let scenario=scenarios().find(x=>x.id===scenarioId);if(!scenario){scenario=TRPG39.ensureScenario(title,{system:$("eventSystem").value.trim()});scenarioId=scenario?.id||"";fillScenarioSelect(scenarioId)}
- return TRPG39.normalizeEvent({...(old||{}),id,type:"trpg",title,scenarioId,scenarioTitle:title,start,end,status:$("eventStatus").value,role:$("eventRole").value,system:$("eventSystem").value.trim(),pcName:$("eventPc").value.trim(),pcId:ensureEventPc(),participants:$("eventPeople").value.split(",").map(x=>x.trim()).filter(Boolean)});
+ return TRPG39.normalizeEvent({...(old||{}),id,type:"trpg",title,scenarioId,scenarioTitle:title,start,end,status:$("eventStatus").value,role:$("eventRole").value,system:$("eventSystem").value.trim(),pcName:$("eventPc").value.trim(),pcId:ensureEventPc(),participants:$("eventPeople").value.split(",").map(x=>x.trim()).filter(Boolean),runId:old?.runId||runId,runLabel:old?.runLabel||""});
 }
 function buildBlockedEvent(id,start,old=null){const ds=String(start||"").slice(0,10);const a=new Date(ds+"T00:00:00"),b=new Date(a);b.setDate(b.getDate()+1);const local=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T00:00`;return TRPG39.normalizeEvent({...(old||{}),id,type:"blocked",title:$("eventTitle").value.trim()||"予定あり",scenarioId:"",scenarioTitle:"",start:local(a),end:local(b),status:"blocked",role:"",system:"",pcName:"",pcId:"",participants:[],linkedAlbumId:""})}
 $("saveEvent").onclick=()=>{
@@ -154,7 +154,7 @@ $("saveEvent").onclick=()=>{
      const bulkEnd=r.querySelector(".bulk-end")?.value||"";
      if(bulkStart)ranges.push({start:bulkStart,end:bulkEnd});
    });
-   const pending=[];for(let n=0;n<ranges.length;n++){const id=n===0?(id0||TRPG39.uuid()):TRPG39.uuid(),old=n===0?list.find(x=>x.id===id):null,item=buildTrpgEvent(id,ranges[n].start,ranges[n].end,old);const warning=conflictMessage(item,list.concat(pending));if(warning&&!confirm((ranges.length>1?`${n+1}日目：\n`:"")+warning))return;pending.push(item)}
+   const firstOld=id0?list.find(x=>x.id===id0):null,sharedRunId=firstOld?.runId||TRPG39.uuid();const pending=[];for(let n=0;n<ranges.length;n++){const id=n===0?(id0||TRPG39.uuid()):TRPG39.uuid(),old=n===0?firstOld:null,item=buildTrpgEvent(id,ranges[n].start,ranges[n].end,old,sharedRunId);const warning=conflictMessage(item,list.concat(pending));if(warning&&!confirm((ranges.length>1?`${n+1}日目：\n`:"")+warning))return;pending.push(item)}
    pending.forEach(item=>{const i=list.findIndex(x=>x.id===item.id);if(i>=0)list[i]=item;else list.push(item)});
    saveEvents(list);
    pending.forEach(item=>{const albumItem=TRPG39.syncEventToAlbum(item);if(albumItem)item.linkedAlbumId=albumItem.id});

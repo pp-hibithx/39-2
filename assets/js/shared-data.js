@@ -47,6 +47,8 @@
       system: input.system || "",
       visibility: input.visibility || "private",
       linkedAlbumId: input.linkedAlbumId || "",
+      runId: input.runId || "",
+      runLabel: input.runLabel || "",
       createdAt: input.createdAt || nowISO(),
       updatedAt: nowISO()
     };
@@ -79,6 +81,8 @@
       spoilerVisibility: input.spoilerVisibility || "private",
       externalLinks: Array.isArray(input.externalLinks) ? input.externalLinks : [],
       visibility: input.visibility || "private",
+      runId: input.runId || "",
+      runLabel: input.runLabel || "",
       calendarLinked: !!input.eventId,
       createdAt: input.createdAt || nowISO(),
       updatedAt: nowISO()
@@ -102,6 +106,8 @@
       pcId: e.pcId,
       participants: e.participants,
       participantIds: e.participantIds,
+      runId: e.runId || existing.runId || "",
+      runLabel: e.runLabel || existing.runLabel || "",
       visibility: existing.visibility || e.visibility || "private"
     });
   }

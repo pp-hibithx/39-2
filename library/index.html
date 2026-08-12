@@ -209,6 +209,20 @@ function migrateScenarioLinks(){
 }
 migrateScenarioLinks();
 
+function migrateLibraryCalendarLinks(){
+ let changed=false,evs=TRPG39.loadEvents();
+ data=data.map(x=>{
+   if(!x.start)return x;
+   const found=evs.find(e=>e.id===x.eventId||e.linkedAlbumId===x.id);
+   if(found){if(!x.eventId){changed=true;return TRPG39.normalizeAlbum({...x,eventId:found.id,date:String(x.start).slice(0,10)})}return x}
+   const eventId=x.eventId||TRPG39.uuid();
+   evs.push(TRPG39.normalizeEvent({id:eventId,type:"trpg",scenarioId:x.scenarioId,title:x.title,scenarioTitle:x.title,start:x.start,end:x.end,status:x.status,system:x.system,role:x.role,pcName:x.pcName,pcId:x.pcId,participants:x.participants,participantIds:x.participantIds,linkedAlbumId:x.id}));
+   changed=true;return TRPG39.normalizeAlbum({...x,eventId,date:String(x.start).slice(0,10)});
+ });
+ if(changed){TRPG39.saveEvents(evs);TRPG39.saveAlbum(data)}
+}
+migrateLibraryCalendarLinks();
+
 const persist=()=>TRPG39.saveAlbum(data);
 const showEditor=()=>q("libraryEditor").hidden=false;
 const hideEditor=()=>q("libraryEditor").hidden=true;
@@ -275,12 +289,13 @@ function save(){
    spoilerBody:q("spoilerBody")?.value.trim()||"",spoiler:"",system:q("system").value.trim(),role:q("role").value,pcName:q("pc").value.trim(),pcId:(()=>{const sid=q("pcSelect").value;if(sid)return sid;const typed=q("pc").value.trim();if(!typed)return "";const pc=TRPG39.ensurePC?TRPG39.ensurePC(typed,{system:q("system").value.trim()}):null;return pc?.id||""})(),participants:q("people").value.split(",").map(x=>x.trim()).filter(Boolean),
  participantIds:(()=>{if(!TRPG39.playersEnabled?.())return [];return q("people").value.split(",").map(x=>x.trim()).filter(Boolean).map(name=>{const p=TRPG39.ensurePlayer?TRPG39.ensurePlayer(name):null;return p?.id||""}).filter(Boolean)})(),imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
  let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);
- if(item.eventId){
-   let evs=TRPG39.loadEvents();const ei=evs.findIndex(e=>e.id===item.eventId);
-   if(ei>=0){
-     evs[ei]=TRPG39.normalizeEvent({...evs[ei],scenarioId:item.scenarioId,title:item.title,scenarioTitle:item.title,start:item.start,end:item.end,status:item.status,system:item.system,role:item.role,pcName:item.pcName,pcId:item.pcId,participants:item.participants,participantIds:item.participantIds,linkedAlbumId:item.id});
-     TRPG39.saveEvents(evs);
-   }
+ if(item.start){
+   let evs=TRPG39.loadEvents(),eventId=item.eventId||TRPG39.uuid();
+   const ei=evs.findIndex(e=>e.id===eventId),base=ei>=0?evs[ei]:{};
+   const ev=TRPG39.normalizeEvent({...base,id:eventId,type:"trpg",scenarioId:item.scenarioId,title:item.title,scenarioTitle:item.title,start:item.start,end:item.end,status:item.status,system:item.system,role:item.role,pcName:item.pcName,pcId:item.pcId,participants:item.participants,participantIds:item.participantIds,linkedAlbumId:item.id});
+   if(ei>=0)evs[ei]=ev;else evs.push(ev);TRPG39.saveEvents(evs);
+   item=TRPG39.normalizeAlbum({...item,eventId,date:String(item.start).slice(0,10)});
+   i=data.findIndex(x=>x.id===item.id);if(i>=0)data[i]=item;
  }
  persist();reset();render();hideEditor();
 }

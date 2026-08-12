@@ -80,6 +80,7 @@
       spoiler: input.spoiler || "",
       spoilerVisibility: input.spoilerVisibility || "private",
       externalLinks: Array.isArray(input.externalLinks) ? input.externalLinks : [],
+      diceAnalyses: Array.isArray(input.diceAnalyses) ? input.diceAnalyses : [],
       visibility: input.visibility || "private",
       runId: input.runId || "",
       runLabel: input.runLabel || "",

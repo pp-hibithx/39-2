@@ -224,6 +224,7 @@ section.cf-summary-panel{border-color:rgba(200,169,107,.28)!important}
   .cf-details .tool-grid2{grid-template-columns:1fr}
 }
 </style>
+<script src="../../assets/js/shared-data.js?v=0284"></script>
 <script src="../../assets/js/theme.js?v=02263"></script>
 <script src="../../assets/js/optional-features.js?v=02265" defer></script>
 </head>
@@ -344,6 +345,14 @@ section.cf-summary-panel{border-color:rgba(200,169,107,.28)!important}
 </section>
 
 
+
+<section class="panel">
+<h2>LIBRARYへ保存</h2>
+<div class="small">解析結果を登録済みの卓へ紐付けます。同じ解析を送り直した場合は更新します。</div>
+<div class="inline2" style="margin-top:10px"><div><label>シナリオ・陣</label><select id="trpgLibraryRun"><option value="">選択してください</option></select></div><div><label>日程</label><select id="trpgLibraryDay"><option value="">選択してください</option></select></div></div>
+<button id="trpgSendLibrary" class="success" style="width:100%;margin-top:10px" disabled>LIBRARYへ保存</button>
+<div id="trpgLibraryStatus" class="small" style="margin-top:8px"></div>
+</section>
 
 <section class="panel">
 <h2>保存済み解析</h2>
@@ -585,7 +594,7 @@ function analyzeTRPG(){
   applyGrowthExclusions(currentDiceResults);applyGrowthExclusions(currentDiceTotalResults);
  const names=[...new Set(currentDiceResults.map(x=>x.speaker))].sort((a,b)=>a.localeCompare(b,"ja"));
  $("trpgCharacterFilter").innerHTML='<option value="">全員</option>'+names.map(x=>`<option>${esc(x)}</option>`).join("");
- renderDiceResults();renderSourcePreview();renderCritFumbleSummary("trpgRangeCritFumble",currentDiceResults);renderCritFumbleSummary("trpgTotalCritFumble",currentDiceTotalResults);renderSkillOnlySpeakers();
+ renderDiceResults();renderSourcePreview();renderCritFumbleSummary("trpgRangeCritFumble",currentDiceResults);renderCritFumbleSummary("trpgTotalCritFumble",currentDiceTotalResults);renderSkillOnlySpeakers();refreshLibraryTargets();
  if((currentSourceRange.startMark&&!currentSourceRange.startFound)||(currentSourceRange.endMark&&!currentSourceRange.endFound))alert("指定した区切りの目印が一部見つかりませんでした。抽出範囲の確認欄を確認してください。");
  if(!currentDiceResults.length)alert("技能判定を見つけられませんでした。ログ形式を確認してください。");
 }
@@ -609,6 +618,34 @@ function renderSavedAnalyses(){
  $("trpgAnalysisList").innerHTML=a.length?a.map(x=>`<div class="card"><div class="row"><div><b>${esc(x.campaign)}</b><div class="small">${esc(x.scenario)} ／ ${new Date(x.time).toLocaleString("ja-JP")}</div></div><span class="badge gold">${(x.results||[]).length}件</span></div><div class="small">成長候補：${(x.results||[]).filter(r=>r.growth).length}件</div><div class="wrap" style="margin-top:8px"><button class="secondary savedCopy" data-id="${x.id}">コピー</button><button class="danger savedDelete" data-id="${x.id}">削除</button></div></div>`).join(""):'<div class="empty">保存済み解析はまだありません。</div>';
  document.querySelectorAll(".savedCopy").forEach(b=>b.onclick=()=>{const x=loadStore().analyses.find(v=>v.id===b.dataset.id);if(x)copyText((x.results||[]).map(r=>`${r.speaker}｜${r.skill}｜${r.target??"-"}｜${r.roll}｜${r.result}${r.growth?"｜成長候補":""}`).join("\n"),b,"コピー")});
  document.querySelectorAll(".savedDelete").forEach(b=>b.onclick=()=>{if(!confirm("この保存済み解析を削除しますか？"))return;const st=loadStore();st.analyses=st.analyses.filter(v=>v.id!==b.dataset.id);saveStore(st);renderSavedAnalyses()});
+}
+
+
+function refreshLibraryTargets(){
+ if(!window.TRPG39)return;
+ const album=TRPG39.loadAlbum(),m=new Map();
+ album.forEach(x=>{const k=x.runId||x.id;if(!m.has(k))m.set(k,{id:k,title:x.title||"名称未設定",label:x.runLabel||"",role:x.role||"",items:[]});m.get(k).items.push(x)});
+ const runs=[...m.values()].sort((a,b)=>String(a.title).localeCompare(String(b.title),"ja"));
+ $("trpgLibraryRun").innerHTML='<option value="">選択してください</option>'+runs.map(r=>{const auto=r.label||(String(r.role).toUpperCase()==="PL"?"自陣":"陣");return `<option value="${esc(r.id)}">${esc(r.title)} ／ ${esc(auto)}</option>`}).join("");
+ refreshLibraryDays();
+}
+function refreshLibraryDays(){
+ const rid=$("trpgLibraryRun").value,album=window.TRPG39?TRPG39.loadAlbum():[];
+ const xs=album.filter(x=>(x.runId||x.id)===rid).sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
+ $("trpgLibraryDay").innerHTML='<option value="">選択してください</option>'+xs.map((x,i)=>`<option value="${esc(x.id)}">${esc(x.date||`${i+1}日目`)}${x.pcName?` ／ ${esc(x.pcName)}`:""}</option>`).join("");
+ $("trpgSendLibrary").disabled=!currentDiceResults.length||!$("trpgLibraryDay").value;
+}
+function analysisPayload(){
+ const by=critFumbleBySpeaker(currentDiceTotalResults.length?currentDiceTotalResults:currentDiceResults);
+ return {id:"dice:"+[$("trpgCampaign").value.trim(),$("trpgScenario").value.trim(),currentSourceRange.start,currentSourceRange.end].join("|"),label:$("trpgScenario").value.trim()||"ダイスログ解析",savedAt:new Date().toISOString(),criticalFumble:{critical:by.reduce((n,x)=>n+x.critical,0),fumble:by.reduce((n,x)=>n+x.fumble,0)},bySpeaker:by,growth:currentDiceResults.filter(x=>x.growth&&!x.growthExcluded).map(x=>({speaker:x.speaker,skill:x.skill,roll:x.roll,result:x.result}))};
+}
+function sendAnalysisToLibrary(){
+ const id=$("trpgLibraryDay").value;if(!id)return alert("保存先の日程を選択してください。");
+ let album=TRPG39.loadAlbum(),i=album.findIndex(x=>x.id===id);if(i<0)return alert("LIBRARYの記録が見つかりません。");
+ const payload=analysisPayload(),list=Array.isArray(album[i].diceAnalyses)?album[i].diceAnalyses.slice():[],j=list.findIndex(x=>x.id===payload.id);
+ if(j>=0)list[j]=payload;else list.push(payload);
+ album[i]=TRPG39.normalizeAlbum({...album[i],diceAnalyses:list});TRPG39.saveAlbum(album);
+ $("trpgLibraryStatus").textContent=`「${album[i].title}」の ${album[i].date||"選択日"} に保存しました。`;
 }
 
 
@@ -643,8 +680,11 @@ $("trpgSkillOnlyRefresh").onclick=renderSkillOnlySpeakers;
 $("trpgSkillOnlyMake").onclick=makeSkillOnlyOutput;
 $("trpgSkillOnlyCopy").onclick=()=>copyText($("trpgSkillOnlyOutput").value,$("trpgSkillOnlyCopy"),"コピー");
 $("trpgSaveAnalysis").onclick=saveAnalysis;
+$("trpgLibraryRun").onchange=refreshLibraryDays;
+$("trpgLibraryDay").onchange=()=>{$("trpgSendLibrary").disabled=!currentDiceResults.length||!$("trpgLibraryDay").value};
+$("trpgSendLibrary").onclick=sendAnalysisToLibrary;
 
-
+refreshLibraryTargets();
 renderSavedAnalyses();
 const y=document.querySelector("[data-year]");if(y)y.textContent=new Date().getFullYear();
 })();

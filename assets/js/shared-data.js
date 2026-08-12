@@ -27,8 +27,9 @@
 
   function normalizeEvent(input = {}) {
     const id = input.id || uuid();
+    const legacyStatus = input.status === "confirmed" ? "planned" : input.status;
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       id,
       type: input.type || "trpg",
       source: input.source || "39x2",
@@ -37,10 +38,12 @@
       scenarioTitle: input.scenarioTitle || input.title || "",
       start: input.start || "",
       end: input.end || "",
-      status: input.status || "planned",
+      status: legacyStatus || "planned",
       role: input.role || "",
       participants: Array.isArray(input.participants) ? input.participants : [],
+      participantIds: Array.isArray(input.participantIds) ? input.participantIds : [],
       pcName: input.pcName || "",
+      pcId: input.pcId || "",
       system: input.system || "",
       visibility: input.visibility || "private",
       linkedAlbumId: input.linkedAlbumId || "",
@@ -50,26 +53,93 @@
   }
 
   function normalizeAlbum(input = {}) {
+    const legacyStatus = input.status === "confirmed" ? "planned" : input.status;
+    const start = input.start || (input.date ? input.date + "T21:00" : "");
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
       id: input.id || uuid(),
       eventId: input.eventId || "",
       scenarioId: input.scenarioId || "",
       title: input.title || "",
-      date: input.date || "",
+      date: input.date || String(start || "").slice(0,10),
+      start,
+      end: input.end || "",
+      status: legacyStatus || (input.eventId ? "planned" : "done"),
       system: input.system || "",
       role: input.role || "PL",
       pcName: input.pcName || "",
+      pcId: input.pcId || "",
       participants: Array.isArray(input.participants) ? input.participants : [],
+      participantIds: Array.isArray(input.participantIds) ? input.participantIds : [],
       imageUrls: Array.isArray(input.imageUrls) ? input.imageUrls : [],
       comment: input.comment || "",
+      articleBody: input.articleBody || "",
+      spoilerBody: input.spoilerBody || "",
       spoiler: input.spoiler || "",
+      spoilerVisibility: input.spoilerVisibility || "private",
       externalLinks: Array.isArray(input.externalLinks) ? input.externalLinks : [],
       visibility: input.visibility || "private",
+      calendarLinked: !!input.eventId,
       createdAt: input.createdAt || nowISO(),
       updatedAt: nowISO()
     };
   }
+
+  function albumFromEvent(event, existing = {}) {
+    const e = normalizeEvent(event);
+    return normalizeAlbum({
+      ...existing,
+      eventId: e.id,
+      scenarioId: e.scenarioId,
+      title: e.title,
+      date: String(e.start || "").slice(0,10),
+      start: e.start,
+      end: e.end,
+      status: e.status,
+      system: e.system,
+      role: e.role || existing.role || "PL",
+      pcName: e.pcName,
+      pcId: e.pcId,
+      participants: e.participants,
+      participantIds: e.participantIds,
+      visibility: existing.visibility || e.visibility || "private"
+    });
+  }
+
+  function syncEventToAlbum(event) {
+    const e = normalizeEvent(event);
+    const album = load(KEYS.album);
+    const existing = album.find(a => a.eventId === e.id || (e.linkedAlbumId && a.id === e.linkedAlbumId));
+    const item = albumFromEvent(e, existing || {});
+    const i = existing ? album.findIndex(a => a.id === existing.id) : -1;
+    if (i >= 0) album[i] = item; else album.unshift(item);
+    save(KEYS.album, album);
+    return item;
+  }
+
+  function syncAllEventsToAlbum() {
+    let events = load(KEYS.events).map(normalizeEvent);
+    let album = load(KEYS.album);
+    let changed = false;
+    events = events.map(e => {
+      const existing = album.find(a => a.eventId === e.id || (e.linkedAlbumId && a.id === e.linkedAlbumId));
+      const item = albumFromEvent(e, existing || {});
+      if (existing) {
+        const i = album.findIndex(a => a.id === existing.id);
+        album[i] = item;
+      } else {
+        album.unshift(item);
+      }
+      if (e.linkedAlbumId !== item.id) { e.linkedAlbumId = item.id; changed = true; }
+      return e;
+    });
+    if (events.length || album.length) {
+      save(KEYS.events, events);
+      save(KEYS.album, album);
+    }
+    return {events, album, changed};
+  }
+
 
   
   function encodeShare(data) {
@@ -104,6 +174,9 @@ window.TRPG39 = {
     v),
     normalizeEvent,
     normalizeAlbum,
+    albumFromEvent,
+    syncEventToAlbum,
+    syncAllEventsToAlbum,
     encodeShare,
     makeShareUrl,
     makeShortShareUrl

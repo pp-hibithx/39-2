@@ -90,7 +90,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 <body>
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
-<div class="tagline">TRPG Scenario &amp; Tools</div>
+<div class="tagline">探す・遊ぶ・残す・共有する<br>TRPG Scenario &amp; Tools</div>
 <nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html">SCENARIO</a><a href="../calendar/index.html">CALENDAR</a><a href="index.html" aria-current="page">LIBRARY</a><a href="../pcs/index.html">PC</a><a href="../players/index.html">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
 <button type="button" data-theme-choice="system">端末</button>
 <span>·</span>
@@ -101,7 +101,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 </div></header>
 
 <main><div class="wrap library-page">
-<div class="hero"><h2>LIBRARY</h2><p>遊んだ記録をシナリオごとにまとめて残せます。</p></div>
+<div class="hero"><h2>LIBRARY</h2><p>これから遊ぶ予定も、遊んだ記録も、シナリオごとにまとめて残せます。</p></div>
 <div class="notice small">記録はお使いのブラウザ内に保存されます。<br>現在他の利用者とのオンライン共有には対応していません。</div>
 
 <section class="lib-panel">
@@ -126,9 +126,14 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   <label>シナリオ名</label><input id="title">
 
   <div class="lib-form-grid">
-    <div><label>遊んだ日</label><input id="date" type="date"></div>
+    <div><label>状態</label><select id="status"><option value="tentative">仮押さえ</option><option value="planned">予定</option><option value="done">完了</option><option value="rescheduling">リスケ中</option><option value="postponed">延期</option><option value="cancelled">中止</option></select></div>
     <div><label>システム</label><input id="system" placeholder="CoC6版 など"></div>
   </div>
+  <div class="lib-form-grid">
+    <div><label>開始</label><input id="start" type="datetime-local"></div>
+    <div><label>終了予定</label><input id="end" type="datetime-local"></div>
+  </div>
+  <input id="date" type="hidden">
   <div class="lib-form-grid">
     <div><label>自分の役割</label><select id="role"><option>PL</option><option>KP</option><option>SKP</option><option>その他</option></select></div>
     
@@ -180,9 +185,11 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 (()=>{"use strict";
 const q=id=>document.getElementById(id);
 const vis={private:"自分のみ",table:"同卓者のみ（準備中）",link:"リンク限定",public:"公開"};
+const statusLabel={tentative:"仮押さえ",planned:"予定",confirmed:"予定",done:"完了",rescheduling:"リスケ中",postponed:"延期",cancelled:"中止"};
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const normTitle=s=>String(s||"").normalize("NFKC").replace(/\s+/g,"").toLowerCase();
 
+TRPG39.syncAllEventsToAlbum?.();
 let scenarios=TRPG39.loadScenarios();
 let data=TRPG39.loadAlbum();
 {let changed=false;data=data.map(x=>{if(!x.spoilerBody&&x.spoiler){changed=true;return TRPG39.normalizeAlbum({...x,spoilerBody:x.spoiler,spoiler:""})}return x});if(changed)TRPG39.saveAlbum(data);}
@@ -226,8 +233,8 @@ function getLinks(){return [...document.querySelectorAll(".ext-row")].map(r=>({l
 function updateImagePreview(){const u=q("image").value.trim();q("imagePreview").hidden=!u;q("imagePreviewImg").src=u||""}
 function reset(prefillScenarioId=""){
  q("editId").value="";
- ["title","date","system","pc","people","image","comment","articleBody","spoilerBody"].forEach(x=>q(x).value="");
- q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
+ ["title","date","start","end","system","pc","people","image","comment","articleBody","spoilerBody"].forEach(x=>q(x).value="");
+ q("status").value="done";q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
  q("externalLinks").innerHTML="";addLinkRow();updateImagePreview();fillScenarioSelect();fillPCSelect();
  q("scenarioSelect").value=prefillScenarioId||"";
  if(prefillScenarioId){
@@ -261,20 +268,37 @@ function save(){
    if(created){scenarioId=created.id;title=created.title;fillScenarioSelect();q("scenarioSelect").value=created.id;}
  }
  let id=q("editId").value||TRPG39.uuid(),old=data.find(x=>x.id===id);
- let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,date:q("date").value,
+ const start=q("start").value;
+ let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,date:String(start||"").slice(0,10),start,end:q("end").value,status:q("status").value,
    articleBody:q("articleBody")?.value.trim()||"",
    spoilerBody:q("spoilerBody")?.value.trim()||"",spoiler:"",system:q("system").value.trim(),role:q("role").value,pcName:q("pc").value.trim(),pcId:(()=>{const sid=q("pcSelect").value;if(sid)return sid;const typed=q("pc").value.trim();if(!typed)return "";const pc=TRPG39.ensurePC?TRPG39.ensurePC(typed,{system:q("system").value.trim()}):null;return pc?.id||""})(),participants:q("people").value.split(",").map(x=>x.trim()).filter(Boolean),
  participantIds:(()=>{if(!TRPG39.playersEnabled?.())return [];return q("people").value.split(",").map(x=>x.trim()).filter(Boolean).map(name=>{const p=TRPG39.ensurePlayer?TRPG39.ensurePlayer(name):null;return p?.id||""}).filter(Boolean)})(),imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
  let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);
+ if(item.eventId){
+   let evs=TRPG39.loadEvents();const ei=evs.findIndex(e=>e.id===item.eventId);
+   if(ei>=0){
+     evs[ei]=TRPG39.normalizeEvent({...evs[ei],scenarioId:item.scenarioId,title:item.title,scenarioTitle:item.title,start:item.start,end:item.end,status:item.status,system:item.system,role:item.role,pcName:item.pcName,pcId:item.pcId,participants:item.participants,participantIds:item.participantIds,linkedAlbumId:item.id});
+     TRPG39.saveEvents(evs);
+   }
+ }
  persist();reset();render();hideEditor();
 }
 function edit(id){
  let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("scenarioSelect").value=x.scenarioId||"";q("title").value=x.title||"";q("date").value=x.date||"";q("system").value=x.system||"";q("role").value=x.role||"PL";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");q("people").value=(x.participants||[]).join(", ");q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("articleBody").value=x.articleBody||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
+ q("editId").value=x.id;q("scenarioSelect").value=x.scenarioId||"";q("title").value=x.title||"";q("date").value=x.date||"";q("start").value=(x.start||((x.date||"")+"T21:00")).slice(0,16);q("end").value=(x.end||"").slice(0,16);q("status").value=x.status||"done";q("system").value=x.system||"";q("role").value=x.role||"PL";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");q("people").value=(x.participants||[]).join(", ");q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("articleBody").value=x.articleBody||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
-function del(id){if(confirm("この開催記録を削除しますか？")){data=data.filter(x=>x.id!==id);persist();render()}}
+function del(id){
+ const x=data.find(v=>v.id===id);if(!x)return;
+ const linked=!!x.eventId;
+ const msg=linked?"この開催記録を削除しますか？\nCALENDARと連動しているため、卓予定も一緒に削除されます。":"この開催記録を削除しますか？";
+ if(confirm(msg)){
+   data=data.filter(v=>v.id!==id);persist();
+   if(linked)TRPG39.saveEvents(TRPG39.loadEvents().filter(e=>e.id!==x.eventId));
+   render();
+ }
+}
 
 function groupKey(x){return x.scenarioId?`id:${x.scenarioId}`:`title:${normTitle(x.title)}`}
 function groupData(xs){
@@ -320,7 +344,7 @@ async function shareAlbum(id){
    alert("「同卓者のみ」は今後のアカウント共有用です。現在はリンク限定を使ってください。");
    return;
  }
- const payload={kind:"library-session",version:2,title:x.title,date:x.date,system:x.system,role:x.role,pcName:x.pcName,participants:x.participants||[],image:(x.imageUrls||[])[0]||"",comment:x.comment||"",articleBody:x.articleBody||"",spoiler:x.spoilerVisibility==="link"?(x.spoilerBody||x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
+ const payload={kind:"library-session",version:3,title:x.title,date:x.date,start:x.start||"",end:x.end||"",status:x.status||"done",system:x.system,role:x.role,pcName:x.pcName,participants:x.participants||[],image:(x.imageUrls||[])[0]||"",comment:x.comment||"",articleBody:x.articleBody||"",spoiler:x.spoilerVisibility==="link"?(x.spoilerBody||x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
  try{
    if(TRPG39Cloud&&TRPG39Cloud.configured()){
      const shareId=await TRPG39Cloud.createSharedPage(payload);
@@ -357,7 +381,7 @@ function render(){
    <div class="lib-children">
      <div class="lib-parent-actions">${g.scenarioId?`<a class="link" href="../scenario/index.html?focus=${encodeURIComponent(g.scenarioId)}">SCENARIOを見る</a>`:""}<button type="button" data-add-scenario="${esc(g.scenarioId)}" data-add-title="${esc(g.title)}">＋ 開催記録</button></div>
      ${g.items.map((x,i)=>`<article class="lib-child">
-       <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}</div>
+       <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}${x.start&&String(x.start).slice(11,16)?` ${esc(String(x.start).slice(11,16))}`:""}<br><span class="badge">${esc(statusLabel[x.status]||"完了")}</span></div>
        <div>${(x.imageUrls||[])[0]?`<img class="lib-child-thumb" src="${esc((x.imageUrls||[])[0])}" alt="" loading="lazy">`:""}
          <div class="lib-child-title">${esc(x.pcName?`PC：${x.pcName}`:(x.role||"開催記録"))}</div>${x.articleBody?`<div class="lib-article-body">${esc(x.articleBody).replace(/\n/g,"<br>")}</div>`:""}${x.spoilerBody?`<details class="lib-spoiler"><summary>ネタバレを表示</summary><div class="spoiler-body">${esc(x.spoilerBody).replace(/\n/g,"<br>")}</div></details>`:""}
          <div class="lib-child-meta">${x.role?esc(x.role):""}${(x.participants||[]).length?`　参加：${esc(x.participants.join(" / "))}`:""}　${esc(vis[x.visibility]||"自分のみ")}</div>

@@ -13,7 +13,7 @@
 .calendar-day.out{opacity:.35}.calendar-day.today{outline:1px solid var(--accent)}
 .daynum{font-size:.8rem;color:var(--muted);margin-bottom:5px}
 .event-chip{display:block;border:1px solid var(--line);border-radius:7px;padding:5px 6px;margin:4px 0;font-size:.78rem;background:rgba(255,255,255,.025);cursor:pointer}
-.event-chip.done{border-color:#557c68}.event-chip.cancelled{opacity:.5;text-decoration:line-through}
+.event-chip.done{border-color:#557c68}.event-chip.cancelled{opacity:.5;text-decoration:line-through}.event-chip.tentative{border-style:dashed}.event-chip.rescheduling{border-color:#b28a4a}.event-chip.postponed{opacity:.65}
 .event-form{display:grid;grid-template-columns:1fr 1fr;gap:8px}.event-form .full{grid-column:1/-1}.event-editor[hidden]{display:none}.event-editor-actions{font-size:11px}.event-editor-actions button{padding:3px 5px;font-size:11px}.event-editor-actions button+button::before{content:""}
 @media(max-width:760px){.calendar-grid{gap:3px}.calendar-day{min-height:82px;padding:5px}.event-form{grid-template-columns:1fr}}
 </style>
@@ -23,7 +23,7 @@
 <body>
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
-<div class="tagline">TRPG Scenario &amp; Tools</div>
+<div class="tagline">探す・遊ぶ・残す・共有する<br>TRPG Scenario &amp; Tools</div>
 <nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html">SCENARIO</a><a href="index.html" aria-current="page">CALENDAR</a><a href="../library/index.html">LIBRARY</a><a href="../pcs/index.html">PC</a><a href="../players/index.html">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
 <button type="button" data-theme-choice="system">端末</button>
 <span>·</span>
@@ -57,7 +57,7 @@
 <div class="full"><label>タイトル</label><input id="eventTitle"></div>
 <div><label>開始</label><input id="eventStart" type="datetime-local"></div>
 <div><label>終了予定</label><input id="eventEnd" type="datetime-local"></div>
-<div><label>状態</label><select id="eventStatus"><option value="planned">予定</option><option value="confirmed">確定</option><option value="done">完了</option><option value="cancelled">中止</option><option value="postponed">延期</option></select></div>
+<div><label>状態</label><select id="eventStatus"><option value="tentative">仮押さえ</option><option value="planned">予定</option><option value="done">完了</option><option value="rescheduling">リスケ中</option><option value="postponed">延期</option><option value="cancelled">中止</option></select></div>
 <div><label>役割</label><select id="eventRole"><option value="">未設定</option><option>PL</option><option>KP</option><option>SKP</option><option>その他</option></select></div>
 <div><label>システム</label><input id="eventSystem"></div>
 <div><label>PC</label><select id="eventPcSelect"><option value="">直接入力</option></select><input id="eventPc" placeholder="未登録PCは保存時にPC LIBRARYへ自動登録"></div>
@@ -65,11 +65,11 @@
 </div>
 <div class="event-editor-actions">
 <button id="saveEvent" type="button">保存</button>
-<button id="toAlbum" type="button" hidden>LIBRARYに残す</button>
+<span id="albumLinkState" class="small">✓ LIBRARYと自動連動</span>
 <button id="resetEvent" type="button">入力をクリア</button>
 <button id="deleteEvent" class="danger" type="button" hidden>削除</button>
 </div>
-<div class="small" style="margin-top:8px">予定をLIBRARYへ送ると、日付・シナリオ・役割・参加者などを引き継いでアルバム記録を作成します。</div>
+<div class="small" style="margin-top:8px">CALENDARに保存した卓はLIBRARYにも自動反映されます。仮押さえ・予定・完了・リスケ中・延期・中止の状態も同期します。</div>
 </section>
 </div></main>
 <footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
@@ -103,7 +103,7 @@ function ensureEventPc(){
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let current=new Date(); current.setDate(1);
 
-const statusLabel={planned:"予定",confirmed:"確定",done:"完了",cancelled:"中止",postponed:"延期"};
+const statusLabel={tentative:"仮押さえ",planned:"予定",confirmed:"予定",done:"完了",rescheduling:"リスケ中",cancelled:"中止",postponed:"延期"};
 const pad=n=>String(n).padStart(2,"0");
 const toLocalInput=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
@@ -120,7 +120,7 @@ function hideEditor(){$("eventPanel").hidden=true}
 function resetForm(dateStr=""){
  ["eventId","eventTitle","eventEnd","eventSystem","eventPc","eventPeople"].forEach(id=>$(id).value="");fillEventPcSelect();
  $("scenarioSelect").value=""; $("eventStatus").value="planned"; $("eventRole").value="";
- $("eventHeading").textContent="卓予定を登録"; $("deleteEvent").hidden=true; $("toAlbum").hidden=true;
+ $("eventHeading").textContent="卓予定を登録"; $("deleteEvent").hidden=true;
  if(dateStr){$("eventStart").value=dateStr+"T21:00"} else $("eventStart").value="";
 }
 function editEvent(id){
@@ -129,7 +129,7 @@ function editEvent(id){
  $("eventStart").value=x.start?x.start.slice(0,16):"";$("eventEnd").value=x.end?x.end.slice(0,16):"";
  $("eventStatus").value=x.status||"planned";$("eventRole").value=x.role||"";$("eventSystem").value=x.system||"";
  $("eventPc").value=x.pcName||"";fillEventPcSelect(x.pcId||"");$("eventPeople").value=(x.participants||[]).join(", ");
- $("eventHeading").textContent="卓予定を編集";$("deleteEvent").hidden=false;$("toAlbum").hidden=!!x.linkedAlbumId;showEditor();
+ $("eventHeading").textContent="卓予定を編集";$("deleteEvent").hidden=false;showEditor();
  $("eventPanel").scrollIntoView({behavior:"smooth",block:"start"});
 }
 function renderCalendar(){
@@ -145,7 +145,7 @@ function renderCalendar(){
    const dayEvents=ev.filter(x=>String(x.start||"").slice(0,10)===ds).sort((a,b)=>String(a.start||"").localeCompare(String(b.start||"")));
    html+=`<div class="calendar-day ${d.getMonth()!==m?"out":""} ${d.toDateString()===today.toDateString()?"today":""}" data-date="${ds}">
      <div class="daynum">${d.getDate()}</div>
-     ${dayEvents.map(x=>{const tm=String(x.start||"").slice(11,16);return `<button type="button" class="event-chip ${x.status}" data-id="${x.id}">${tm?`<strong>${esc(tm)}</strong> `:""}${esc(x.title||"卓")} <span class="small">${esc(statusLabel[x.status]||"")}</span></button>`}).join("")}
+     ${dayEvents.map(x=>{const tm=String(x.start||"").slice(11,16);return `<button type="button" class="event-chip ${x.status}" data-id="${x.id}">${tm?`<strong>${esc(tm)}</strong> `:""}${esc(x.title||"卓")} <span class="small">${esc(statusLabel[x.status]||"")} ・ ✓LIBRARY</span></button>`}).join("")}
    </div>`;
  }
  $("calendar").innerHTML=html;
@@ -161,6 +161,26 @@ $("eventPcSelect").onchange=()=>{
  const pc=(window.TRPG39?.loadPCs?.()||[]).find(p=>p.id===id);
  if(pc)$("eventPc").value=pc.name||"";
 };
+function eventRange(e){
+ const start=new Date(e.start||"");
+ if(Number.isNaN(start.getTime()))return null;
+ let end=e.end?new Date(e.end):new Date(start.getTime()+4*60*60*1000);
+ if(Number.isNaN(end.getTime())||end<=start)end=new Date(start.getTime()+4*60*60*1000);
+ return [start,end];
+}
+function conflictMessage(item,list){
+ if(!["tentative","planned"].includes(item.status))return "";
+ const r=eventRange(item);if(!r)return "";
+ const hits=list.filter(x=>x.id!==item.id&&["tentative","planned"].includes(x.status)).filter(x=>{
+   const q=eventRange(x);return q&&r[0]<q[1]&&q[0]<r[1];
+ });
+ if(!hits.length)return "";
+ const fixed=hits.filter(x=>x.status==="planned"),tent=hits.filter(x=>x.status==="tentative");
+ let msg="";
+ if(fixed.length)msg+="⚠ 確定済みの卓と時間が重複しています。\n"+fixed.map(x=>`・${x.title} ${String(x.start||"").replace("T"," ")}`).join("\n")+"\n\n";
+ if(tent.length)msg+="△ 仮押さえ中の卓と時間が重複しています。\n"+tent.map(x=>`・${x.title} ${String(x.start||"").replace("T"," ")}`).join("\n")+"\n\n";
+ return msg+"それでも保存しますか？";
+}
 $("saveEvent").onclick=()=>{
  const title=$("eventTitle").value.trim(),start=$("eventStart").value;
  if(!title||!start)return alert("タイトルと開始日時を入力してください。");
@@ -170,30 +190,23 @@ $("saveEvent").onclick=()=>{
    status:$("eventStatus").value,role:$("eventRole").value,system:$("eventSystem").value.trim(),
    pcName:$("eventPc").value.trim(),pcId:ensureEventPc(),participants:$("eventPeople").value.split(",").map(x=>x.trim()).filter(Boolean)
  });
+ const warning=conflictMessage(item,list);if(warning&&!confirm(warning))return;
+ const albumItem=TRPG39.syncEventToAlbum(item);item.linkedAlbumId=albumItem.id;
  const i=list.findIndex(x=>x.id===id); if(i>=0)list[i]=item; else list.push(item);
  saveEvents(list); resetForm(); hideEditor(); renderCalendar();
 };
 $("deleteEvent").onclick=()=>{
- const id=$("eventId").value;if(!id||!confirm("この卓予定を削除しますか？"))return;
- saveEvents(events().filter(x=>x.id!==id));resetForm();hideEditor();renderCalendar();
-};
-$("toAlbum").onclick=()=>{
- const id=$("eventId").value,x=events().find(v=>v.id===id);if(!x)return;
- let album=TRPG39.loadAlbum();
- const a=TRPG39.normalizeAlbum({
-   eventId:x.id,scenarioId:x.scenarioId,title:x.title,date:String(x.start||"").slice(0,10),system:x.system,role:x.role||"PL",
-   pcName:x.pcName,participants:x.participants,visibility:x.visibility
- });
- album.unshift(a);TRPG39.saveAlbum(album);
- let list=events(),i=list.findIndex(v=>v.id===x.id);if(i>=0){list[i]={...x,status:"done",linkedAlbumId:a.id,updatedAt:new Date().toISOString()};saveEvents(list)}
- alert("LIBRARYに卓記録を作成しました。");resetForm();hideEditor();renderCalendar();
+ const id=$("eventId").value;if(!id||!confirm("この卓予定を削除しますか？\n連動しているLIBRARYの記録も削除されます。"))return;
+ saveEvents(events().filter(x=>x.id!==id));
+ TRPG39.saveAlbum(TRPG39.loadAlbum().filter(x=>x.eventId!==id));
+ resetForm();hideEditor();renderCalendar();
 };
 $("prevMonth").onclick=()=>{current.setMonth(current.getMonth()-1);renderCalendar()};
 $("nextMonth").onclick=()=>{current.setMonth(current.getMonth()+1);renderCalendar()};
 $("todayBtn").onclick=()=>{current=new Date();current.setDate(1);renderCalendar()};
 $("newEventBtn").onclick=()=>{resetForm();showEditor();$("eventPanel").scrollIntoView({behavior:"smooth"})};
 $("resetEvent").onclick=()=>{resetForm();hideEditor()};
-fillScenarioSelect();resetForm();hideEditor();renderCalendar();
+TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();renderCalendar();
 })();
 </script>
 

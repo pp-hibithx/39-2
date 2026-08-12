@@ -48,8 +48,12 @@ Deno.serve(async (req) => {
     try { target = new URL(url); } catch { return json({ error: "URLの形式が正しくありません。" }, 400); }
     if (!/^https?:$/.test(target.protocol)) return json({ error: "http/https URLのみ対応しています。" }, 400);
     const host = target.hostname.toLowerCase();
-    if (!(host === "booth.pm" || host.endsWith(".booth.pm"))) {
-      return json({ error: "現在の自動取得はBOOTHのURLに対応しています。" }, 400);
+    const allowed =
+      host === "booth.pm" || host.endsWith(".booth.pm") ||
+      host === "pixiv.net" || host.endsWith(".pixiv.net") ||
+      host === "talto.cc" || host.endsWith(".talto.cc");
+    if (!allowed) {
+      return json({ error: "現在の自動取得はBOOTH・pixiv・TALTOのURLに対応しています。" }, 400);
     }
 
     const r = await fetch(target.href, {

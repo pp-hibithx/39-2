@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LIBRARY | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=0284">
+<link rel="stylesheet" href="../assets/css/style.css?v=0285">
 <style>
 .album-grid{display:grid;grid-template-columns:1fr;gap:28px;align-items:start}
 .album-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}
@@ -65,10 +65,10 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 }
 </style>
 
-<script src="../assets/js/theme.js?v=0284"></script>
+<script src="../assets/js/theme.js?v=0285"></script>
 
 <style>
-/* v0.2.28.4.2.2.1 — LIBRARY thumbnail display */
+/* v0.2.28.5.2.2.1 — LIBRARY thumbnail display */
 .lib-child-thumb{
   width:72px;
   aspect-ratio:16/10;
@@ -93,13 +93,13 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-spoiler summary{cursor:pointer;padding:9px 11px;font-weight:700;user-select:none}
 .lib-spoiler .spoiler-body{padding:10px 12px;border-top:1px solid var(--line);line-height:1.8}
 </style>
-<script src="../assets/js/optional-features.js?v=0284" defer></script>
+<script src="../assets/js/optional-features.js?v=0285" defer></script>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
 <div class="tagline">探す・遊ぶ・残す・共有する<br>TRPG Scenario &amp; Tools</div>
-<nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0284">SCENARIO</a><a href="../calendar/index.html?v=0284">CALENDAR</a><a href="index.html" aria-current="page">LIBRARY</a><a href="../pcs/index.html?v=0284">PC</a><a href="../players/index.html?v=0284">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
+<nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0285">SCENARIO</a><a href="../calendar/index.html?v=0285">CALENDAR</a><a href="index.html" aria-current="page">LIBRARY</a><a href="../pcs/index.html?v=0285">PC</a><a href="../players/index.html?v=0285">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
 <button type="button" data-theme-choice="system">端末</button>
 <span>·</span>
 <button type="button" data-theme-choice="dark">ダーク</button>
@@ -179,17 +179,17 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="0284">build v0.2.28.4</div></main>
+</div><div class="wrap small muted" data-build-marker="0285">build v0.2.28.5</div></main>
 
 <footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
 
-<script src="../assets/js/main.js?v=0284"></script>
-<script src="../assets/js/migrate-v02.js?v=0284"></script>
-<script src="../assets/js/shared-data.js?v=0284"></script>
-<script src="../assets/js/supabase-config.js?v=0284"></script>
-<script src="../assets/js/supabase-sync.js?v=0284"></script>
+<script src="../assets/js/main.js?v=0285"></script>
+<script src="../assets/js/migrate-v02.js?v=0285"></script>
+<script src="../assets/js/shared-data.js?v=0285"></script>
+<script src="../assets/js/supabase-config.js?v=0285"></script>
+<script src="../assets/js/supabase-sync.js?v=0285"></script>
 <script>TRPG39Sync.initAutoSync();</script>
-<script src="../assets/js/supabase-share.js?v=0284"></script>
+<script src="../assets/js/supabase-share.js?v=0285"></script>
 <script>
 (()=>{"use strict";
 const q=id=>document.getElementById(id);
@@ -346,6 +346,14 @@ function del(id){
 }
 
 function groupKey(x){return x.scenarioId?`id:${x.scenarioId}`:`title:${normTitle(x.title)}`}
+function sessionSortKey(x){
+ const start=String(x?.start||"").trim();
+ if(start)return start;
+ const date=String(x?.date||"").trim();
+ return date?date+"T00:00":"9999-12-31T23:59";
+}
+function bySessionStart(a,b){return sessionSortKey(a).localeCompare(sessionSortKey(b));}
+
 function groupData(xs){
  const map=new Map();
  for(const x of xs){
@@ -359,6 +367,8 @@ function groupData(xs){
    for(const x of g.items){const rk=x.runId||"legacy";if(!rm.has(rk))rm.set(rk,{id:rk,label:x.runLabel||"",items:[]});const r=rm.get(rk);r.items.push(x);if(!r.label&&x.runLabel)r.label=x.runLabel}
    g.runs=[...rm.values()].sort((a,b)=>String(a.items[0]?.date||"9999").localeCompare(String(b.items[0]?.date||"9999")));
    let kpNo=0;
+   g.runs.forEach(r=>r.items.sort(bySessionStart));
+   g.runs.sort((a,b)=>bySessionStart(a.items[0]||{},b.items[0]||{}));
    g.runs.forEach(r=>{
      if(r.label)return;
      const roles=new Set(r.items.map(x=>String(x.role||"").toUpperCase()));
@@ -416,7 +426,7 @@ function addForScenario(id){
 }
 function addForRun(scenarioId,runId,runLabel=""){
  reset(scenarioId);q("runId").value=runId;q("runLabel").value=runLabel||"";
- const base=data.filter(x=>x.runId===runId).sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")))[0];
+ const base=data.filter(x=>x.runId===runId).sort(bySessionStart)[0];
  if(base){q("role").value=base.role||"PL";q("system").value=base.system||"";q("pc").value=base.pcName||"";q("people").value=(base.participants||[]).join(", ");q("visibility").value=base.visibility||"private";}
  showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }

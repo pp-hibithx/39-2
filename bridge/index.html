@@ -1,7 +1,7 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DATA BRIDGE | 39*2</title><link rel="stylesheet" href="../assets/css/style.css?v=0284"><script src="../assets/js/theme.js?v=0284"></script>
-<script src="../assets/js/optional-features.js?v=0284" defer></script>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DATA BRIDGE | 39*2</title><link rel="stylesheet" href="../assets/css/style.css?v=0285"><script src="../assets/js/theme.js?v=0285"></script>
+<script src="../assets/js/optional-features.js?v=0285" defer></script>
 </head><body>
-<header class="site-header"><div class="wrap"><h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・残す・共有する<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0284">SCENARIO</a><a href="../calendar/index.html?v=0284">CALENDAR</a><a href="../library/index.html?v=0284">LIBRARY</a><a href="../pcs/index.html?v=0284">PC</a><a href="../players/index.html?v=0284">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
+<header class="site-header"><div class="wrap"><h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・残す・共有する<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0285">SCENARIO</a><a href="../calendar/index.html?v=0285">CALENDAR</a><a href="../library/index.html?v=0285">LIBRARY</a><a href="../pcs/index.html?v=0285">PC</a><a href="../players/index.html?v=0285">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
 <button type="button" data-theme-choice="system">端末</button>
 <span>·</span>
 <button type="button" data-theme-choice="dark">ダーク</button>
@@ -11,7 +11,7 @@
 <main><div class="wrap"><div class="hero"><h2>DATA BRIDGE</h2><p>将来Life Archiveと予定・記録を共有するための共通データを書き出します。</p></div>
 <section class="panel"><p>現在は自動同期ではありません。39*2のTRPG予定とアルバム記録を、共通JSON形式で書き出せます。</p><button id="exportBridge" class="primary" type="button">Life Archive向けに書き出す</button></section>
 </div></main><footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
-<script src="../assets/js/main.js?v=0284"></script><script src="../assets/js/migrate-v02.js?v=0284"></script>
-<script src="../assets/js/shared-data.js?v=0284"></script><script>
+<script src="../assets/js/main.js?v=0285"></script><script src="../assets/js/migrate-v02.js?v=0285"></script>
+<script src="../assets/js/shared-data.js?v=0285"></script><script>
 document.getElementById("exportBridge").onclick=()=>{const payload={format:"life-archive-bridge",schemaVersion:1,source:"39*2",exportedAt:new Date().toISOString(),events:TRPG39.loadEvents(),records:TRPG39.loadAlbum()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="39x2-life-archive-bridge.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 </script></body></html>

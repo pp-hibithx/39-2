@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SCENARIO | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=0285">
+<link rel="stylesheet" href="../assets/css/style.css?v=0286">
 <style>
 .sc-layout{display:grid;gap:16px}
 .sc-panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
@@ -23,15 +23,18 @@
 input,select{width:100%}label{display:block;margin:7px 0 3px}
 @media(max-width:620px){.sc-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.sc-body{padding:9px}.sc-head h3{font-size:.92rem}.sc-author{display:none}.sc-inline{align-items:stretch;flex-direction:column}.sc-inline button{width:100%}.sc-row{grid-template-columns:1fr}.sc-toolbar-main{width:100%}.sc-toolbar-main>div{min-width:0;flex:1}.sc-add-card{min-height:160px}}
 @media(max-width:390px){.sc-list{grid-template-columns:1fr}}
+.friend-panel{margin-top:14px}.friend-head{display:flex;justify-content:space-between;gap:10px;align-items:end;flex-wrap:wrap}.friend-add{display:flex;gap:7px;align-items:end;flex-wrap:wrap}.friend-add input{width:260px}.friend-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:10px}.friend-card{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--panel)}.friend-card img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:7px;margin-bottom:7px}.friend-owner{font-size:11px;color:var(--muted)}.friend-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.friend-actions button,.friend-actions a{font-size:12px;padding:6px 8px}
 </style>
-<script src="../assets/js/theme.js?v=0285"></script>
-<script src="../assets/js/optional-features.js?v=0285" defer></script>
+<script src="../assets/js/theme.js?v=0286"></script>
+<script src="../assets/js/supabase-config.js?v=0286"></script>
+<script src="../assets/js/supabase-share.js?v=0286"></script>
+<script src="../assets/js/optional-features.js?v=0286" defer></script>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
 <div class="tagline">探す・遊ぶ・残す・共有する<br>TRPG Scenario &amp; Tools</div>
-<nav class="nav"><a href="../index.html">HOME</a><a href="index.html" aria-current="page">SCENARIO</a><a href="../calendar/index.html?v=0285">CALENDAR</a><a href="../library/index.html?v=0285">LIBRARY</a><a href="../pcs/index.html?v=0285">PC</a><a href="../players/index.html?v=0285">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
+<nav class="nav"><a href="../index.html">HOME</a><a href="index.html" aria-current="page">SCENARIO</a><a href="../calendar/index.html?v=0286">CALENDAR</a><a href="../library/index.html?v=0286">LIBRARY</a><a href="../pcs/index.html?v=0286">PC</a><a href="../players/index.html?v=0286">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
 <button type="button" data-theme-choice="system">端末</button>
 <span>·</span>
 <button type="button" data-theme-choice="dark">ダーク</button>
@@ -51,6 +54,12 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <div class="sc-number-filter"><label>遊べる時間</label><input id="hoursFilter" type="number" min="0.5" step="0.5" placeholder="最大h"></div>
 </div><div class="sc-tools"><button id="shareScenarioList" type="button">共有</button><button id="openForm" type="button">＋ 追加</button></div></div><div id="summary" class="small" style="margin-top:8px"></div>
 <div id="list" class="sc-list"></div>
+<div class="sc-panel friend-panel">
+ <div class="friend-head"><div><h3 style="margin:0">友人のシナリオ一覧</h3><div class="small">共有された39*2のシナリオ一覧を登録すると、上の検索と一緒に探せます。</div></div>
+ <div class="friend-add"><div><label>名前</label><input id="friendName" placeholder="例：Aさん"></div><div><label>共有URL</label><input id="friendUrl" placeholder="39*2の共有URL"></div><button id="friendAdd" type="button">＋ 登録</button></div></div>
+ <div id="friendSources" class="small" style="margin-top:8px"></div>
+ <div id="friendResults" class="friend-results"></div>
+</div>
 </section>
 <section id="scenarioForm" class="sc-panel sc-form">
 <h2 id="formHeading">シナリオを登録</h2><input id="editId" type="hidden">
@@ -78,14 +87,14 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <dialog id="detailDialog" class="sc-detail"><div id="detailContent"></div></dialog>
 <footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
 
-<script src="../assets/js/main.js?v=0285"></script>
-<script src="../assets/js/migrate-v02.js?v=0285"></script>
-<script src="../assets/js/shared-data.js?v=0285"></script>
-<script src="../assets/js/supabase-config.js?v=0285"></script>
-<script src="../assets/js/supabase-sync.js?v=0285"></script>
-<script src="../assets/js/og-preview.js?v=0285"></script>
+<script src="../assets/js/main.js?v=0286"></script>
+<script src="../assets/js/migrate-v02.js?v=0286"></script>
+<script src="../assets/js/shared-data.js?v=0286"></script>
+<script src="../assets/js/supabase-config.js?v=0286"></script>
+<script src="../assets/js/supabase-sync.js?v=0286"></script>
+<script src="../assets/js/og-preview.js?v=0286"></script>
 <script>TRPG39Sync.initAutoSync();</script>
-<script src="../assets/js/supabase-share.js?v=0285"></script>
+<script src="../assets/js/supabase-share.js?v=0286"></script>
 <script>
 (()=>{"use strict";
 const q=id=>document.getElementById(id),flags={owned:"所持",played:"通過済み",planned:"通過予定",kpDone:"KP済み",kpPlanned:"KP予定",wish:"気になる"};
@@ -102,11 +111,62 @@ function del(id){if(confirm("このシナリオを削除しますか？")){data=
 function schedule(id){
  const x=data.find(v=>v.id===id);if(!x)return;
  const list=TRPG39.loadEvents(),e=TRPG39.normalizeEvent({scenarioId:x.id,title:x.title,scenarioTitle:x.title,system:x.system,status:"planned"});
- list.push(e);TRPG39.saveEvents(list);location.href="../calendar/index.html?v=0285";
+ list.push(e);TRPG39.saveEvents(list);location.href="../calendar/index.html?v=0286";
 }
 function library(id){location.href="../library/index.html?scenario="+encodeURIComponent(id)}
 
 
+
+
+const FRIEND_KEY="39x2_friend_scenario_sources_v1";
+let friendSources=(()=>{try{const x=JSON.parse(localStorage.getItem(FRIEND_KEY)||"[]");return Array.isArray(x)?x:[]}catch{return []}})();
+let friendItems=[];
+const saveFriendSources=()=>localStorage.setItem(FRIEND_KEY,JSON.stringify(friendSources));
+function sharedIdFromUrl(raw){
+ try{const u=new URL(raw,location.href);return u.searchParams.get("id")||u.hash.replace(/^#/,"")}catch{return ""}
+}
+async function loadFriendSources(){
+ friendItems=[];
+ for(const src of friendSources){
+  try{
+   const id=sharedIdFromUrl(src.url);if(!id)throw new Error("共有IDなし");
+   const payload=await TRPG39Cloud.getSharedPage(id),p=Array.isArray(payload)?{kind:"scenario-list",items:payload}:payload;
+   if(p?.kind!=="scenario-list")throw new Error("シナリオ一覧ではありません");
+   (p.items||[]).forEach((x,i)=>friendItems.push({...x,_friend:src.name||"友人",_sourceUrl:src.url,_key:id+":"+i}));
+   src.error="";
+  }catch(e){src.error=e.message||"読み込み失敗"}
+ }
+ saveFriendSources();renderFriendSources();renderFriendResults();
+}
+function renderFriendSources(){
+ q("friendSources").innerHTML=friendSources.length?friendSources.map((x,i)=>`<span class="badge">${esc(x.name||"友人")}${x.error?` ⚠ ${esc(x.error)}`:""} <button type="button" data-friend-del="${i}" style="padding:0 4px;margin-left:3px">×</button></span>`).join(" "):"共有一覧はまだ登録されていません。";
+ document.querySelectorAll("[data-friend-del]").forEach(b=>b.onclick=()=>{friendSources.splice(Number(b.dataset.friendDel),1);saveFriendSources();loadFriendSources()});
+}
+function friendMatches(x){
+ const term=q("search").value.trim().toLowerCase(),players=Number(q("playersFilter").value||0),hours=Number(q("hoursFilter").value||0);
+ if(term&&![x.title,x.system,x.author,x._friend].join(" ").toLowerCase().includes(term))return false;
+ if(players&&((x.playersMin&&players<Number(x.playersMin))||(x.playersMax&&players>Number(x.playersMax))))return false;
+ if(hours&&x.hoursMin&&Number(x.hoursMin)>hours)return false;
+ return true;
+}
+function renderFriendResults(){
+ const xs=friendItems.filter(friendMatches);
+ q("friendResults").innerHTML=xs.length?xs.map(x=>`<article class="friend-card">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<div class="friend-owner">${esc(x._friend)}の一覧</div><b>${esc(x.title)}</b>${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}<div class="friend-actions">${x.url?`<a class="button" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布ページ</a>`:""}<button type="button" data-friend-import="${esc(x._key)}">自分に追加</button></div></article>`).join(""):(friendSources.length?'<div class="small muted">条件に合う共有シナリオはありません。</div>':"");
+ document.querySelectorAll("[data-friend-import]").forEach(b=>b.onclick=()=>importFriendScenario(b.dataset.friendImport));
+}
+function importFriendScenario(key){
+ const x=friendItems.find(v=>v._key===key);if(!x)return;
+ if(data.some(v=>String(v.title||"").trim()===String(x.title||"").trim()))return alert("同名のシナリオはすでに登録されています。");
+ const flagsObj={};(x.labels||[]).forEach(label=>{const hit=Object.entries(flags).find(([,v])=>v===label);if(hit)flagsObj[hit[0]]=true});
+ data.unshift({id:TRPG39.uuid(),title:x.title||"",system:x.system||"",author:x.author||"",url:x.url||"",thumbnailUrl:x.thumbnailUrl||"",playersMin:x.playersMin||null,playersMax:x.playersMax||null,hoursMin:x.hoursMin||null,hoursMax:x.hoursMax||null,flags:flagsObj,memo:"",sourceFriend:x._friend});
+ persist();render();alert("自分のSCENARIOへ追加しました。");
+}
+async function addFriendSource(){
+ const name=q("friendName").value.trim()||"友人",url=q("friendUrl").value.trim(),id=sharedIdFromUrl(url);
+ if(!url||!id)return alert("39*2のシナリオ一覧共有URLを入力してください。");
+ if(friendSources.some(x=>sharedIdFromUrl(x.url)===id))return alert("この共有一覧は登録済みです。");
+ friendSources.push({name,url,error:""});saveFriendSources();q("friendName").value="";q("friendUrl").value="";await loadFriendSources();
+}
 
 function showShareUrl(url,message){
   if(navigator.clipboard && window.isSecureContext){
@@ -174,7 +234,7 @@ function detail(id){
 function render(){
  let term=q("search").value.trim().toLowerCase(),f=q("filter").value;
  let xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term))&&matchesExtraFilters(x));
- q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件`;
+ q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件${friendSources.length?` ／ 共有 ${friendItems.filter(friendMatches).length}件`:""}`;
  const cards=xs.map(x=>`<article class="sc-card" data-open="${x.id}" tabindex="0"><div class="sc-thumb-wrap">${x.thumbnailUrl?`<img class="sc-thumb" src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="sc-placeholder">🌺</div>`}</div><div class="sc-menu-wrap"><button class="sc-menu-btn" data-menu="${x.id}" type="button" aria-label="メニュー">⋯</button><div class="sc-menu" data-menu-panel="${x.id}">${x.url?`<a target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布ページ</a>`:""}<button data-library="${x.id}" type="button">LIBRARYを見る</button><button data-schedule="${x.id}" type="button">卓予定を作る</button><button data-edit="${x.id}" type="button">編集</button><button class="danger" data-del="${x.id}" type="button">削除</button></div></div><div class="sc-body"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${rangeText(x.playersMin,x.playersMax,"人")?`<span class="badge">${rangeText(x.playersMin,x.playersMax,"人")}</span>`:""}${rangeText(x.hoursMin,x.hoursMax,"h")?`<span class="badge">${rangeText(x.hoursMin,x.hoursMax,"h")}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}</div>${x.author?`<div class="small muted sc-author">${esc(x.author)}</div>`:""}</div></article>`).join("");
  q("list").innerHTML=cards+`<button id="addCard" class="sc-add-card" type="button"><span class="sc-add-plus">＋</span><span>追加</span></button>`;
  document.querySelectorAll("[data-open]").forEach(c=>{c.onclick=e=>{if(e.target.closest("button,a,.sc-menu"))return;detail(c.dataset.open)};c.onkeydown=e=>{if(e.key==="Enter")detail(c.dataset.open)}});
@@ -183,8 +243,9 @@ function render(){
  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=e=>{e.stopPropagation();edit(b.dataset.edit)});
  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>{e.stopPropagation();del(b.dataset.del)});
  q("addCard").onclick=openForm;
+ renderFriendResults();
 }
-q("shareScenarioList").onclick=shareScenarioList;q("openForm").onclick=openForm;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;q("playersFilter").oninput=render;q("hoursFilter").oninput=render;render();
+q("shareScenarioList").onclick=shareScenarioList;q("openForm").onclick=openForm;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;q("playersFilter").oninput=render;q("hoursFilter").oninput=render;q("friendAdd").onclick=addFriendSource;renderFriendSources();render();loadFriendSources();
 })();
 </script>
 </body></html>

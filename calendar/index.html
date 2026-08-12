@@ -122,7 +122,14 @@ function renderCalendar(){
  const y=current.getFullYear(),m=current.getMonth();$("monthLabel").textContent=`${y}年${m+1}月`;$("weekdayHead").innerHTML=["日","月","火","水","木","金","土"].map(x=>`<div class="calendar-head">${x}</div>`).join("");
  const first=new Date(y,m,1),start=new Date(y,m,1-first.getDay()),ev=events(),today=new Date();let html="";
  for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;const dayEvents=ev.filter(x=>String(x.start||"").slice(0,10)===ds).sort((a,b)=>String(a.start||"").localeCompare(String(b.start||"")));html+=`<div class="calendar-day ${d.getMonth()!==m?"out":""} ${d.toDateString()===today.toDateString()?"today":""}" data-date="${ds}"><div class="daynum">${d.getDate()}</div>${dayEvents.map(x=>{const blocked=x.type==="blocked"||x.status==="blocked";const tm=blocked?"":String(x.start||"").slice(11,16);const label=blocked?"× 予定あり":(statusLabel[x.status]||"予定");return `<button type="button" class="event-chip ${blocked?"blocked":x.status}" data-id="${x.id}">${tm?`<strong>${esc(tm)}</strong> `:""}${esc(blocked?(x.title&&x.title!=="予定あり"?x.title:"予定あり"):(x.title||"卓"))} <span class="small status-badge">${esc(label)}</span></button>`}).join("")}</div>`}
- $("calendar").innerHTML=html;document.querySelectorAll(".calendar-day").forEach(x=>x.ondblclick=()=>{resetForm(x.dataset.date);showEditor();$("eventPanel").scrollIntoView({behavior:"smooth"})});document.querySelectorAll(".event-chip").forEach(x=>x.onclick=e=>{e.stopPropagation();editEvent(x.dataset.id)})
+ $("calendar").innerHTML=html;
+ document.querySelectorAll(".calendar-day").forEach(x=>{
+   x.onclick=(ev)=>{
+     if(ev.target.closest(".event-chip"))return;
+     resetForm(x.dataset.date);showEditor();$("eventPanel").scrollIntoView({behavior:"smooth"});
+   };
+ });
+ document.querySelectorAll(".event-chip").forEach(x=>x.onclick=e=>{e.stopPropagation();editEvent(x.dataset.id)})
 }
 $("scenarioSelect").onchange=()=>{const x=scenarios().find(v=>v.id===$("scenarioSelect").value);if(x){$("eventTitle").value=x.title||"";$("eventSystem").value=x.system||""}};
 $("eventPcSelect").onchange=()=>{const id=$("eventPcSelect").value;const pc=(window.TRPG39?.loadPCs?.()||[]).find(p=>p.id===id);if(pc)$("eventPc").value=pc.name||""};
@@ -141,9 +148,18 @@ $("saveEvent").onclick=()=>{
  const type=$("eventType").value,start=$("eventStart").value,id0=$("eventId").value;if(!start)return alert("日付を入力してください。");if(type==="trpg"&&!$("eventTitle").value.trim())return alert("シナリオ名を入力してください。");let list=events();
  if(type==="blocked"){const id=id0||TRPG39.uuid(),old=list.find(x=>x.id===id),item=buildBlockedEvent(id,start,old);const warning=conflictMessage(item,list);if(warning&&!confirm(warning))return;const i=list.findIndex(x=>x.id===id);if(i>=0)list[i]=item;else list.push(item);if(old?.linkedAlbumId||old?.type!=="blocked")TRPG39.saveAlbum(TRPG39.loadAlbum().filter(a=>a.eventId!==id));saveEvents(list)}
  else{
-   const ranges=[{start,end:$("eventEnd").value}];if(!id0){[...document.querySelectorAll(".bulk-row")].forEach(r=>{const s=r.querySelector(".bulk-start").value;if(s)ranges.push({start:s,end:r.querySelector(".bulk-end").value})})}
+   const ranges=[{start,end:$("eventEnd").value}];
+   [...$("bulkDays").querySelectorAll(".bulk-row")].forEach(r=>{
+     const bulkStart=r.querySelector(".bulk-start")?.value||"";
+     const bulkEnd=r.querySelector(".bulk-end")?.value||"";
+     if(bulkStart)ranges.push({start:bulkStart,end:bulkEnd});
+   });
    const pending=[];for(let n=0;n<ranges.length;n++){const id=n===0?(id0||TRPG39.uuid()):TRPG39.uuid(),old=n===0?list.find(x=>x.id===id):null,item=buildTrpgEvent(id,ranges[n].start,ranges[n].end,old);const warning=conflictMessage(item,list.concat(pending));if(warning&&!confirm((ranges.length>1?`${n+1}日目：\n`:"")+warning))return;pending.push(item)}
-   pending.forEach(item=>{const i=list.findIndex(x=>x.id===item.id);if(i>=0)list[i]=item;else list.push(item)});saveEvents(list);pending.forEach(item=>{const albumItem=TRPG39.syncEventToAlbum(item);if(albumItem)item.linkedAlbumId=albumItem.id});saveEvents(list)
+   pending.forEach(item=>{const i=list.findIndex(x=>x.id===item.id);if(i>=0)list[i]=item;else list.push(item)});
+   saveEvents(list);
+   pending.forEach(item=>{const albumItem=TRPG39.syncEventToAlbum(item);if(albumItem)item.linkedAlbumId=albumItem.id});
+   saveEvents(list);
+   if(ranges.length>1) alert(`${ranges.length}日分の予定を登録しました。`);
  }
  resetForm();hideEditor();renderCalendar();
 };

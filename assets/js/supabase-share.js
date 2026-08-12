@@ -63,5 +63,17 @@ async function getSharedPage(id) {
   return await res.json();
 }
 
-window.TRPG39Cloud = { configured, createSharedPage, getSharedPage };
+
+async function updateSharedPage(id,data) {
+  if (!configured()) throw new Error("SupabaseのPublishable keyが未設定です。");
+  const res = await fetch(cfg.projectUrl + "/rest/v1/rpc/update_shared_page", {
+    method: "POST", headers: headers(), body: JSON.stringify({ p_id:id, p_data:data })
+  });
+  if (!res.ok) {
+    const body=await res.text();
+    throw new Error("固定共有URLの更新に失敗しました。" + (body ? " " + body.slice(0,180) : ""));
+  }
+}
+
+window.TRPG39Cloud = { configured, createSharedPage, getSharedPage, updateSharedPage };
 })();

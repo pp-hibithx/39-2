@@ -36,6 +36,15 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 @media(max-width:620px){.sc-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.sc-body{padding:9px}.sc-head h3{font-size:.92rem}.sc-author{display:none}.sc-inline{align-items:stretch;flex-direction:column}.sc-inline button{width:100%}.sc-row{grid-template-columns:1fr}.sc-toolbar-main{width:100%}.sc-toolbar-main>div{min-width:0;flex:1}.sc-add-card{min-height:160px}}
 @media(max-width:390px){.sc-list{grid-template-columns:1fr}}
 .friend-panel{margin-top:14px}.friend-panel-summary{cursor:pointer;list-style:none}.friend-panel-summary::-webkit-details-marker{display:none}.friend-panel-summary:before{content:"▶";font-size:11px;margin-right:7px}.friend-panel[open]>.friend-panel-summary:before{content:"▼"}.friend-panel-body{margin-top:12px}.friend-head{display:flex;justify-content:space-between;gap:10px;align-items:end;flex-wrap:wrap}.friend-add{display:flex;gap:7px;align-items:end;flex-wrap:wrap}.friend-add input{width:260px}.friend-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:10px}.friend-card{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--panel)}.friend-card img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:7px;margin-bottom:7px}.friend-owner{font-size:11px;color:var(--muted)}.friend-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.friend-actions button,.friend-actions a{font-size:12px;padding:6px 8px}
+
+.sc-tags-input{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.sc-tags-input input{flex:1;min-width:180px}
+.sc-tags-input button{width:auto}
+.sc-tag-suggestions,.sc-tags-current,.sc-tag-filter-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.sc-tag-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:4px 8px;background:var(--panel);font-size:12px;cursor:pointer}
+.sc-tag-chip.active{border-color:var(--accent);color:var(--accent)}
+.sc-tag-chip .remove{font-size:14px;line-height:1;opacity:.7}
+.sc-tag-filter{min-width:170px}
 </style>
 <script src="../assets/js/supabase-config.js?v=0292"></script>
 <script src="../assets/js/supabase-share.js?v=0292"></script>
@@ -64,6 +73,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <div class="sc-filter"><label>状態</label><select id="filter"><option value="">すべて</option><option value="owned">所持</option><option value="played">通過済み</option><option value="planned">通過予定</option><option value="kpDone">KP済み</option><option value="kpPlanned">KP予定</option><option value="wish">気になる</option></select></div>
 <div class="sc-number-filter"><label>参加人数</label><input id="playersFilter" type="number" min="1" step="1" placeholder="例 4"></div>
 <div class="sc-number-filter"><label>遊べる時間</label><input id="hoursFilter" type="number" min="0.5" step="0.5" placeholder="最大h"></div>
+<div class="sc-tag-filter"><label>タグ</label><select id="tagFilter"><option value="">すべて</option></select></div>
 </div><div class="sc-tools"><button id="shareScenarioList" type="button">共有</button><button id="openForm" type="button">＋ 追加</button></div></div><div id="summary" class="small" style="margin-top:8px"></div>
 <div id="list" class="sc-list"></div>
 <details class="sc-panel friend-panel" id="friendPanel">
@@ -88,6 +98,10 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <label>サムネイル画像URL <span class="small muted">（自動取得できない時は手動指定）</span></label><input id="thumbnailUrl" type="url" placeholder="https://...">
 <div id="thumbPreview" class="sc-preview" hidden><img id="thumbPreviewImg" alt=""><div class="sc-preview-meta"><b id="thumbPreviewTitle"></b><div class="small muted">保存すると一覧に表示されます。</div></div></div>
 <label>シナリオ概要</label><textarea id="summaryText" rows="4" placeholder="公開されている概要や、自分で残しておきたい説明"></textarea>
+<label>タグ</label>
+<div class="sc-tags-input"><input id="tagInput" placeholder="例：秘匿HO、2PL、高ロスト"><button id="addTag" type="button">＋ 追加</button></div>
+<div id="tagSuggestions" class="sc-tag-suggestions small"></div>
+<div id="currentTags" class="sc-tags-current"></div>
 <label>自分用メモ <span class="small muted">（共有一覧には出しません）</span></label><textarea id="privateMemo" rows="3" placeholder="KP準備、遊びたい相手など"></textarea>
 <label>分類</label>
 <div class="sc-checks">
@@ -119,12 +133,40 @@ const q=id=>document.getElementById(id),flags={owned:"所持",played:"通過済�
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let data=TRPG39.loadScenarios();
 const persist=()=>TRPG39.saveScenarios(data);
+let editingTags=[];
+const cleanTag=v=>String(v||"").trim().replace(/^#+/,"");
+const uniqTags=xs=>[...new Set((xs||[]).map(cleanTag).filter(Boolean))];
+const allTags=()=>uniqTags(data.flatMap(x=>Array.isArray(x.tags)?x.tags:[])).sort((a,b)=>a.localeCompare(b,"ja"));
+function renderTagEditor(){
+ q("currentTags").innerHTML=editingTags.length?editingTags.map((tag,i)=>`<button type="button" class="sc-tag-chip" data-remove-tag="${i}">#${esc(tag)} <span class="remove">×</span></button>`).join(""):'<span class="small muted">タグはまだありません。</span>';
+ q("currentTags").querySelectorAll("[data-remove-tag]").forEach(b=>b.onclick=()=>{editingTags.splice(Number(b.dataset.removeTag),1);renderTagEditor();renderTagSuggestions()});
+}
+function renderTagSuggestions(){
+ const used=new Set(editingTags);
+ const tags=allTags().filter(t=>!used.has(t));
+ q("tagSuggestions").innerHTML=tags.length?`既存タグ：${tags.map(t=>`<button type="button" class="sc-tag-chip" data-suggest-tag="${esc(t)}">#${esc(t)}</button>`).join("")}`:"";
+ q("tagSuggestions").querySelectorAll("[data-suggest-tag]").forEach(b=>b.onclick=()=>{editingTags=uniqTags([...editingTags,b.dataset.suggestTag]);renderTagEditor();renderTagSuggestions()});
+}
+function addTypedTag(){
+ const raw=q("tagInput").value;
+ const parts=raw.split(/[,、\n]+/).map(cleanTag).filter(Boolean);
+ if(!parts.length)return;
+ editingTags=uniqTags([...editingTags,...parts]);
+ q("tagInput").value="";
+ renderTagEditor();renderTagSuggestions();
+}
+function refreshTagFilter(){
+ const selected=q("tagFilter")?.value||"";
+ const tags=allTags();
+ q("tagFilter").innerHTML='<option value="">すべて</option>'+tags.map(t=>`<option value="${esc(t)}">#${esc(t)}</option>`).join("");
+ if(tags.includes(selected))q("tagFilter").value=selected;
+}
 const rangeText=(a,b,suffix)=>{a=Number(a)||0;b=Number(b)||0;if(a&&b)return a===b?`${a}${suffix}`:`${a}–${b}${suffix}`;if(a)return `${a}${suffix}〜`;if(b)return `〜${b}${suffix}`;return ""};
 const matchesExtraFilters=x=>{const p=Number(q("playersFilter").value)||0,h=Number(q("hoursFilter").value)||0;let ok=true;if(p){const lo=Number(x.playersMin)||0,hi=Number(x.playersMax)||0;ok=ok&&(!lo||p>=lo)&&(!hi||p<=hi)}if(h){const hi=Number(x.hoursMax)||Number(x.hoursMin)||0;ok=ok&&(!hi||hi<=h)}return ok};
-function reset(){q("editId").value="";["title","system","author","url","thumbnailUrl","playersMin","playersMax","hoursMin","hoursMax","summaryText","privateMemo"].forEach(x=>q(x).value="");document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("publicationStatus").value="public";q("sourceType").value="";q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true;q("thumbStatus").textContent="";updateThumbPreview();q("scenarioForm").classList.remove("open")}
+function reset(){q("editId").value="";["title","system","author","url","thumbnailUrl","playersMin","playersMax","hoursMin","hoursMax","summaryText","privateMemo","tagInput"].forEach(x=>q(x).value="");editingTags=[];renderTagEditor();renderTagSuggestions();document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("publicationStatus").value="public";q("sourceType").value="";q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true;q("thumbStatus").textContent="";updateThumbPreview();q("scenarioForm").classList.remove("open")}
 function openForm(){q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
-function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");let id=q("editId").value||TRPG39.uuid();let item={id,title,system:q("system").value.trim(),author:q("author").value.trim(),playersMin:Number(q("playersMin").value)||null,playersMax:Number(q("playersMax").value)||null,hoursMin:Number(q("hoursMin").value)||null,hoursMax:Number(q("hoursMax").value)||null,url:q("url").value.trim(),thumbnailUrl:q("thumbnailUrl").value.trim(),publicationStatus:q("publicationStatus").value||"public",sourceType:q("sourceType").value||"",summaryText:q("summaryText").value.trim(),privateMemo:q("privateMemo").value.trim(),lastChecked:new Date().toISOString().slice(0,10),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),updatedAt:new Date().toISOString()};let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);persist();reset();render()}
-function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("editId").value=x.id;q("title").value=x.title||"";q("system").value=x.system||"";q("author").value=x.author||"";q("playersMin").value=x.playersMin??"";q("playersMax").value=x.playersMax??"";q("hoursMin").value=x.hoursMin??"";q("hoursMax").value=x.hoursMax??"";q("url").value=x.url||"";q("thumbnailUrl").value=x.thumbnailUrl||"";q("publicationStatus").value=x.publicationStatus||"public";q("sourceType").value=x.sourceType||"";q("summaryText").value=x.summaryText||"";q("privateMemo").value=x.privateMemo||"";updateThumbPreview(x.ogTitle||x.title||"");document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
+function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");addTypedTag();let id=q("editId").value||TRPG39.uuid(),old=data.find(x=>x.id===id)||{};let item={...old,id,title,system:q("system").value.trim(),author:q("author").value.trim(),playersMin:Number(q("playersMin").value)||null,playersMax:Number(q("playersMax").value)||null,hoursMin:Number(q("hoursMin").value)||null,hoursMax:Number(q("hoursMax").value)||null,url:q("url").value.trim(),thumbnailUrl:q("thumbnailUrl").value.trim(),publicationStatus:q("publicationStatus").value||"public",sourceType:q("sourceType").value||"",summaryText:q("summaryText").value.trim(),privateMemo:q("privateMemo").value.trim(),tags:uniqTags(editingTags),lastChecked:new Date().toISOString().slice(0,10),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),createdAt:old.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);persist();refreshTagFilter();reset();render()}
+function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("editId").value=x.id;q("title").value=x.title||"";q("system").value=x.system||"";q("author").value=x.author||"";q("playersMin").value=x.playersMin??"";q("playersMax").value=x.playersMax??"";q("hoursMin").value=x.hoursMin??"";q("hoursMax").value=x.hoursMax??"";q("url").value=x.url||"";q("thumbnailUrl").value=x.thumbnailUrl||"";q("publicationStatus").value=x.publicationStatus||"public";q("sourceType").value=x.sourceType||"";q("summaryText").value=x.summaryText||"";q("privateMemo").value=x.privateMemo||"";editingTags=uniqTags(x.tags||[]);renderTagEditor();renderTagSuggestions();updateThumbPreview(x.ogTitle||x.title||"");document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
 function del(id){if(confirm("このシナリオを削除しますか？")){data=data.filter(x=>x.id!==id);persist();render()}}
 function schedule(id){
  const x=data.find(v=>v.id===id);if(!x)return;
@@ -163,7 +205,7 @@ function renderFriendSources(){
 }
 function friendMatches(x){
  const term=q("search").value.trim().toLowerCase(),players=Number(q("playersFilter").value||0),hours=Number(q("hoursFilter").value||0);
- if(term&&![x.title,x.system,x.author,x._friend].join(" ").toLowerCase().includes(term))return false;
+ if(term&&![x.title,x.system,x.author,(x.tags||[]).join(" "),x._friend].join(" ").toLowerCase().includes(term))return false;
  if(players&&((x.playersMin&&players<Number(x.playersMin))||(x.playersMax&&players>Number(x.playersMax))))return false;
  if(hours&&x.hoursMin&&Number(x.hoursMin)>hours)return false;
  return true;
@@ -172,14 +214,14 @@ function renderFriendResults(){
  const xs=friendItems.filter(friendMatches);
  q("friendMatchCount").textContent=friendSources.length?`登録 ${friendSources.length}人 ／ 一致 ${xs.length}件`:"";
  if(q("search").value.trim()&&xs.length)q("friendPanel").open=true;
- q("friendResults").innerHTML=xs.length?xs.map(x=>`<article class="friend-card">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<div class="friend-owner">${esc(x._friend)}の一覧</div><b>${esc(x.title)}</b>${x.publicationStatus&&x.publicationStatus!=="public"?` <span class="badge">${esc(publicationLabels[x.publicationStatus]||x.publicationStatus)}</span>`:""}${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}<div class="friend-actions">${x.url?`<a class="button" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布ページ</a>`:""}<button type="button" data-friend-import="${esc(x._key)}">自分に追加</button></div></article>`).join(""):(friendSources.length?'<div class="small muted">条件に合う共有シナリオはありません。</div>':"");
+ q("friendResults").innerHTML=xs.length?xs.map(x=>`<article class="friend-card">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<div class="friend-owner">${esc(x._friend)}の一覧</div><b>${esc(x.title)}</b>${x.publicationStatus&&x.publicationStatus!=="public"?` <span class="badge">${esc(publicationLabels[x.publicationStatus]||x.publicationStatus)}</span>`:""}${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}${(x.tags||[]).length?`<div class="sc-meta">${uniqTags(x.tags).map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>`:""}<div class="friend-actions">${x.url?`<a class="button" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布ページ</a>`:""}<button type="button" data-friend-import="${esc(x._key)}">自分に追加</button></div></article>`).join(""):(friendSources.length?'<div class="small muted">条件に合う共有シナリオはありません。</div>':"");
  document.querySelectorAll("[data-friend-import]").forEach(b=>b.onclick=()=>importFriendScenario(b.dataset.friendImport));
 }
 function importFriendScenario(key){
  const x=friendItems.find(v=>v._key===key);if(!x)return;
  if(data.some(v=>String(v.title||"").trim()===String(x.title||"").trim()))return alert("同名のシナリオはすでに登録されています。");
  const flagsObj={};(x.labels||[]).forEach(label=>{const hit=Object.entries(flags).find(([,v])=>v===label);if(hit)flagsObj[hit[0]]=true});
- data.unshift({id:TRPG39.uuid(),title:x.title||"",system:x.system||"",author:x.author||"",url:x.url||"",thumbnailUrl:x.thumbnailUrl||"",playersMin:x.playersMin||null,playersMax:x.playersMax||null,hoursMin:x.hoursMin||null,hoursMax:x.hoursMax||null,publicationStatus:x.publicationStatus||"public",sourceType:x.sourceType||"",summaryText:x.summaryText||"",privateMemo:"",flags:flagsObj,memo:"",sourceFriend:x._friend});
+ data.unshift({id:TRPG39.uuid(),title:x.title||"",system:x.system||"",author:x.author||"",url:x.url||"",thumbnailUrl:x.thumbnailUrl||"",playersMin:x.playersMin||null,playersMax:x.playersMax||null,hoursMin:x.hoursMin||null,hoursMax:x.hoursMax||null,publicationStatus:x.publicationStatus||"public",sourceType:x.sourceType||"",summaryText:x.summaryText||"",privateMemo:"",tags:uniqTags(x.tags||[]),flags:flagsObj,memo:"",sourceFriend:x._friend});
  persist();render();alert("自分のSCENARIOへ追加しました。");
 }
 async function addFriendSource(){
@@ -200,9 +242,9 @@ function showShareUrl(url,message){
 }
 
 async function shareScenarioList(){
- const term=q("search").value.trim().toLowerCase(),f=q("filter").value;
- const xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term))&&matchesExtraFilters(x));
- const items=xs.map(x=>({title:x.title,system:x.system||"",author:x.author||"",url:x.url||"",thumbnailUrl:x.thumbnailUrl||"",playersMin:x.playersMin||null,playersMax:x.playersMax||null,hoursMin:x.hoursMin||null,hoursMax:x.hoursMax||null,publicationStatus:x.publicationStatus||"public",sourceType:x.sourceType||"",summaryText:x.summaryText||"",labels:Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>v)}));
+ const term=q("search").value.trim().toLowerCase(),f=q("filter").value,tag=q("tagFilter").value;
+ const xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!tag||(x.tags||[]).includes(tag))&&(!term||[x.title,x.system,x.author,(x.tags||[]).join(" ")].join(" ").toLowerCase().includes(term))&&matchesExtraFilters(x));
+ const items=xs.map(x=>({title:x.title,system:x.system||"",author:x.author||"",url:x.url||"",thumbnailUrl:x.thumbnailUrl||"",playersMin:x.playersMin||null,playersMax:x.playersMax||null,hoursMin:x.hoursMin||null,hoursMax:x.hoursMax||null,publicationStatus:x.publicationStatus||"public",sourceType:x.sourceType||"",summaryText:x.summaryText||"",tags:x.tags||[],labels:Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>v)}));
  const payload={kind:"scenario-list",version:2,title:"シナリオ一覧",updatedAt:new Date().toISOString(),items};
  try{
    if(TRPG39Cloud && TRPG39Cloud.configured()){
@@ -249,7 +291,8 @@ function prep(id){location.href="../prep/index.html?scenario="+encodeURIComponen
 function detail(id){
  const x=data.find(v=>v.id===id);if(!x)return;
  const labels=Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("");
- q("detailContent").innerHTML=`${x.thumbnailUrl?`<img class="sc-detail-img" src="${esc(x.thumbnailUrl)}" alt="">`:`<div class="sc-detail-img sc-placeholder" style="display:grid;place-items:center;font-size:64px">🌺</div>`}<div class="sc-detail-body"><div class="sc-detail-top"><div><h2>${esc(x.title)}</h2><div class="sc-meta">${x.autoCreated?`<span class="badge">仮登録</span>`:""}${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${pubBadge(x)}${labels}</div></div><button class="sc-detail-close" data-close type="button">×</button></div>${x.author?`<p>作者・サークル：${esc(x.author)}</p>`:""}${(x.playersMin||x.playersMax||x.hoursMin||x.hoursMax)?`<p class="small muted">${rangeText(x.playersMin,x.playersMax,"人")}${(x.playersMin||x.playersMax)&&(x.hoursMin||x.hoursMax)?" ／ ":""}${rangeText(x.hoursMin,x.hoursMax,"時間")}</p>`:""}${x.summaryText?`<section><h3>概要</h3><p style="white-space:pre-wrap">${esc(x.summaryText)}</p></section>`:""}${x.privateMemo?`<section><h3>自分用メモ</h3><p style="white-space:pre-wrap">${esc(x.privateMemo)}</p></section>`:""}${x.sourceType||x.lastChecked?`<p class="small muted">${x.sourceType?`出典：${esc(x.sourceType)}`:""}${x.sourceType&&x.lastChecked?" ／ ":""}${x.lastChecked?`最終確認：${esc(x.lastChecked)}`:""}</p>`:""}<div class="sc-detail-actions">${x.url?`<a class="button" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・掲載ページ</a>`:""}<button data-detail-prep="${x.id}">準備チェック</button><button data-detail-schedule="${x.id}">卓予定を作る</button><button data-detail-edit="${x.id}">編集</button></div></div>`;
+ const tagLabels=uniqTags(x.tags||[]).map(v=>`<span class="badge">#${esc(v)}</span>`).join("");
+ q("detailContent").innerHTML=`${x.thumbnailUrl?`<img class="sc-detail-img" src="${esc(x.thumbnailUrl)}" alt="">`:`<div class="sc-detail-img sc-placeholder" style="display:grid;place-items:center;font-size:64px">🌺</div>`}<div class="sc-detail-body"><div class="sc-detail-top"><div><h2>${esc(x.title)}</h2><div class="sc-meta">${x.autoCreated?`<span class="badge">仮登録</span>`:""}${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${pubBadge(x)}${labels}${tagLabels}</div></div><button class="sc-detail-close" data-close type="button">×</button></div>${x.author?`<p>作者・サークル：${esc(x.author)}</p>`:""}${(x.playersMin||x.playersMax||x.hoursMin||x.hoursMax)?`<p class="small muted">${rangeText(x.playersMin,x.playersMax,"人")}${(x.playersMin||x.playersMax)&&(x.hoursMin||x.hoursMax)?" ／ ":""}${rangeText(x.hoursMin,x.hoursMax,"時間")}</p>`:""}${x.summaryText?`<section><h3>概要</h3><p style="white-space:pre-wrap">${esc(x.summaryText)}</p></section>`:""}${x.privateMemo?`<section><h3>自分用メモ</h3><p style="white-space:pre-wrap">${esc(x.privateMemo)}</p></section>`:""}${x.sourceType||x.lastChecked?`<p class="small muted">${x.sourceType?`出典：${esc(x.sourceType)}`:""}${x.sourceType&&x.lastChecked?" ／ ":""}${x.lastChecked?`最終確認：${esc(x.lastChecked)}`:""}</p>`:""}<div class="sc-detail-actions">${x.url?`<a class="button" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・掲載ページ</a>`:""}<button data-detail-prep="${x.id}">準備チェック</button><button data-detail-schedule="${x.id}">卓予定を作る</button><button data-detail-edit="${x.id}">編集</button></div></div>`;
  q("detailDialog").showModal();
  q("detailContent").querySelector("[data-close]").onclick=()=>q("detailDialog").close();
  q("detailContent").querySelector("[data-detail-edit]").onclick=()=>{q("detailDialog").close();edit(id)};
@@ -257,10 +300,10 @@ function detail(id){
  q("detailContent").querySelector("[data-detail-prep]").onclick=()=>prep(id);
 }
 function render(){
- let term=q("search").value.trim().toLowerCase(),f=q("filter").value;
- let xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term))&&matchesExtraFilters(x));
+ let term=q("search").value.trim().toLowerCase(),f=q("filter").value,tag=q("tagFilter").value;
+ let xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!tag||(x.tags||[]).includes(tag))&&(!term||[x.title,x.system,x.author,(x.tags||[]).join(" ")].join(" ").toLowerCase().includes(term))&&matchesExtraFilters(x));
  q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件${friendSources.length?` ／ 共有 ${friendItems.filter(friendMatches).length}件`:""}`;
- const cards=xs.map(x=>`<article class="sc-card" data-open="${x.id}" tabindex="0"><div class="sc-thumb-wrap">${x.thumbnailUrl?`<img class="sc-thumb" src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="sc-placeholder">🌺</div>`}</div><div class="sc-menu-wrap"><button class="sc-menu-btn" data-menu="${x.id}" type="button" aria-label="メニュー">⋯</button><div class="sc-menu" data-menu-panel="${x.id}">${x.url?`<a target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布ページ</a>`:""}<button data-library="${x.id}" type="button">LIBRARYを見る</button><button data-prep="${x.id}" type="button">準備チェック</button><button data-schedule="${x.id}" type="button">卓予定を作る</button><button data-edit="${x.id}" type="button">編集</button><button class="danger" data-del="${x.id}" type="button">削除</button></div></div><div class="sc-body"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${pubBadge(x)}${rangeText(x.playersMin,x.playersMax,"人")?`<span class="badge">${rangeText(x.playersMin,x.playersMax,"人")}</span>`:""}${rangeText(x.hoursMin,x.hoursMax,"h")?`<span class="badge">${rangeText(x.hoursMin,x.hoursMax,"h")}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}</div>${x.author?`<div class="small muted sc-author">${esc(x.author)}</div>`:""}</div></article>`).join("");
+ const cards=xs.map(x=>`<article class="sc-card" data-open="${x.id}" tabindex="0"><div class="sc-thumb-wrap">${x.thumbnailUrl?`<img class="sc-thumb" src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="sc-placeholder">🌺</div>`}</div><div class="sc-menu-wrap"><button class="sc-menu-btn" data-menu="${x.id}" type="button" aria-label="メニュー">⋯</button><div class="sc-menu" data-menu-panel="${x.id}">${x.url?`<a target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布ページ</a>`:""}<button data-library="${x.id}" type="button">LIBRARYを見る</button><button data-prep="${x.id}" type="button">準備チェック</button><button data-schedule="${x.id}" type="button">卓予定を作る</button><button data-edit="${x.id}" type="button">編集</button><button class="danger" data-del="${x.id}" type="button">削除</button></div></div><div class="sc-body"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${pubBadge(x)}${rangeText(x.playersMin,x.playersMax,"人")?`<span class="badge">${rangeText(x.playersMin,x.playersMax,"人")}</span>`:""}${rangeText(x.hoursMin,x.hoursMax,"h")?`<span class="badge">${rangeText(x.hoursMin,x.hoursMax,"h")}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}${uniqTags(x.tags||[]).map(v=>`<span class="badge">#${esc(v)}</span>`).join("")}</div>${x.author?`<div class="small muted sc-author">${esc(x.author)}</div>`:""}</div></article>`).join("");
  q("list").innerHTML=cards+`<button id="addCard" class="sc-add-card" type="button"><span class="sc-add-plus">＋</span><span>追加</span></button>`;
  document.querySelectorAll("[data-open]").forEach(c=>{c.onclick=e=>{if(e.target.closest("button,a,.sc-menu"))return;detail(c.dataset.open)};c.onkeydown=e=>{if(e.key==="Enter")detail(c.dataset.open)}});
  document.querySelectorAll("[data-menu]").forEach(b=>b.onclick=e=>{e.stopPropagation();const panel=document.querySelector(`[data-menu-panel="${b.dataset.menu}"]`);document.querySelectorAll(".sc-menu.open").forEach(m=>{if(m!==panel)m.classList.remove("open")});panel.classList.toggle("open")});
@@ -270,7 +313,7 @@ function render(){
  q("addCard").onclick=openForm;
  renderFriendResults();
 }
-q("shareScenarioList").onclick=shareScenarioList;q("openForm").onclick=openForm;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;q("playersFilter").oninput=render;q("hoursFilter").oninput=render;q("friendAdd").onclick=addFriendSource;renderFriendSources();render();loadFriendSources();
+q("shareScenarioList").onclick=shareScenarioList;q("openForm").onclick=openForm;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("cancel").onclick=reset;q("addTag").onclick=addTypedTag;q("tagInput").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();addTypedTag()}};q("search").oninput=render;q("filter").onchange=render;q("tagFilter").onchange=render;q("playersFilter").oninput=render;q("hoursFilter").oninput=render;q("friendAdd").onclick=addFriendSource;refreshTagFilter();renderTagEditor();renderTagSuggestions();renderFriendSources();render();loadFriendSources();
 })();
 </script>
 </body></html>

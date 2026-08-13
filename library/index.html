@@ -218,7 +218,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02310">build v0.2.31.0</div></main>
+</div><div class="wrap small muted" data-build-marker="02312">build v0.2.31.2</div></main>
 
 <footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
 
@@ -504,7 +504,20 @@ function buildXReportText(x){
    if(!groups.has(role))groups.set(role,[]);
    groups.get(role).push(r);
  });
- const lines=[String(x.title||"").trim()].filter(Boolean);
+
+ const scenario=scenarioById(x.scenarioId||"")||{};
+ const system=String(x.system||scenario.system||"").trim();
+ const title=String(x.title||scenario.title||"").trim();
+ const author=String(scenario.author||"").trim();
+
+ const head=[
+   system,
+   title?`「${title}」`:"",
+   author?`（${author}様作）`:""
+ ].join("");
+
+ const lines=[head].filter(Boolean);
+
  for(const role of ["KP","SKP"]){
    const rs=groups.get(role)||[];
    if(rs.length){
@@ -515,6 +528,7 @@ function buildXReportText(x){
      if(values.length)lines.push(`${role}：${values.join("、")}`);
    }
  }
+
  const pls=groups.get("PL")||[];
  if(pls.length){
    lines.push("PL/PC");
@@ -524,11 +538,13 @@ function buildXReportText(x){
      lines.push(r.ho?`${r.ho}：${who}`:who);
    });
  }
+
  const others=groups.get("その他")||[];
  others.forEach(r=>{
    const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();
    if(who)lines.push(`${r.ho?`${r.ho} `:""}${who}`);
  });
+
  if(String(x.comment||"").trim()){
    lines.push("",String(x.comment).trim());
  }
@@ -573,17 +589,28 @@ async function shareAlbum(id){
  }
 }
 async function postAlbumToX(id){
- // Open immediately so browsers do not block the composer after async sharing work.
- const popup=window.open("about:blank","_blank","noopener,noreferrer");
+ // Open a temporary tab during the click event so popup blockers allow it.
+ // Do not use noopener here: some browsers return null when noopener is supplied,
+ // which leaves only about:blank and prevents us from navigating the opened tab.
+ const popup=window.open("about:blank","_blank");
  try{
+   if(popup){
+     popup.document.title="X投稿画面を準備中…";
+     popup.document.body.innerHTML="<p style=\"font-family:sans-serif;padding:20px\">X投稿画面を準備しています…</p>";
+   }
    const result=await prepareShareUrl(id);
    const text=buildXReportText(result.item);
    const intent=new URL("https://x.com/intent/tweet");
    intent.searchParams.set("text",text);
    intent.searchParams.set("url",result.url);
    intent.searchParams.set("lang","ja");
-   if(popup)popup.location.href=intent.href;
-   else window.open(intent.href,"_blank","noopener,noreferrer");
+   if(popup){
+     popup.opener=null;
+     popup.location.replace(intent.href);
+   }else{
+     // Popup was blocked: provide a normal same-tab fallback.
+     location.href=intent.href;
+   }
  }catch(e){
    if(popup)popup.close();
    console.error(e);

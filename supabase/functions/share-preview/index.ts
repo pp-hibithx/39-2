@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SITE_BASE_URL = (Deno.env.get("SITE_BASE_URL") || "https://pp-hibithx.github.io/39-2").replace(/\/$/, "");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const BUCKET = "share-previews";
 
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
     return json({ error: "POST only" }, 405);
   }
 
-  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SERVICE_ROLE_KEY) {
     return json({ error: "Supabase環境変数を取得できません" }, 500);
   }
 
@@ -60,14 +61,30 @@ Deno.serve(async (req) => {
       return json({ error: "共有IDが正しくありません" }, 400);
     }
 
+    // 共有ページ本体と同じ方法で取得する。
+    // get_shared_page は Publishable/anon key からのRPCで正常動作しているため、
+    // Service Role client 経由ではなく同じHTTP RPCを使う。
+    const sharedRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_shared_page`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ p_id: id }),
+    });
+    if (!sharedRes.ok) {
+      const detail = await sharedRes.text();
+      console.error("get_shared_page failed", sharedRes.status, detail);
+      return json({ error: "共有データを読み込めませんでした", status: sharedRes.status }, 502);
+    }
+    const p = await sharedRes.json();
+    if (!p) {
+      return json({ error: "共有データが見つかりません" }, 404);
+    }
+
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-
-    const { data: p, error: readError } = await supabase.rpc("get_shared_page", { p_id: id });
-    if (readError || !p) {
-      return json({ error: "共有データが見つかりません" }, 404);
-    }
 
     const isLibrary = p.kind === "library-session";
     const title = isLibrary && p.title ? `${p.title}｜SAKU+MERU` : "SAKU+MERU";

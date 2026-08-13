@@ -31,7 +31,7 @@
 .share-spoiler{margin-top:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .share-spoiler summary{cursor:pointer;padding:9px 11px;font-weight:700;user-select:none}
 .share-spoiler .spoiler-body{padding:10px 12px;border-top:1px solid var(--line);line-height:1.8}
-</style>
+.share-report-block{margin-top:12px;line-height:1.7}.share-report-block>strong{display:block;margin-bottom:4px}</style>
 <script src="../assets/js/optional-features.js?v=0292" defer></script>
 </head>
 <body>
@@ -49,11 +49,27 @@
 <footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
 <script src="../assets/js/main.js?v=0292"></script>
 <script src="../assets/js/supabase-config.js?v=0292"></script>
-<script src="../assets/js/supabase-share.js?v=02305"></script>
+<script src="../assets/js/supabase-share.js?v=02306"></script>
 <script>
 (async()=>{
  const box=document.getElementById("shareContent");
  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ const reportHtml=p=>{
+   const rows=Array.isArray(p.participantRows)?p.participantRows:[];
+   if(!rows.length){
+     return (p.participants||[]).length?`<p><strong>参加者</strong><br>${esc((p.participants||[]).join(" / "))}</p>`:"";
+   }
+   const groups=new Map();
+   rows.forEach(r=>{const role=String(r.role||"PL");if(!groups.has(role))groups.set(role,[]);groups.get(role).push(r)});
+   const order=["KP","SKP","PL","その他"];
+   return order.filter(role=>groups.has(role)).map(role=>{
+     const rs=groups.get(role);
+     if(role==="PL"){
+       return `<div class="share-report-block"><strong>PL / PC</strong>${rs.map(r=>`<div>${r.ho?`${esc(r.ho)}：`:""}${esc(r.plName||"")} ${r.pcName?`/ ${esc(r.pcName)}`:""}</div>`).join("")}</div>`;
+     }
+     return `<div class="share-report-block"><strong>${esc(role)}</strong>${rs.map(r=>`<div>${r.ho?`${esc(r.ho)}：`:""}${esc(r.plName||"")}${r.pcName?` / ${esc(r.pcName)}`:""}</div>`).join("")}</div>`;
+   }).join("");
+ };
  const id=new URLSearchParams(location.search).get("id")||location.hash.replace(/^#/,"");
  if(!id){box.innerHTML="<p>共有IDがありません。</p>";return;}
  try{
@@ -65,9 +81,9 @@
      box.innerHTML=`<h2>${esc(legacyPayload.title||"LIBRARY")}</h2>
        <div class="share-meta">${legacyPayload.system?`<span class="badge">${esc(legacyPayload.system)}</span>`:""}${p.role?`<span class="badge">${esc(p.role)}</span>`:""}${p.date?`<span class="badge">${esc(p.date)}</span>`:""}</div>
        ${p.image?`<img src="${esc(p.image)}" alt="" style="max-width:420px;width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:10px">`:""}
-       ${p.pcName?`<p><strong>PC</strong>　${esc(p.pcName)}</p>`:""}
-       ${(p.participants||[]).length?`<p><strong>参加者</strong>　${esc(p.participants.join(" / "))}</p>`:""}
-       ${p.comment?`<p style="white-space:pre-wrap">${esc(p.comment)}</p>`:""}
+       ${p.selfRole?`<p class="small muted">自分：${esc(p.selfRole)}${p.selfPcName?` / ${esc(p.selfPcName)}`:""}</p>`:""}
+       ${reportHtml(p)}
+       ${p.comment?`<div class="share-report-block"><strong>ひとこと</strong><p style="white-space:pre-wrap;margin:.35em 0 0">${esc(p.comment)}</p></div>`:""}
        ${p.spoiler?`<details class="spoiler"><summary>⚠ ネタバレ</summary><div class="spoiler-body">${esc(p.spoiler)}</div></details>`:""}`;
    } else if(legacyPayload.kind==="calendar-availability"){
      const days=p.days||[];

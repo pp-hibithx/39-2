@@ -73,6 +73,14 @@
       pcId: input.pcId || "",
       participants: Array.isArray(input.participants) ? input.participants : [],
       participantIds: Array.isArray(input.participantIds) ? input.participantIds : [],
+      participantRows: Array.isArray(input.participantRows) ? input.participantRows.map(r => ({
+        role: String(r?.role || "PL"),
+        ho: String(r?.ho || ""),
+        plName: String(r?.plName || ""),
+        playerId: String(r?.playerId || ""),
+        pcName: String(r?.pcName || ""),
+        relation: String(r?.relation || "")
+      })) : [],
       imageUrls: Array.isArray(input.imageUrls) ? input.imageUrls : [],
       comment: input.comment || "",
       articleBody: input.articleBody || "",

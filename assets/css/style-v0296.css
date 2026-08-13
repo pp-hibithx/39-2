@@ -1,0 +1,931 @@
+*{box-sizing:border-box}
+:root{--bg:#0e1014;--panel:#171a20;--panel2:#1d2129;--line:#2b303a;--text:#eef0f3;--muted:#9da4af;--accent:#c8a96b;--accent2:#e3c789;--danger:#d67575}
+html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:"Yu Gothic","Hiragino Kaku Gothic ProN","Segoe UI",sans-serif;line-height:1.75}a{color:inherit}.wrap{width:min(1000px,calc(100% - 32px));margin:auto}.site-header{padding:52px 0 24px}.brand{font-size:clamp(32px,6vw,58px);font-weight:800;letter-spacing:.08em;margin:0}.tagline{color:var(--muted);margin-top:6px}.nav{display:flex;gap:22px;flex-wrap:wrap;margin-top:28px;padding-bottom:18px;border-bottom:1px solid var(--line)}.nav a{text-decoration:none;font-size:13px;letter-spacing:.08em;color:var(--muted)}.nav a:hover,.nav a[aria-current="page"]{color:var(--accent2)}main{padding:20px 0 70px}.hero{padding:34px 0 18px}.hero h2{font-size:clamp(24px,4vw,40px);margin:0 0 8px}.hero p{max-width:720px;color:var(--muted)}section{margin-top:42px}.section-title{font-size:19px;letter-spacing:.08em;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{display:block;text-decoration:none;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;transition:.18s}.card:hover{transform:translateY(-2px);border-color:var(--accent);background:var(--panel2)}.card h3{margin:4px 0 8px}.card p{margin:0;color:var(--muted);font-size:14px}.badge{display:inline-block;font-size:11px;color:var(--accent2);border:1px solid var(--accent);border-radius:999px;padding:2px 8px}.note{padding:16px 18px;border-left:3px solid var(--accent);background:var(--panel);color:var(--muted)}.list{display:grid;gap:10px}.list-item{padding:14px 16px;background:var(--panel);border:1px solid var(--line);border-radius:10px}.muted{color:var(--muted)}.toolbox{display:grid;gap:14px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}.field input,.field textarea,.field select,button{width:100%;font:inherit;border-radius:10px;border:1px solid var(--line);background:#10141a;color:var(--text);padding:11px}.field textarea{min-height:180px;resize:vertical}button{cursor:pointer;background:#232a33}button.primary{background:#3b3224;border-color:var(--accent);color:#fff4d6;font-weight:700}.result{white-space:pre-wrap;background:#0c0f13;border:1px solid var(--line);border-radius:10px;padding:14px;min-height:120px}.footer{border-top:1px solid var(--line);padding:26px 0 36px;text-align:center;color:var(--muted);font-size:12px}@media(max-width:560px){.site-header{padding-top:34px}.nav{gap:14px}.card{padding:17px}}
+
+/* Dice log tool */
+.tool-panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}.tool-panel h3{margin:0 0 14px;font-size:17px}.or{text-align:center;color:var(--muted);font-size:12px;margin:2px 0}.button-row,.subrow,.result-head{display:flex;gap:10px;align-items:center}.button-row button{flex:1}.subrow{margin-bottom:12px}.compact{width:auto;padding:8px 12px;font-size:12px}.small{font-size:12px}.check-grid,.option-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px}.check-card{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#10141a;border:1px solid var(--line);border-radius:10px;cursor:pointer}.check-card input{width:auto;accent-color:var(--accent)}.check-card span{min-width:0;overflow:hidden;text-overflow:ellipsis}.check-card small{margin-left:auto;color:var(--muted)}.inline-field{margin-top:14px}.result-head{justify-content:space-between}.result-head h3{margin-bottom:2px}.special-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}.special-summary span{padding:5px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px}.special-summary b{color:var(--accent2)}.result{font-family:"Consolas","Yu Gothic",monospace;overflow:auto;white-space:pre-wrap;word-break:break-word}.help{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 15px}.help summary{cursor:pointer;color:var(--accent2)}.help p{color:var(--muted);font-size:13px;margin-bottom:2px}.field input[type="file"]{padding:8px}@media(max-width:560px){.button-row,.result-head{align-items:stretch;flex-direction:column}.button-row button,.result-head button{width:100%}.check-grid,.option-grid{grid-template-columns:1fr}}
+
+
+/* 39*2 branding */
+.brand-392{
+  display:flex;
+  align-items:center;
+  gap:.28em;
+  width:max-content;
+}
+.hibiscus-logo{
+  display:inline-block;
+  font-size:.62em;
+  line-height:1;
+  transform:translateY(-.04em) rotate(-7deg);
+  filter:saturate(.85);
+  text-shadow:0 0 14px rgba(213,111,120,.18);
+}
+
+.link{color:var(--accent);overflow-wrap:anywhere}
+
+.empty{padding:18px;text-align:center;border:1px dashed var(--line);border-radius:10px;color:var(--muted)}
+
+button.danger,.danger{background:transparent;border:1px solid #a85f65;color:#e8a5aa}
+
+
+.notice{padding:8px 10px;margin:8px 0 12px;border-left:3px solid var(--accent);background:rgba(255,255,255,.025)}
+.link{color:var(--accent);overflow-wrap:anywhere}
+.empty{padding:16px;text-align:center;border:1px dashed var(--line);border-radius:9px;color:var(--muted)}
+button.danger,.danger{background:transparent;border:1px solid #a85f65;color:#e8a5aa}
+
+
+/* v0.1.3: 日本語の不自然な折り返しを調整 */
+.hero p,
+.card p,
+.panel p,
+.notice,
+.small,
+.muted{
+  line-break: strict;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* TOPの説明文を途中で切れにくくする */
+.hero p{
+  max-width: none;
+}
+
+/* TOPカードは3列固定ではなく、十分な横幅を確保して自動配置 */
+.grid{
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+/* カード内の本文が極端に細くならないようにする */
+.card{
+  min-width: 0;
+}
+.card p{
+  max-width: 34em;
+}
+
+/* 狭い画面では自然に1列へ */
+@media (max-width: 720px){
+  .grid{
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* v0.1.4: 説明文の意味単位での改行 */
+.hero p,
+.card p,
+.panel p,
+.notice{
+  line-height:1.65;
+}
+
+
+/* v0.1.5: 手動改行をやめ、文章幅と日本語組版で自然に折り返す */
+.hero p,
+.card p,
+.panel p,
+.notice,
+.small,
+.muted{
+  line-break: strict;
+  word-break: normal;
+  overflow-wrap: normal;
+  hanging-punctuation: none;
+}
+
+/* 本文は読みやすい1行長に制限 */
+.hero p,
+.panel p,
+.notice{
+  max-width: 46em;
+}
+
+/* カード本文はカード幅に対して自然に収める */
+.card p{
+  max-width: 30em;
+}
+
+/* 行間は詰めすぎず、広げすぎず */
+.hero p,
+.card p,
+.panel p,
+.notice{
+  line-height: 1.6;
+}
+
+/* TOPカードの列幅を少し広めにして、末尾1～2文字の孤立を減らす */
+.grid{
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 14px;
+}
+
+/* ABOUTなど横長本文は左揃えで安定 */
+.panel{
+  min-width: 0;
+}
+.panel p,
+.hero p,
+.notice{
+  margin-right: auto;
+}
+
+/* 句読点が行頭に出にくいブラウザ向け設定 */
+html{
+  line-break: strict;
+  word-break: normal;
+}
+
+/* 狭い画面では1列に */
+@media (max-width: 760px){
+  .grid{
+    grid-template-columns: 1fr;
+  }
+  .hero p,
+  .panel p,
+  .notice,
+  .card p{
+    max-width: none;
+  }
+}
+
+button.success,.success{background:#244735;color:#dcffe6;border:1px solid #3e6c52}
+
+/* v0.2.6: cloud sync status */
+.cloud-sync-badge{
+  position:fixed;
+  right:14px;
+  bottom:14px;
+  z-index:9999;
+  width:auto;
+  max-width:min(82vw,320px);
+  padding:7px 11px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(20,24,31,.92);
+  color:#eef3f8;
+  font:inherit;
+  font-size:12px;
+  line-height:1.2;
+  box-shadow:0 4px 18px rgba(0,0,0,.22);
+  cursor:pointer;
+}
+.cloud-sync-badge[data-state="synced"]{opacity:.72}
+.cloud-sync-badge[data-state="checking"],
+.cloud-sync-badge[data-state="pending"],
+.cloud-sync-badge[data-state="syncing"]{opacity:.92}
+.cloud-sync-badge[data-state="conflict"],
+.cloud-sync-badge[data-state="error"]{opacity:1;font-weight:700}
+.cloud-sync-badge[hidden]{display:none!important}
+
+
+/* v0.2.9 — quiet UI: content first, actions second */
+:root{--quiet-hover:rgba(255,255,255,.055)}
+button,.button{
+  width:auto;
+  min-height:0;
+  padding:5px 8px;
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  font-size:12px;
+  line-height:1.35;
+  text-decoration:none;
+  cursor:pointer;
+}
+button:hover,.button:hover{background:var(--quiet-hover);color:var(--text)}
+button.primary,button.success,button.danger,.danger{
+  width:auto;background:transparent;border:0;color:var(--muted);font-weight:400;
+}
+button.primary:hover,button.success:hover{background:var(--quiet-hover);color:var(--accent2)}
+button.danger:hover,.danger:hover{background:rgba(214,117,117,.08);color:#e8a5aa}
+.action-link{display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border-radius:5px;color:var(--muted);font-size:12px;text-decoration:none;cursor:pointer}
+.action-link:hover{background:var(--quiet-hover);color:var(--text)}
+.action-row{display:flex;align-items:center;gap:3px;flex-wrap:wrap}
+.action-row.end{justify-content:flex-end}
+.panel{background:transparent;border:0}
+.panel>h2,.panel>h3{font-size:16px;margin:0 0 12px}
+/* forms remain easy to touch, while their actions stay quiet */
+input,textarea,select{font:inherit;border-radius:7px;border:1px solid var(--line);background:#10141a;color:var(--text);padding:8px 9px}
+label{font-size:12px;color:var(--muted)}
+/* calendar */
+.calendar-toolbar .month-nav{display:flex;align-items:center;gap:3px}
+.calendar-toolbar .month-nav strong{min-width:9em;text-align:center;font-size:15px}
+.calendar-toolbar button{font-size:12px}
+.calendar-day{border-color:rgba(255,255,255,.08)!important;background:transparent!important;border-radius:7px!important}
+.calendar-day:hover{background:rgba(255,255,255,.018)!important}
+.event-chip{width:100%;text-align:left!important;border:0!important;border-radius:5px!important;padding:4px 5px!important;margin:2px 0!important;background:rgba(255,255,255,.035)!important;color:var(--text)!important;font-size:.76rem!important}
+.event-chip:hover{background:rgba(255,255,255,.075)!important}
+.event-chip.done{opacity:.72}.event-chip.cancelled{opacity:.42}
+.event-editor{border-top:1px solid var(--line);padding-top:20px;margin-top:30px!important}
+.event-editor-actions{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:10px}
+/* library */
+.album-actions{display:flex!important;gap:3px!important;align-items:center;flex-wrap:wrap}
+.album-actions button{width:auto!important}
+/* backup */
+.backup-actions{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+/* tool actions: compact but still obvious enough */
+.tool-panel .button-row button,.tool-panel .result-head button{width:auto;flex:0 0 auto}
+@media(max-width:560px){
+  button,.button{font-size:12px}
+  .calendar-toolbar{align-items:center!important}
+  .calendar-toolbar .month-nav strong{min-width:7.5em}
+  .event-editor-actions,.backup-actions,.album-actions{gap:2px}
+}
+
+/* v0.2.12 — 39*2 global compact UI, based on dice-log v0.2.11 */
+body{font-size:14px;line-height:1.65}
+main{padding-top:12px}
+.hero{padding:22px 0 10px}
+.hero h2{font-size:20px!important;line-height:1.4;margin:0 0 4px;font-weight:700}
+.hero p{font-size:12.5px;line-height:1.65;margin-top:0;color:var(--muted)}
+section{margin-top:20px}
+.section-title{font-size:15px;padding-bottom:7px;margin-bottom:12px}
+.panel{padding:14px;margin:12px 0;border-radius:9px}
+.panel>h2,.panel>h3,.album-panel>h2,.album-panel h2{font-size:15px!important;line-height:1.45;margin:0 0 8px;font-weight:700;letter-spacing:0}
+.card,.list-item{padding:9px 10px;border-radius:7px}
+.card h3{font-size:13px;line-height:1.45;margin:0 0 5px}
+.card p{font-size:11.5px;line-height:1.55}
+.small,.muted{font-size:11.5px!important;line-height:1.55}
+label{font-size:11.5px!important;margin:7px 0 3px!important}
+input,select,textarea,.field input,.field textarea,.field select{font-size:12.5px!important;padding:7px 8px!important;line-height:1.45!important;border-radius:7px!important}
+textarea,.field textarea{min-height:88px}
+button,.button,.action-link{font-size:11.5px!important;line-height:1.45!important;padding:3px 5px!important;border-radius:4px!important}
+.badge{font-size:10.5px!important;padding:1px 5px!important}
+.notice{font-size:11.5px;padding:7px 10px;border-left-width:2px}
+.empty{font-size:12px;padding:12px}
+table{font-size:11.5px;border-collapse:collapse}
+th{font-size:10.5px;padding:5px 6px}
+td{font-size:11.5px;padding:5px 6px;line-height:1.4}
+
+/* Calendar: one step smaller than v0.2.9 */
+.calendar-toolbar{margin:6px 0 8px!important}
+.calendar-toolbar .month-nav strong{font-size:13px!important;min-width:8.2em!important}
+.calendar-head{font-size:11px!important;padding:2px!important}
+.calendar-grid{gap:4px!important}
+.calendar-day{min-height:88px!important;padding:5px!important;border-radius:6px!important}
+.daynum{font-size:11px!important;margin-bottom:3px!important}
+.event-chip{font-size:10.5px!important;line-height:1.3!important;padding:3px 4px!important;margin:1px 0!important;border-radius:4px!important}
+.event-form{gap:7px!important}
+.event-editor{padding-top:14px!important;margin-top:20px!important}
+.event-editor-actions{margin-top:7px!important;gap:2px!important}
+.event-editor-actions button{font-size:11px!important;padding:2px 4px!important}
+
+/* Scenario: gallery first, editor directly below and aligned with content */
+.sc-layout{gap:20px!important}
+.sc-panel{padding:14px!important;border-radius:9px!important}
+.sc-form{max-width:none!important;width:100%!important;margin:0!important;border-top:1px solid var(--line)!important;border-left:0!important;border-right:0!important;border-bottom:0!important;background:transparent!important;padding:16px 0 0!important;border-radius:0!important}
+.sc-form h2{font-size:15px!important;margin:0 0 8px!important}
+.sc-row{gap:7px!important}
+.sc-checks{gap:4px!important;margin:6px 0!important}
+.sc-checks label{font-size:11.5px!important;padding:3px 6px!important;border-radius:999px!important}
+.sc-toolbar{gap:8px!important}
+.sc-toolbar-main{gap:7px!important}
+.sc-toolbar-main>div{min-width:160px!important}
+.sc-list{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))!important;gap:10px!important;margin-top:12px!important}
+.sc-card{border-radius:9px!important}
+.sc-body{padding:9px!important}
+.sc-head h3{font-size:12.5px!important;line-height:1.45!important}
+.sc-meta{gap:3px!important;margin-top:5px!important}
+.sc-author{margin-top:5px!important}
+.sc-menu-btn{width:26px!important;height:26px!important;font-size:16px!important;border-radius:6px!important}
+.sc-menu{top:30px!important;min-width:120px!important}
+.sc-menu button,.sc-menu a{font-size:11.5px!important;padding:5px 7px!important}
+.sc-add-card{min-height:170px!important;border-radius:9px!important;font-size:11.5px!important}
+.sc-add-plus{font-size:22px!important}
+.sc-preview img{width:110px!important;border-radius:7px!important}
+.sc-detail-body{padding:14px!important}
+.sc-detail-top h2{font-size:17px!important}
+.sc-detail-actions{gap:3px!important;margin-top:10px!important}
+
+/* Library: same density and list -> editor flow */
+.album-grid{gap:20px!important}
+.album-panel{padding:12px!important;border-radius:9px!important}
+.album-list{gap:8px!important;margin-top:8px!important}
+.album-card{border-radius:8px!important}
+.album-cover{min-height:58px!important;padding:10px!important}
+.album-body{padding:9px!important}
+.album-meta{gap:3px!important}
+.album-actions{margin-top:6px!important;gap:2px!important}
+.album-row{gap:7px!important}
+.library-editor{margin-top:18px!important;padding-top:14px!important;border-top:1px solid var(--line)!important;background:transparent!important;border-left:0!important;border-right:0!important;border-bottom:0!important;border-radius:0!important}
+.image-preview{gap:8px!important}.image-preview img{width:120px!important;border-radius:7px!important}
+.spoiler{margin-top:6px!important;border-radius:7px!important}.spoiler summary{font-size:11.5px!important;padding:6px 8px!important}.spoiler-body{font-size:11.5px!important;padding:0 8px 8px!important}
+.ext-row{padding:8px!important;margin:5px 0!important}
+
+/* Backup / tools / home cards */
+.backup-actions{gap:2px!important}
+.toolbox{gap:9px!important}
+.grid{gap:10px!important}
+
+@media(max-width:760px){
+  .calendar-day{min-height:70px!important;padding:3px!important}
+  .calendar-grid{gap:2px!important}
+  .event-chip{font-size:9.5px!important;padding:2px 3px!important}
+  .sc-list{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+}
+@media(max-width:390px){.sc-list{grid-template-columns:1fr!important}}
+
+/* v0.2.13 — compact form scale and alignment */
+:root{--ui-font:11.5px;--ui-control:28px}
+body{font-size:13px;line-height:1.58}
+.wrap{width:min(1000px,calc(100% - 32px))}
+label{font-size:11px!important;line-height:1.3!important;margin:5px 0 3px!important;color:var(--muted)}
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select,textarea,
+.field input,.field textarea,.field select{
+  box-sizing:border-box!important;font-size:11.5px!important;line-height:1.25!important;
+  min-height:28px!important;height:auto;padding:5px 7px!important;border-radius:5px!important
+}
+textarea,.field textarea{min-height:76px!important}
+button,.button,.action-link{font-size:11px!important;line-height:1.3!important;padding:2px 4px!important;border-radius:4px!important;min-height:0!important}
+.panel{padding:12px!important}.panel>h2,.panel>h3{font-size:14px!important}
+.small,.muted{font-size:11px!important}
+
+/* Forms use the same label-above-control rhythm everywhere. */
+.event-form>div,.sc-row>div,.album-row>div{display:flex!important;flex-direction:column!important;align-items:stretch!important;min-width:0}
+.event-form label,.sc-form label,.library-editor label{display:block!important;width:auto!important}
+
+/* Calendar: denser grid and compact editor, matching dice-log scale. */
+.calendar-day{min-height:72px!important;padding:4px!important}
+.calendar-head{font-size:10.5px!important}.daynum{font-size:10.5px!important}
+.event-chip{font-size:9.5px!important;padding:2px 3px!important;margin:1px 0!important}
+.event-editor{max-width:720px!important;margin-left:0!important;margin-right:auto!important}
+.event-form{grid-template-columns:repeat(2,minmax(0,280px))!important;column-gap:18px!important;row-gap:5px!important;align-items:start!important}
+.event-form .full{grid-column:1/-1!important;max-width:578px}
+.event-editor-actions{display:flex!important;gap:7px!important;align-items:center!important;flex-wrap:wrap!important}
+.event-editor-actions button{width:auto!important;background:transparent!important;border-color:transparent!important;color:var(--muted)!important;padding:2px 1px!important}
+.event-editor-actions button:hover{color:var(--text)!important;border-bottom-color:var(--line)!important}
+
+/* Scenario controls: compact toolbar, left-aligned editor, same scale as dice-log. */
+.sc-toolbar{align-items:end!important}.sc-toolbar-main{gap:8px!important}
+.sc-toolbar-main input,.sc-toolbar-main select{width:100%!important}
+.sc-search{width:220px!important}.sc-filter{width:140px!important}.sc-number-filter{width:90px!important}
+.sc-tools button{width:auto!important;background:transparent!important;border-color:transparent!important;color:var(--muted)!important}
+.sc-tools button:hover{color:var(--text)!important}
+.sc-form{max-width:760px!important;margin-left:0!important;margin-right:auto!important}
+.sc-form>.sc-row{grid-template-columns:repeat(2,minmax(0,280px))!important;column-gap:18px!important;row-gap:5px!important;max-width:578px}
+.sc-form>.sc-row .sc-row{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}
+.sc-inline{max-width:578px}.sc-inline button{width:auto!important}
+.sc-form>input{max-width:578px}.sc-checks{max-width:578px}
+.sc-checks label{font-size:10.5px!important;padding:2px 5px!important;margin:0!important}
+.sc-card .badge{font-size:9.5px!important}
+
+@media(max-width:760px){
+  .event-form,.sc-form>.sc-row{grid-template-columns:1fr!important;max-width:none!important}
+  .event-form .full{max-width:none}.sc-search,.sc-filter,.sc-number-filter{width:auto!important;flex:1 1 120px}
+  .calendar-day{min-height:60px!important}
+}
+
+
+/* v0.2.14 — ABOUT / LIBRARY behavior alignment */
+.about-page .panel p{max-width:none;margin-right:0}
+.about-page .panel{max-width:none}
+.library-editor[hidden]{display:none!important}
+
+
+/* v0.2.15 — text wrapping + calendar grid refinement */
+.home-card p,
+.home-card .desc,
+.nav-card p,
+.feature-card p,
+.about-copy,
+.about-copy p,
+.backup-copy,
+.backup-copy p,
+.library-note,
+.library-note p {
+  max-width: none !important;
+  width: auto !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  line-break: strict;
+}
+
+/* Preserve the intended two-line LIBRARY notice without splitting words. */
+.library-note,
+.library-notice,
+[data-library-notice] {
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+}
+
+/* Calendar: visible but quiet cell boundaries. */
+.calendar-grid > *,
+.calendar-day,
+.calendar-cell,
+.cal-day,
+.cal-cell {
+  border: 1px solid rgba(255,255,255,.10) !important;
+  box-sizing: border-box;
+}
+
+
+/* v0.2.15.1 — definitive HOME/BACKUP wrapping fix */
+.card p,
+.card .muted,
+.card .small,
+.home-grid p,
+.home-grid .muted,
+.home-grid .small,
+.page p,
+.panel p,
+.backup p,
+#backup p {
+  max-width: none !important;
+}
+
+/* Japanese UI prose: do not strand inflection endings such as られ/ます or でき/ます. */
+.home-grid p,
+.card p,
+.backup p,
+#backup p {
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+}
+
+/* Allow wrapping at sensible phrase boundaries when the viewport truly becomes narrow. */
+@media (max-width: 700px) {
+  .home-grid p,
+  .card p,
+  .backup p,
+  #backup p {
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+
+/* v0.2.16 — PDF cleaner; aligned to compact dice-log UI */
+.pdf-cleaner-page .hero { margin-bottom: 14px; }
+.pdf-cleaner-panel { padding: 16px 18px; }
+.pdf-cleaner-options {
+  display:flex; flex-wrap:wrap; gap:8px 14px;
+  margin-bottom:12px;
+  font-size:13px;
+}
+.compact-option { display:inline-flex; align-items:center; gap:6px; }
+.compact-option input { width:auto; min-height:0; margin:0; }
+.pdf-cleaner-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+.pdf-cleaner-grid .field { margin:0; }
+.field-head {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; margin-bottom:6px;
+}
+.field-head label { font-size:13px; font-weight:600; margin:0; }
+.pdf-cleaner-grid textarea {
+  width:100%;
+  min-height:280px;
+  padding:10px 11px;
+  font-size:13px;
+  line-height:1.65;
+  resize:vertical;
+  box-sizing:border-box;
+}
+.text-action {
+  border:0 !important;
+  background:transparent !important;
+  padding:2px 4px !important;
+  min-height:0 !important;
+  font-size:12px !important;
+  line-height:1.4;
+  cursor:pointer;
+  text-decoration:none;
+}
+.tool-actions { margin-top:10px; }
+.compact-primary {
+  width:auto !important;
+  min-width:0 !important;
+  padding:6px 12px !important;
+  min-height:30px !important;
+  font-size:13px !important;
+}
+.compact-tool-card { margin-top:12px; }
+.compact-tool-card h3 { margin-bottom:5px; font-size:14px; }
+.compact-tool-card p { margin:0 0 6px; font-size:12px; }
+@media (max-width: 760px) {
+  .pdf-cleaner-grid { grid-template-columns:1fr; }
+  .pdf-cleaner-grid textarea { min-height:220px; }
+}
+
+/* v0.2.20 — compact calendar actions */
+.calendar-top-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.calendar-top-actions .text-action{
+  border:0 !important;
+  background:transparent !important;
+  padding:2px 4px !important;
+  min-height:0 !important;
+  font-size:12px !important;
+  line-height:1.4;
+}
+
+
+/* v0.2.23 — theme system */
+:root{
+  color-scheme: dark;
+}
+
+html[data-theme="dark"]{
+  color-scheme: dark;
+}
+
+html[data-theme="light"]{
+  color-scheme: light;
+
+  --bg:#f5f2ea;
+  --panel:#ffffff;
+  --panel-2:#f8f6f0;
+  --text:#23211d;
+  --muted:#6f6a60;
+  --line:rgba(62,55,43,.16);
+  --accent:#a67c2d;
+  --accent-2:#c09a4a;
+  --danger:#a64b4b;
+}
+
+html[data-theme="light"] body{
+  background:#f5f2ea !important;
+  color:var(--text) !important;
+}
+
+html[data-theme="light"] .site-header,
+html[data-theme="light"] header,
+html[data-theme="light"] footer{
+  background:#f5f2ea !important;
+  color:var(--text) !important;
+}
+
+html[data-theme="light"] .panel,
+html[data-theme="light"] .card,
+html[data-theme="light"] .sc-panel,
+html[data-theme="light"] .lib-panel,
+html[data-theme="light"] .dir-panel,
+html[data-theme="light"] .share-card,
+html[data-theme="light"] .lib-group,
+html[data-theme="light"] .calendar-day,
+html[data-theme="light"] .calendar-cell,
+html[data-theme="light"] .cal-day,
+html[data-theme="light"] .cal-cell{
+  background:#fff !important;
+  color:var(--text) !important;
+  border-color:var(--line) !important;
+}
+
+html[data-theme="light"] input,
+html[data-theme="light"] textarea,
+html[data-theme="light"] select{
+  background:#fff !important;
+  color:#23211d !important;
+  border-color:rgba(62,55,43,.20) !important;
+}
+
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder{
+  color:#9a9488 !important;
+}
+
+html[data-theme="light"] .muted,
+html[data-theme="light"] .small,
+html[data-theme="light"] .dir-meta,
+html[data-theme="light"] .lib-child-meta,
+html[data-theme="light"] .lib-child-date,
+html[data-theme="light"] .lib-count{
+  color:var(--muted) !important;
+}
+
+html[data-theme="light"] .badge{
+  background:#f3ead5 !important;
+  color:#77591c !important;
+  border-color:#d2b164 !important;
+}
+
+html[data-theme="light"] a{
+  color:#8f6b22;
+}
+
+html[data-theme="light"] .nav a[aria-current="page"]{
+  color:#a67c2d !important;
+}
+
+html[data-theme="light"] .text-action,
+html[data-theme="light"] button{
+  color:#5d523e;
+}
+
+html[data-theme="light"] .primary,
+html[data-theme="light"] button.primary{
+  background:#c7a75c !important;
+  color:#1e1a12 !important;
+  border-color:#b99748 !important;
+}
+
+/* Theme control */
+.theme-switcher{
+  display:flex;
+  gap:4px;
+  align-items:center;
+  justify-content:flex-end;
+  margin-top:8px;
+  font-size:12px;
+}
+.theme-switcher button{
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  padding:2px 4px;
+  min-height:0;
+  font-size:12px;
+  cursor:pointer;
+}
+.theme-switcher button[aria-pressed="true"]{
+  color:var(--accent);
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+
+
+/* v0.2.23.1 — brighter light theme */
+html[data-theme="light"]{
+  --bg:#fbfaf7;
+  --panel:#ffffff;
+  --panel-2:#fdfcf9;
+  --text:#2a2926;
+  --muted:#757169;
+  --line:rgba(54,49,41,.12);
+  --accent:#a9791f;
+  --accent-2:#c59a3d;
+  --danger:#a64b4b;
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] .site-header,
+html[data-theme="light"] header,
+html[data-theme="light"] footer{
+  background:#fbfaf7 !important;
+}
+
+html[data-theme="light"] .panel,
+html[data-theme="light"] .card,
+html[data-theme="light"] .sc-panel,
+html[data-theme="light"] .lib-panel,
+html[data-theme="light"] .dir-panel,
+html[data-theme="light"] .share-card,
+html[data-theme="light"] .lib-group,
+html[data-theme="light"] .calendar-day,
+html[data-theme="light"] .calendar-cell,
+html[data-theme="light"] .cal-day,
+html[data-theme="light"] .cal-cell{
+  background:#ffffff !important;
+  border-color:rgba(54,49,41,.12) !important;
+  box-shadow:0 1px 2px rgba(38,34,27,.025);
+}
+
+html[data-theme="light"] input,
+html[data-theme="light"] textarea,
+html[data-theme="light"] select{
+  background:#ffffff !important;
+  color:#2a2926 !important;
+  border-color:rgba(54,49,41,.14) !important;
+}
+
+html[data-theme="light"] input:focus,
+html[data-theme="light"] textarea:focus,
+html[data-theme="light"] select:focus{
+  border-color:rgba(169,121,31,.38) !important;
+}
+
+html[data-theme="light"] .notice,
+html[data-theme="light"] .empty,
+html[data-theme="light"] .spoiler-body{
+  background:#fffdf8 !important;
+}
+
+html[data-theme="light"] .badge{
+  background:#fff9ea !important;
+  color:#7b5a18 !important;
+  border-color:#e1c57e !important;
+}
+
+
+/* v0.2.23.2 — definitive light theme fix */
+html[data-theme="light"]{
+  color-scheme: light !important;
+
+  --bg:#ffffff !important;
+  --bg2:#ffffff !important;
+  --surface:#ffffff !important;
+  --surface2:#f8f9fa !important;
+  --panel:#ffffff !important;
+  --panel2:#f7f7f8 !important;
+  --panel-2:#f7f7f8 !important;
+  --card:#ffffff !important;
+  --input:#ffffff !important;
+
+  --text:#222222 !important;
+  --fg:#222222 !important;
+  --muted:#6f7278 !important;
+  --subtle:#8a8d93 !important;
+
+  --line:#dddddf !important;
+  --border:#dddddf !important;
+
+  --accent:#a9791f !important;
+  --accent2:#c49a42 !important;
+  --accent-2:#c49a42 !important;
+}
+
+html[data-theme="light"],
+html[data-theme="light"] body{
+  background:#ffffff !important;
+  background-color:#ffffff !important;
+  color:#222222 !important;
+}
+
+html[data-theme="light"] .site-header,
+html[data-theme="light"] header,
+html[data-theme="light"] main,
+html[data-theme="light"] footer,
+html[data-theme="light"] .wrap,
+html[data-theme="light"] .page,
+html[data-theme="light"] .hero{
+  background-color:transparent !important;
+  color:#222222 !important;
+}
+
+/* Main surfaces */
+html[data-theme="light"] .panel,
+html[data-theme="light"] .card,
+html[data-theme="light"] .sc-panel,
+html[data-theme="light"] .lib-panel,
+html[data-theme="light"] .dir-panel,
+html[data-theme="light"] .share-card,
+html[data-theme="light"] .lib-group,
+html[data-theme="light"] .tool-card,
+html[data-theme="light"] details,
+html[data-theme="light"] article{
+  background:#ffffff !important;
+  color:#222222 !important;
+  border-color:#dddddf !important;
+}
+
+/* Inputs */
+html[data-theme="light"] input,
+html[data-theme="light"] textarea,
+html[data-theme="light"] select{
+  background:#ffffff !important;
+  color:#222222 !important;
+  border-color:#d8dadd !important;
+}
+
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder{
+  color:#9a9da3 !important;
+}
+
+/* Calendar: force every layer out of dark mode */
+html[data-theme="light"] .calendar,
+html[data-theme="light"] .calendar-wrap,
+html[data-theme="light"] .calendar-panel,
+html[data-theme="light"] .calendar-grid,
+html[data-theme="light"] .calendar-body,
+html[data-theme="light"] .month-grid,
+html[data-theme="light"] .cal-grid{
+  background:#ffffff !important;
+  color:#222222 !important;
+  border-color:#dddddf !important;
+}
+
+html[data-theme="light"] .calendar-day,
+html[data-theme="light"] .calendar-cell,
+html[data-theme="light"] .calendar-grid > *,
+html[data-theme="light"] .month-grid > *,
+html[data-theme="light"] .cal-day,
+html[data-theme="light"] .cal-cell{
+  background:#ffffff !important;
+  color:#222222 !important;
+  border-color:#e2e3e5 !important;
+}
+
+html[data-theme="light"] .calendar-day:hover,
+html[data-theme="light"] .calendar-cell:hover,
+html[data-theme="light"] .cal-day:hover,
+html[data-theme="light"] .cal-cell:hover{
+  background:#f7f7f8 !important;
+}
+
+html[data-theme="light"] .calendar-day.is-outside,
+html[data-theme="light"] .calendar-cell.is-outside,
+html[data-theme="light"] .other-month,
+html[data-theme="light"] .muted-day{
+  background:#fafafa !important;
+  color:#a2a5aa !important;
+}
+
+/* Common inline dark backgrounds that otherwise survive variables */
+html[data-theme="light"] [style*="background:#0"],
+html[data-theme="light"] [style*="background: #0"],
+html[data-theme="light"] [style*="background-color:#0"],
+html[data-theme="light"] [style*="background-color: #0"]{
+  background:#ffffff !important;
+  background-color:#ffffff !important;
+}
+
+/* Typography */
+html[data-theme="light"] h1,
+html[data-theme="light"] h2,
+html[data-theme="light"] h3,
+html[data-theme="light"] h4,
+html[data-theme="light"] p,
+html[data-theme="light"] label,
+html[data-theme="light"] summary{
+  color:#222222;
+}
+
+html[data-theme="light"] .muted,
+html[data-theme="light"] .small,
+html[data-theme="light"] .dir-meta,
+html[data-theme="light"] .lib-child-meta,
+html[data-theme="light"] .lib-child-date,
+html[data-theme="light"] .lib-count{
+  color:#74777d !important;
+}
+
+/* Navigation / accent */
+html[data-theme="light"] .nav{
+  border-color:#dedfe1 !important;
+}
+
+html[data-theme="light"] .nav a{
+  color:#585b60 !important;
+}
+
+html[data-theme="light"] .nav a[aria-current="page"],
+html[data-theme="light"] .theme-switcher button[aria-pressed="true"]{
+  color:#a9791f !important;
+}
+
+html[data-theme="light"] a{
+  color:#8d681f;
+}
+
+/* Buttons remain quiet, not dark slabs */
+html[data-theme="light"] button{
+  background:transparent;
+  color:#50545a;
+  border-color:#d8dadd;
+}
+
+html[data-theme="light"] button.primary,
+html[data-theme="light"] .primary{
+  background:#f2e3bd !important;
+  color:#5b4314 !important;
+  border-color:#d7bb76 !important;
+}
+
+/* Badges / notice */
+html[data-theme="light"] .badge{
+  background:#fff8e8 !important;
+  color:#795919 !important;
+  border-color:#dfc378 !important;
+}
+
+html[data-theme="light"] .notice,
+html[data-theme="light"] .empty,
+html[data-theme="light"] .spoiler-body{
+  background:#fafafa !important;
+  color:#333333 !important;
+  border-color:#e1e2e4 !important;
+}
+
+
+/* v0.2.29.6 — authoritative theme layer */
+html.theme-light,
+html[data-theme="light"]{
+  color-scheme:light !important;
+  --bg:#ffffff !important; --panel:#ffffff !important; --panel2:#f7f7f8 !important; --panel-2:#f7f7f8 !important;
+  --text:#222222 !important; --muted:#6f7278 !important; --line:#dddddf !important;
+  --accent:#a9791f !important; --accent2:#c49a42 !important; --accent-2:#c49a42 !important;
+}
+html.theme-light body, html[data-theme="light"] body{background:#fff !important;color:#222 !important}
+html.theme-light input,html.theme-light textarea,html.theme-light select,
+html[data-theme="light"] input,html[data-theme="light"] textarea,html[data-theme="light"] select{
+  background:#fff !important;color:#222 !important;border-color:#d8dadd !important;color-scheme:light !important;
+}
+html.theme-light .panel,html.theme-light .card,html.theme-light .sc-panel,html.theme-light .lib-panel,
+html.theme-light .dir-panel,html.theme-light .share-card,html.theme-light .lib-group,html.theme-light .tool-card,
+html[data-theme="light"] .panel,html[data-theme="light"] .card,html[data-theme="light"] .sc-panel,html[data-theme="light"] .lib-panel,
+html[data-theme="light"] .dir-panel,html[data-theme="light"] .share-card,html[data-theme="light"] .lib-group,html[data-theme="light"] .tool-card{
+  background:#fff !important;color:#222 !important;border-color:#dddddf !important;
+}
+html.theme-dark,html[data-theme="dark"]{color-scheme:dark !important}

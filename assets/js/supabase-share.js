@@ -64,12 +64,23 @@ async function getSharedPage(id) {
 }
 
 
-function sharePreviewUrl(id, version=0) {
-  if (!configured()) return "";
-  const u = new URL(String(cfg.projectUrl).replace(/\/$/, "") + "/functions/v1/share-preview");
-  u.searchParams.set("id", id);
-  if (version) u.searchParams.set("v", String(version));
-  return u.href;
+
+async function publishSharePreview(id, version=Date.now()) {
+  if (!configured()) throw new Error("SupabaseのPublishable keyが未設定です。");
+  const url = String(cfg.projectUrl).replace(/\/$/, "") + "/functions/v1/share-preview";
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "apikey": cfg.publishableKey,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ id, version })
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body?.url) {
+    throw new Error(body?.error || "OGP共有ページを作成できませんでした。");
+  }
+  return body.url;
 }
 
 async function updateSharedPage(id,data) {
@@ -83,5 +94,5 @@ async function updateSharedPage(id,data) {
   }
 }
 
-window.TRPG39Cloud = { configured, createSharedPage, getSharedPage, updateSharedPage, sharePreviewUrl };
+window.TRPG39Cloud = { configured, createSharedPage, getSharedPage, updateSharedPage, publishSharePreview };
 })();

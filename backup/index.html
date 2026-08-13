@@ -1,4 +1,4 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BACKUP | 39*2</title><script>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BACKUP | SAKU+Log</title><script>
 (()=>{try{const k="trpg39_theme",v=localStorage.getItem(k)||"system",m=(v==="light"||v==="dark")?v:(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"),r=document.documentElement;r.setAttribute("data-theme",m);r.setAttribute("data-theme-mode",v);r.classList.remove("theme-light","theme-dark");r.classList.add(m==="light"?"theme-light":"theme-dark");r.style.colorScheme=m;}catch(e){}})();
 </script>
 <link rel="stylesheet" href="../assets/css/style-v0296.css">
@@ -12,7 +12,7 @@
 }
 </style>
 </head><body>
-<header class="site-header"><div class="wrap"><h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・残す・共有する<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="index.html" aria-current="page">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
+<header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+Log <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・残す・共有する<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="index.html" aria-current="page">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
 <button type="button" data-theme-choice="system">端末</button>
 <span>·</span>
 <button type="button" data-theme-choice="dark">ダーク</button>
@@ -38,7 +38,7 @@
   PLAYERS管理設定もバックアップ／復元対象です。
 </div>
 </div>
-</main><footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
+</main><footer class="footer"><div class="wrap">© <span data-year></span> SAKU+Log</div></footer>
 <script src="../assets/js/main.js?v=0292"></script>
 <script src="../assets/js/migrate-v02.js?v=0292"></script>
 <script src="../assets/js/shared-data.js?v=0292"></script>
@@ -48,7 +48,7 @@
 (()=>{const q=id=>document.getElementById(id);
 q("export").onclick=()=>{let payload={app:"39*2",schemaVersion:1,exportedAt:new Date().toISOString(),scenarios:TRPG39.loadScenarios(),events:TRPG39.loadEvents(),album:TRPG39.loadAlbum()},b=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="39x2-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 q("import").onclick=()=>q("file").click();
-q("file").onchange=()=>{let f=q("file").files[0];if(!f)return;let r=new FileReader;r.onload=()=>{try{let x=JSON.parse(r.result);if(!Array.isArray(x.scenarios)||!Array.isArray(x.events)||!Array.isArray(x.album))throw 0;if(confirm("現在のSCENARIO・CALENDAR・LIBRARYをバックアップ内容で置き換えますか？")){TRPG39.saveScenarios(x.scenarios);TRPG39.saveEvents(x.events);TRPG39.saveAlbum(x.album);alert("復元しました。")}}catch{alert("39*2のバックアップを読み込めませんでした。")}};r.readAsText(f);q("file").value=""};
+q("file").onchange=()=>{let f=q("file").files[0];if(!f)return;let r=new FileReader;r.onload=()=>{try{let x=JSON.parse(r.result);if(!Array.isArray(x.scenarios)||!Array.isArray(x.events)||!Array.isArray(x.album))throw 0;if(confirm("現在のSCENARIO・CALENDAR・LIBRARYをバックアップ内容で置き換えますか？")){TRPG39.saveScenarios(x.scenarios);TRPG39.saveEvents(x.events);TRPG39.saveAlbum(x.album);alert("復元しました。")}}catch{alert("SAKU+Logのバックアップを読み込めませんでした。")}};r.readAsText(f);q("file").value=""};
 
 const sync=q("syncId"), status=q("cloudStatus"), auto=q("autoSync");
 sync.value=TRPG39Sync.getSyncId();

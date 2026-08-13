@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SCENARIO | 39*2</title>
+<title>SCENARIO | SAKU+Log</title>
 <script>
 (()=>{try{const k="trpg39_theme",v=localStorage.getItem(k)||"system",m=(v==="light"||v==="dark")?v:(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"),r=document.documentElement;r.setAttribute("data-theme",m);r.setAttribute("data-theme-mode",v);r.classList.remove("theme-light","theme-dark");r.classList.add(m==="light"?"theme-light":"theme-dark");r.style.colorScheme=m;}catch(e){}})();
 </script>
@@ -35,7 +35,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 </head>
 <body>
 <header class="site-header"><div class="wrap">
-<h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
+<h1 class="brand brand-392">SAKU+Log <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
 <div class="tagline">探す・遊ぶ・残す・共有する<br>TRPG Scenario &amp; Tools</div>
 <nav class="nav"><a href="../index.html">HOME</a><a href="index.html" aria-current="page">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
 <button type="button" data-theme-choice="system">端末</button>
@@ -60,8 +60,8 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <details class="sc-panel friend-panel" id="friendPanel">
  <summary class="friend-panel-summary"><div><b>友人のシナリオ一覧</b> <span id="friendMatchCount" class="small muted"></span><div class="small">一度登録した共有URLはこのブラウザに保存されます。</div></div></summary>
  <div class="friend-panel-body">
- <div class="friend-head"><div class="small">共有された39*2のシナリオ一覧を登録すると、上の検索と一緒に探せます。</div>
- <div class="friend-add"><div><label>名前</label><input id="friendName" placeholder="例：Aさん"></div><div><label>共有URL</label><input id="friendUrl" placeholder="39*2の共有URL"></div><button id="friendAdd" type="button">＋ 登録</button></div></div>
+ <div class="friend-head"><div class="small">共有されたSAKU+Logのシナリオ一覧を登録すると、上の検索と一緒に探せます。</div>
+ <div class="friend-add"><div><label>名前</label><input id="friendName" placeholder="例：Aさん"></div><div><label>共有URL</label><input id="friendUrl" placeholder="SAKU+Logの共有URL"></div><button id="friendAdd" type="button">＋ 登録</button></div></div>
  <div id="friendSources" class="small" style="margin-top:8px"></div>
  <div id="friendResults" class="friend-results"></div>
  </div>
@@ -94,7 +94,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 </div>
 </div></main>
 <dialog id="detailDialog" class="sc-detail"><div id="detailContent"></div></dialog>
-<footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
+<footer class="footer"><div class="wrap">© <span data-year></span> SAKU+Log</div></footer>
 
 <script src="../assets/js/main.js?v=0292"></script>
 <script src="../assets/js/migrate-v02.js?v=0292"></script>
@@ -175,7 +175,7 @@ function importFriendScenario(key){
 }
 async function addFriendSource(){
  const name=q("friendName").value.trim()||"友人",url=q("friendUrl").value.trim(),id=sharedIdFromUrl(url);
- if(!url||!id)return alert("39*2のシナリオ一覧共有URLを入力してください。");
+ if(!url||!id)return alert("SAKU+Logのシナリオ一覧共有URLを入力してください。");
  if(friendSources.some(x=>sharedIdFromUrl(x.url)===id))return alert("この共有一覧は登録済みです。");
  friendSources.push({name,url,error:""});saveFriendSources();q("friendName").value="";q("friendUrl").value="";await loadFriendSources();
 }

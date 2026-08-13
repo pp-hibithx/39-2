@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ABOUT | 39*2</title>
+<title>ABOUT | SAKU+Log</title>
 <script>
 (()=>{try{const k="trpg39_theme",v=localStorage.getItem(k)||"system",m=(v==="light"||v==="dark")?v:(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"),r=document.documentElement;r.setAttribute("data-theme",m);r.setAttribute("data-theme-mode",v);r.classList.remove("theme-light","theme-dark");r.classList.add(m==="light"?"theme-light":"theme-dark");r.style.colorScheme=m;}catch(e){}})();
 </script>
@@ -13,7 +13,7 @@
 </head>
 <body class="about-page">
 <header class="site-header"><div class="wrap">
-<h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
+<h1 class="brand brand-392">SAKU+Log <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
 <div class="tagline">探す・遊ぶ・残す・共有する<br>TRPG Scenario &amp; Tools</div>
 <nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="index.html" aria-current="page">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
 <button type="button" data-theme-choice="system">端末</button>
@@ -27,28 +27,60 @@
 <main><div class="wrap">
 <div class="hero">
 <h2>ABOUT</h2>
-<p>39*2について。</p>
+<p>SAKU+Log（サクログ）について。</p>
 </div>
 
 <section class="panel">
-<h2>39*2</h2>
-<p>TRPGのシナリオ管理やセッションの記録、卓で使えるWebツールをまとめたサイトです。</p>
-<p>SCENARIOやLIBRARYに登録した内容は、お使いのブラウザ内に保存されます。他の利用者には共有されません。</p>
-<p>ダイスログ解析に読み込んだログは外部へ送信せず、ブラウザ内で処理します。</p>
+<h2>SAKU+Log</h2>
+<p>TRPGのシナリオを探して整理し、卓の準備をして、遊んだ記録を残し、必要な範囲で共有するためのサイトです。</p>
+<p>名前の「SAKU」には、シナリオを<strong>作る</strong>、卓で物語が<strong>咲く</strong>、そして<strong>サクッと</strong>使える場所にしたい、という意味を重ねています。</p>
+</section>
+
+<section class="panel">
+<h2>探す・遊ぶ・残す・共有する</h2>
+<div class="grid">
+<div class="card"><span class="badge">探す</span><h3>SCENARIO</h3><p>所持・通過・予定・KP状況など、自分のシナリオ棚を整理します。</p></div>
+<div class="card"><span class="badge">遊ぶ</span><h3>CALENDAR / 卓準備</h3><p>卓予定を日付で管理し、SCENARIOから卓の準備へつなげます。</p></div>
+<div class="card"><span class="badge">残す</span><h3>LIBRARY / PC / PLAYERS</h3><p>遊んだ卓、PC、一緒に遊んだ人との履歴を残します。</p></div>
+<div class="card"><span class="badge">共有する</span><h3>SHARE</h3><p>必要な記録を共有URLにして、相手に渡せます。</p></div>
+</div>
+</section>
+
+<section class="panel">
+<h2>主な機能</h2>
+<ul>
+<li><strong>SCENARIO</strong> — シナリオ情報・URL・サムネイル・所持／通過／予定／KP状況などを整理。</li>
+<li><strong>CALENDAR</strong> — 卓予定と遊んだ記録を日付から確認。</li>
+<li><strong>LIBRARY</strong> — セッションの記録やネタバレを含む卓記事を保存・共有。</li>
+<li><strong>PC</strong> — PC紹介、キャラクターシート、参加シナリオ履歴を管理。</li>
+<li><strong>PLAYERS</strong> — 任意で有効化し、同卓者と一緒に遊んだ履歴を管理。</li>
+<li><strong>TOOLS</strong> — ダイスログ解析など、卓で使えるWebツール。</li>
+<li><strong>BACKUP</strong> — ローカルのバックアップと、同期コードを使ったクラウド同期。</li>
+<li><strong>SETTINGS</strong> — テーマや任意機能などの設定。</li>
+</ul>
 </section>
 
 <section class="panel">
 <h2>データについて</h2>
-<p>ブラウザのデータを削除すると、保存した内容が消える場合があります。必要なデータはBACKUPから定期的に保存してください。</p>
+<p>SCENARIO・CALENDAR・LIBRARY・PC・PLAYERSの登録内容は、まずブラウザ内に保存されます。</p>
+<p>クラウド同期では、SCENARIO・CALENDAR・LIBRARYに加えて、PC・PLAYERSも同期対象です。</p>
+<p>一方、BACKUPページの<strong>ファイル書き出し</strong>は現在SCENARIO・CALENDAR・LIBRARYが対象です。PC・PLAYERSの登録内容はファイル書き出しにはまだ含まれません。PLAYERSを使うかどうかの設定はバックアップ／復元対象です。</p>
+<p>ブラウザのサイトデータを削除するとローカル保存内容が消える場合があります。大切な記録はクラウド同期も利用してください。</p>
 </section>
+
 <section class="panel">
-<h2>共有URLについて</h2>
-<p>SCENARIOの一覧やLIBRARYの卓記録は、共有URLを作成できます。URLを知っている人は内容を閲覧できます。</p>
-<p>共有URLには表示に必要な情報が含まれます。ネタバレや個人情報を含む記録を共有するときは、送信先をご確認ください。</p>
+<h2>共有とプライバシー</h2>
+<p>ダイスログ解析に読み込んだログは外部へ送信せず、ブラウザ内で処理します。</p>
+<p>共有URLを作成した記録は、URLを知っている人が閲覧できます。ネタバレや個人情報を含む内容を共有するときは、送信先をご確認ください。</p>
+</section>
+
+<section class="panel">
+<h2>使い方に迷ったら</h2>
+<p>実際の操作方法は <a href="../help/index.html">HELP</a> から確認できます。</p>
 </section>
 </div></main>
 
-<footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
+<footer class="footer"><div class="wrap">© <span data-year></span> SAKU+Log</div></footer>
 <script src="../assets/js/main.js?v=0292"></script>
 </body>
 </html>

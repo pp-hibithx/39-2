@@ -228,7 +228,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 <script src="../assets/js/supabase-config.js?v=0292"></script>
 <script src="../assets/js/supabase-sync.js?v=0292"></script>
 <script>TRPG39Sync.initAutoSync();</script>
-<script src="../assets/js/supabase-share.js?v=02308"></script>
+<script src="../assets/js/supabase-share.js?v=02309"></script>
 <script>
 (()=>{"use strict";
 const q=id=>document.getElementById(id);
@@ -507,16 +507,11 @@ async function shareAlbum(id){
        data[i]=TRPG39.normalizeAlbum({...data[i],shareId,shareVersion:ogVersion});
        persist();
      }
-     let previewUrl="";
-     try{
-       previewUrl=await TRPG39Cloud.publishSharePreview?.(shareId,ogVersion)||"";
-     }catch(previewError){
-       console.error("OGP preview publish failed",previewError);
-     }
-     const fallback=new URL("../share/index.html",location.href);fallback.searchParams.set("id",shareId);fallback.searchParams.set("v",String(ogVersion));
-     showShareUrl(previewUrl||fallback.href,previewUrl
-       ?"この開催記録の共有URLを更新しました。\nXに貼ると、登録したスクリーンショットがカード画像になります。"
-       :"共有URLを更新しました。\nOGP用ページの作成に失敗したため通常の共有URLを表示します。");
+     const previewUrl=new URL("https://sakumeru-share.sakumeru.workers.dev/");
+     previewUrl.searchParams.set("id",shareId);
+     previewUrl.searchParams.set("v",String(ogVersion));
+     showShareUrl(previewUrl.href,
+       "この開催記録の共有URLを更新しました。\nXに貼ると、登録したスクリーンショットがカード画像になります。");
      return;
    }
  }catch(e){console.error(e);alert("共有URLを作成できませんでした: "+(e.message||e));}

@@ -228,7 +228,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 <script src="../assets/js/supabase-config.js?v=0292"></script>
 <script src="../assets/js/supabase-sync.js?v=0292"></script>
 <script>TRPG39Sync.initAutoSync();</script>
-<script src="../assets/js/supabase-share.js?v=02307"></script>
+<script src="../assets/js/supabase-share.js?v=02308"></script>
 <script>
 (()=>{"use strict";
 const q=id=>document.getElementById(id);
@@ -479,7 +479,7 @@ function dateRange(g){
 function linksHtml(x){return (x.externalLinks||[]).length?`<div style="margin-top:5px">${x.externalLinks.map(l=>l.spoiler?`<details class="spoiler"><summary>⚠ ${esc(l.label||"ネタバレリンク")}</summary><div class="spoiler-body"><a class="link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">開く</a></div></details>`:`<a class="link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label||"外部リンク")}</a>`).join("　")}</div>`:""}
 
 function showShareUrl(url,message){
- if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(url).then(()=>prompt(message+"\\n\\nコピー済みです。",url)).catch(()=>prompt(message,url))}
+ if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(url).then(()=>prompt(message+"\n\nコピー済みです。",url)).catch(()=>prompt(message,url))}
  else prompt(message,url);
 }
 async function shareAlbum(id){

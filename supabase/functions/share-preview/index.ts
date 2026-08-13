@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
       .upload(path, bytes, {
-        contentType: "text/html; charset=utf-8",
+        contentType: "text/html",
         cacheControl: "60",
         upsert: true,
       });

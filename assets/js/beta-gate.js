@@ -24,7 +24,8 @@
           <button id="betaAccessButton" type="button" style="padding:8px 14px">入る</button>
         </div>
         <p id="betaAccessError" style="color:#b33;min-height:1.5em"></p>
-        <p style="margin-top:18px;font-size:13px;opacity:.75">卓報告などの共有ページは、そのままご覧いただけます。</p>
+        <p style="margin-top:18px;font-size:13px;opacity:.75">共有ページの閲覧やサイト説明、各種ツールはそのままお使いいただけます。</p>
+        <p style="margin-top:18px;font-size:13px;opacity:.75">本体はテスター募集中です。DMにてお声がけください。</p>
       </main>`;
 
     const input=document.getElementById("betaAccessKey");

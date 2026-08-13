@@ -238,6 +238,36 @@ section.cf-summary-panel{border-color:rgba(200,169,107,.28)!important}
 </style>
 <script src="../../assets/js/shared-data.js?v=0292"></script>
 <script src="../../assets/js/optional-features.js?v=02265" defer></script>
+
+<style id="diceLightThemeFix_v02317">
+/* 抽出範囲確認を含むダイスログ固有UIを共通テーマ変数へ統一 */
+input,select,textarea{
+  background:var(--dl-panel2);
+  color:var(--dl-text);
+}
+.source-preview{
+  background:var(--dl-panel2);
+  color:var(--dl-text);
+}
+.source-line{
+  color:var(--dl-text);
+}
+html[data-theme="light"] .source-preview,
+html.theme-light .source-preview{
+  background:var(--dl-panel2);
+  color:var(--dl-text);
+}
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea,
+html.theme-light input,
+html.theme-light select,
+html.theme-light textarea{
+  background:var(--dl-panel2);
+  color:var(--dl-text);
+}
+</style>
+
 </head>
 <body>
 <header class="site-header"><div class="wrap">

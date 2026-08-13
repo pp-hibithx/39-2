@@ -268,6 +268,24 @@ html.theme-light textarea{
 }
 </style>
 
+
+<style id="dicePreviewLightFix_v02318">
+html[data-theme="light"] .source-preview,
+html.theme-light .source-preview{
+  background:#fff !important;
+  color:#1f2328 !important;
+  border-color:var(--dl-line) !important;
+}
+html[data-theme="light"] .source-preview .source-line,
+html.theme-light .source-preview .source-line{color:#1f2328 !important;}
+html[data-theme="light"] .source-preview .line-no,
+html.theme-light .source-preview .line-no{color:#68707c !important;}
+html[data-theme="light"] .source-preview .source-line.hit,
+html.theme-light .source-preview .source-line.hit{
+  background:color-mix(in srgb,var(--dl-accent) 13%,transparent) !important;
+}
+</style>
+
 </head>
 <body>
 <header class="site-header"><div class="wrap">

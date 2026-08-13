@@ -4,7 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CALENDAR | 39*2</title>
-<link rel="stylesheet" href="../assets/css/style.css?v=0292">
+<script>
+(()=>{try{const k="trpg39_theme",v=localStorage.getItem(k)||"system",m=(v==="light"||v==="dark")?v:(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=m;document.documentElement.dataset.themeMode=v;}catch(e){}})();
+</script>
+<link rel="stylesheet" href="../assets/css/style.css?v=0295">
+<script defer src="../assets/js/theme.js?v=0295"></script>
 <style>
 .calendar-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
 .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
@@ -17,7 +21,6 @@
 .event-form{display:grid;grid-template-columns:1fr 1fr;gap:8px}.event-form .full{grid-column:1/-1}.event-editor[hidden]{display:none}.event-editor-actions{font-size:11px}.event-editor-actions button{padding:3px 5px;font-size:11px}.event-editor-actions button+button::before{content:""}
 @media(max-width:760px){.calendar-grid{gap:3px}.calendar-day{min-height:82px;padding:5px}.event-form{grid-template-columns:1fr}}
 </style>
-<script src="../assets/js/theme.js?v=0292"></script>
 <script src="../assets/js/optional-features.js?v=0292" defer></script>
 </head>
 <body>

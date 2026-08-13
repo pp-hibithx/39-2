@@ -6,6 +6,11 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const BUCKET = "share-previews";
 
+function log(step: string, detail?: unknown) {
+  if (detail === undefined) console.log(`[share-preview] ${step}`);
+  else console.log(`[share-preview] ${step}`, detail);
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -53,17 +58,21 @@ Deno.serve(async (req) => {
   }
 
   try {
+    log("開始");
     const body = await req.json().catch(() => ({}));
     const id = String(body?.id || "").trim();
     const version = String(body?.version || Date.now()).replace(/[^0-9A-Za-z_-]/g, "");
 
     if (!/^[A-Za-z0-9_-]{6,80}$/.test(id)) {
+      log("共有IDエラー", id);
       return json({ error: "共有IDが正しくありません" }, 400);
     }
+    log("共有ID確認", id);
 
     // 共有ページ本体と同じ方法で取得する。
     // get_shared_page は Publishable/anon key からのRPCで正常動作しているため、
     // Service Role client 経由ではなく同じHTTP RPCを使う。
+    log("共有データ取得開始");
     const sharedRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_shared_page`, {
       method: "POST",
       headers: {
@@ -74,11 +83,13 @@ Deno.serve(async (req) => {
     });
     if (!sharedRes.ok) {
       const detail = await sharedRes.text();
-      console.error("get_shared_page failed", sharedRes.status, detail);
-      return json({ error: "共有データを読み込めませんでした", status: sharedRes.status }, 502);
+      console.error("[share-preview] 共有データ取得失敗", sharedRes.status, detail);
+      return json({ error: "共有データを読み込めませんでした", status: sharedRes.status, detail }, 502);
     }
+    log("共有データ取得成功");
     const p = await sharedRes.json();
     if (!p) {
+      log("共有データなし");
       return json({ error: "共有データが見つかりません" }, 404);
     }
 
@@ -123,26 +134,41 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
+    log("HTML生成成功");
     // Ensure the bucket exists and is public.
-    const { data: bucketData } = await supabase.storage.getBucket(BUCKET);
+    log("Storage bucket確認開始");
+    const { data: bucketData, error: bucketLookupError } = await supabase.storage.getBucket(BUCKET);
+    if (bucketLookupError) log("Storage bucket確認エラー", bucketLookupError.message);
     if (!bucketData) {
+      log("Storage bucket作成開始");
       const { error: bucketError } = await supabase.storage.createBucket(BUCKET, {
         public: true,
         fileSizeLimit: 1024 * 1024,
         allowedMimeTypes: ["text/html"],
       });
       if (bucketError && !/already exists/i.test(bucketError.message || "")) {
-        return json({ error: "OGP用Storage bucketの作成に失敗しました" }, 500);
+        console.error("[share-preview] Storage bucket作成失敗", bucketError);
+        return json({ error: "OGP用Storage bucketの作成に失敗しました", detail: bucketError.message }, 500);
       }
+      log("Storage bucket作成成功");
     } else if (!bucketData.public) {
-      await supabase.storage.updateBucket(BUCKET, {
+      log("Storage bucket公開設定更新開始");
+      const { error: updateBucketError } = await supabase.storage.updateBucket(BUCKET, {
         public: true,
         fileSizeLimit: 1024 * 1024,
         allowedMimeTypes: ["text/html"],
       });
+      if (updateBucketError) {
+        console.error("[share-preview] Storage bucket公開設定更新失敗", updateBucketError);
+        return json({ error: "OGP用Storage bucketの公開設定に失敗しました", detail: updateBucketError.message }, 500);
+      }
+      log("Storage bucket公開設定更新成功");
+    } else {
+      log("Storage bucket確認成功");
     }
 
     const path = `${id}/${version}.html`;
+    log("HTMLアップロード開始", path);
     const bytes = new TextEncoder().encode(html);
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
@@ -153,11 +179,14 @@ Deno.serve(async (req) => {
       });
 
     if (uploadError) {
-      return json({ error: "OGPページの保存に失敗しました: " + uploadError.message }, 500);
+      console.error("[share-preview] HTMLアップロード失敗", uploadError);
+      return json({ error: "OGPページの保存に失敗しました", detail: uploadError.message }, 500);
     }
+    log("HTMLアップロード成功");
 
     const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
+    log("完了");
     return json({
       ok: true,
       url: publicData.publicUrl,
@@ -166,7 +195,7 @@ Deno.serve(async (req) => {
       version,
     });
   } catch (e) {
-    console.error(e);
-    return json({ error: "OGPページの作成に失敗しました" }, 500);
+    console.error("[share-preview] 予期しないエラー", e);
+    return json({ error: "OGPページの作成に失敗しました", detail: String(e?.message || e) }, 500);
   }
 });

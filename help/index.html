@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HELP | 39*2</title>
+<script>
+(()=>{try{const k="trpg39_theme",v=localStorage.getItem(k)||"system",m=(v==="light"||v==="dark")?v:(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"),r=document.documentElement;r.setAttribute("data-theme",m);r.setAttribute("data-theme-mode",v);r.classList.remove("theme-light","theme-dark");r.classList.add(m==="light"?"theme-light":"theme-dark");r.style.colorScheme=m;}catch(e){}})();
+</script>
+<link rel="stylesheet" href="../assets/css/style-v0296.css">
+<script defer src="../assets/js/theme-v0296.js"></script>
+<script src="../assets/js/optional-features.js?v=0292" defer></script>
+<style>
+.help-index{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:14px}
+.help-index a{text-decoration:none}
+.help-flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+.help-step{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel)}
+.help-step b{display:block;margin-bottom:5px}
+.help-list{margin:8px 0 0;padding-left:1.2em}.help-list li+li{margin-top:5px}
+.help-note{border-left:3px solid var(--accent);padding:8px 12px;margin-top:12px;background:var(--panel)}
+.help-section{scroll-margin-top:16px}
+@media(max-width:760px){.help-flow{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.help-flow{grid-template-columns:1fr}}
+</style>
+</head>
+<body class="help-page">
+<header class="site-header"><div class="wrap">
+<h1 class="brand brand-392">39*2 <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
+<div class="tagline">探す・遊ぶ・残す・共有する<br>TRPG Scenario &amp; Tools</div>
+<nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="index.html" aria-current="page">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav>
+<div class="theme-switcher" aria-label="テーマ">
+<button type="button" data-theme-choice="system">端末</button><span>·</span><button type="button" data-theme-choice="dark">ダーク</button><span>·</span><button type="button" data-theme-choice="light">ライト</button>
+</div></div></header>
+
+<main><div class="wrap">
+<div class="hero"><h2>HELP</h2><p>39*2でできることと、各ページの使い方。</p></div>
+
+<section class="panel help-section" id="start">
+<h2>39*2でできること</h2>
+<p>39*2は、TRPGのシナリオを探して整理し、卓予定を立て、遊んだ記録を残し、必要な範囲で共有するためのサイトです。</p>
+<div class="help-flow">
+<div class="help-step"><b>探す</b><span>SCENARIOで所持・通過予定・KP予定などを整理。</span></div>
+<div class="help-step"><b>遊ぶ</b><span>CALENDARと卓準備で予定や準備をまとめる。</span></div>
+<div class="help-step"><b>残す</b><span>LIBRARY、PC、PLAYERSに卓の記録を蓄積。</span></div>
+<div class="help-step"><b>共有する</b><span>必要な記録だけ共有URLにして渡す。</span></div>
+</div>
+<div class="help-index">
+<a class="card" href="#scenario"><span class="badge">SCENARIO</span><b>シナリオ管理</b></a>
+<a class="card" href="#calendar"><span class="badge">CALENDAR</span><b>予定管理</b></a>
+<a class="card" href="#library"><span class="badge">LIBRARY</span><b>卓の記録</b></a>
+<a class="card" href="#pc"><span class="badge">PC</span><b>PC管理</b></a>
+<a class="card" href="#players"><span class="badge">PLAYERS</span><b>同卓者管理</b></a>
+<a class="card" href="#tools"><span class="badge">TOOLS</span><b>便利ツール</b></a>
+<a class="card" href="#backup"><span class="badge">BACKUP</span><b>バックアップ</b></a>
+<a class="card" href="#settings"><span class="badge">SETTINGS</span><b>設定</b></a>
+</div>
+</section>
+
+<section class="panel help-section" id="scenario">
+<h2>SCENARIO ― シナリオを整理する</h2>
+<p>遊びたい・持っている・遊んだシナリオを、自分用の棚としてまとめます。</p>
+<ul class="help-list">
+<li>「所持」「通過済み」「通過予定」「KP済み」「KP予定」「気になる」を複数設定できます。</li>
+<li>タイトル・作者・システムで検索し、状態・参加人数・遊べる時間でも絞り込めます。</li>
+<li>システム、作者、参加人数、プレイ時間、配布ページ、概要、自分用メモを保存できます。</li>
+<li>BOOTH・pixiv・TALTOなどのURLからサムネイル取得を試せます。取得できない場合は画像URLを手動指定できます。</li>
+<li>登録したシナリオから「準備チェック」や「卓予定を作る」へ進めます。</li>
+<li>自分のシナリオ一覧を共有できます。共有された一覧を登録し、自分のSCENARIOへ追加することもできます。</li>
+</ul>
+<div class="help-note"><b>卓準備</b><br>シナリオ共通準備／陣ごとのKP準備／卓ごとのPL準備を分けて管理できます。CoC KP基本セット・PL基本セットを使うほか、自作テンプレートも保存できます。</div>
+</section>
+
+<section class="panel help-section" id="calendar">
+<h2>CALENDAR ― 卓予定をまとめる</h2>
+<p>卓予定と、それ以外の予定をカレンダー上で確認します。</p>
+<ul class="help-list">
+<li>卓予定／卓以外の予定を登録できます。</li>
+<li>仮押さえ・予定・完了・リスケ中・延期・中止の状態を設定できます。</li>
+<li>シナリオ、開始・終了予定、役割、システム、PC、参加者を登録できます。</li>
+<li>複数の日程をひとつの卓予定として追加できます。</li>
+<li>シナリオを直接入力した場合は、SCENARIOにも自動登録されます。</li>
+<li>空き日を共有できます。</li>
+</ul>
+</section>
+
+<section class="panel help-section" id="library">
+<h2>LIBRARY ― 遊んだ物語を残す</h2>
+<p>セッションを、あとから読み返せるTRPGアルバムとして残します。</p>
+<ul class="help-list">
+<li>シナリオ、陣名、状態、システム、開始・終了予定、自分の役割を記録できます。</li>
+<li>卓記事・感想とネタバレを分けて保存できます。</li>
+<li>PC、一緒に遊んだ人、スクリーンショット、外部リンク、ひとことをまとめられます。</li>
+<li>同じシナリオに「新しい陣」や日程を追加できます。</li>
+<li>公開範囲は「自分のみ」「リンク限定」「公開」から選べます。</li>
+<li>ネタバレ部分は「自分のみ」または「共有リンクに含める」を選べます。</li>
+</ul>
+<div class="help-note">「同卓者のみ」は画面上にありますが、現在は準備中です。</div>
+</section>
+
+<section class="panel help-section" id="pc">
+<h2>PC ― キャラクターをまとめる</h2>
+<p>自分のPC情報と参加履歴をまとめます。</p>
+<ul class="help-list">
+<li>PC名、読み方、システム、職業・肩書き、画像、キャラクターシートURL、紹介文を登録できます。</li>
+<li>公開範囲を「自分のみ」「リンク限定」「公開」から選べます。</li>
+<li>LIBRARYの記録とつながり、参加シナリオ履歴を確認できます。</li>
+<li>PC単位の共有ができます。</li>
+</ul>
+</section>
+
+<section class="panel help-section" id="players">
+<h2>PLAYERS ― 一緒に遊んだ人をまとめる</h2>
+<p>同卓した人と、どのシナリオで遊んだかを名簿として確認します。</p>
+<ul class="help-list">
+<li>管理名、公開時の表示名、自分用メモを登録できます。</li>
+<li>同卓回数、初同卓日、最終同卓日、同卓したシナリオを確認できます。</li>
+<li>50音順／同卓回数順／最終同卓日順に並び替えられます。</li>
+<li>人物ごとにLIBRARYの全記録へ移動できます。</li>
+<li>公開範囲を設定して共有できます。</li>
+</ul>
+</section>
+
+<section class="panel help-section" id="tools">
+<h2>TOOLS ― 卓を少し便利に</h2>
+<p>TRPGで使う補助機能をまとめています。</p>
+<ul class="help-list">
+<li><b>ダイスログ解析：</b>ココフォリアのログから技能判定・成長候補・クリティカル／ファンブルを整理します。</li>
+<li><b>PDFテキスト整形：</b>PDFからコピーした文章に入った不要な半角スペースや改行を整えます。</li>
+</ul>
+</section>
+
+<section class="panel help-section" id="backup">
+<h2>BACKUP ― データを守る</h2>
+<p>ブラウザ内に保存しているデータの退避と復元を行います。</p>
+<ul class="help-list">
+<li>SCENARIO・CALENDAR・LIBRARYのデータをひとつのJSONファイルとして書き出し、復元できます。</li>
+<li>SCENARIO・CALENDAR・LIBRARYをクラウドへ保存／クラウドから読み込みできます。</li>
+<li>同期コードを使い、自動同期を設定できます。</li>
+</ul>
+<div class="help-note"><b>現在のバックアップ対象：</b>SCENARIO・CALENDAR・LIBRARYです。PC・PLAYERSは現在のBACKUP書き出し／クラウド同期には含まれません。</div>
+<div class="help-note"><b>大切：</b>ブラウザのサイトデータを削除すると、ローカルに保存した内容が消える場合があります。必要なデータは定期的にBACKUPしてください。</div>
+</section>
+
+<section class="panel help-section" id="settings">
+<h2>SETTINGS ― 表示と機能を設定する</h2>
+<ul class="help-list">
+<li>画面上部の「端末／ダーク／ライト」でテーマを切り替えられます。</li>
+<li>PLAYERS管理を使う／使わないを切り替えられます。</li>
+</ul>
+</section>
+
+<section class="panel help-section" id="share">
+<h2>共有について</h2>
+<p>SCENARIOの一覧やLIBRARYの卓記録などは、共有URLを作成できます。共有URLを知っている人は、そのURLに含まれる内容を閲覧できます。</p>
+<p>ネタバレや個人情報を含む記録を共有するときは、公開範囲と共有先を確認してください。</p>
+</section>
+</div></main>
+<footer class="footer"><div class="wrap">© <span data-year></span> 39*2</div></footer>
+<script src="../assets/js/main.js?v=0292"></script>
+</body>
+</html>

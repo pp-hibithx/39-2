@@ -218,7 +218,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="0297">build v0.2.29.7</div></main>
+</div><div class="wrap small muted" data-build-marker="02310">build v0.2.31.0</div></main>
 
 <footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
 
@@ -482,39 +482,113 @@ function showShareUrl(url,message){
  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(url).then(()=>prompt(message+"\n\nコピー済みです。",url)).catch(()=>prompt(message,url))}
  else prompt(message,url);
 }
-async function shareAlbum(id){
- const x=data.find(v=>v.id===id);if(!x)return;
+function reportRowsWithSelf(x){
+ const rows=rowsFromRecord(x).map(r=>({...r}));
+ const selfRole=String(x.role||"").trim();
+ if(selfRole){
+   rows.push({
+     role:selfRole,
+     ho:"",
+     plName:"自分",
+     pcName:selfRole==="PL"?(x.pcName||""):"",
+     relation:""
+   });
+ }
+ return rows;
+}
+function buildXReportText(x){
+ const rows=reportRowsWithSelf(x);
+ const groups=new Map();
+ rows.forEach(r=>{
+   const role=String(r.role||"PL");
+   if(!groups.has(role))groups.set(role,[]);
+   groups.get(role).push(r);
+ });
+ const lines=[String(x.title||"").trim()].filter(Boolean);
+ for(const role of ["KP","SKP"]){
+   const rs=groups.get(role)||[];
+   if(rs.length){
+     const values=rs.map(r=>{
+       const prefix=r.ho?`${r.ho}：`:"";
+       return `${prefix}${r.plName||""}${r.pcName?`/${r.pcName}`:""}`;
+     }).filter(Boolean);
+     if(values.length)lines.push(`${role}：${values.join("、")}`);
+   }
+ }
+ const pls=groups.get("PL")||[];
+ if(pls.length){
+   lines.push("PL/PC");
+   pls.forEach(r=>{
+     const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();
+     if(!who)return;
+     lines.push(r.ho?`${r.ho}：${who}`:who);
+   });
+ }
+ const others=groups.get("その他")||[];
+ others.forEach(r=>{
+   const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();
+   if(who)lines.push(`${r.ho?`${r.ho} `:""}${who}`);
+ });
+ if(String(x.comment||"").trim()){
+   lines.push("",String(x.comment).trim());
+ }
+ return lines.join("\n");
+}
+async function prepareShareUrl(id){
+ const x=data.find(v=>v.id===id);if(!x)throw new Error("記録が見つかりません。");
  if((x.visibility||"private")==="private"){
-   alert("この記録は「自分のみ」です。共有するには公開範囲を「リンク限定」または「公開」に変更してください。");
-   return;
+   throw new Error("この記録は「自分のみ」です。共有するには公開範囲を「リンク限定」または「公開」に変更してください。");
  }
  if(x.visibility==="table"){
-   alert("「同卓者のみ」は今後のアカウント共有用です。現在はリンク限定を使ってください。");
-   return;
+   throw new Error("「同卓者のみ」は今後のアカウント共有用です。現在はリンク限定を使ってください。");
  }
+ if(!(TRPG39Cloud&&TRPG39Cloud.configured()))throw new Error("共有機能の設定がありません。");
+
  const ogVersion=Date.now();
  const payload={kind:"library-session",version:5,ogVersion,title:x.title,date:x.date,start:x.start||"",end:x.end||"",status:x.status||"done",system:x.system,selfRole:x.role||"",selfPcName:x.pcName||"",participantRows:rowsFromRecord(x),image:(x.imageUrls||[])[0]||"",comment:x.comment||"",spoiler:x.spoilerVisibility==="link"?(x.spoilerBody||x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
- try{
-   if(TRPG39Cloud&&TRPG39Cloud.configured()){
-     let shareId=x.shareId||"";
-     if(shareId) await TRPG39Cloud.updateSharedPage(shareId,payload);
-     else shareId=await TRPG39Cloud.createSharedPage(payload);
 
-     // 同じ共有IDを維持しつつ、共有し直すたびにvを更新。
-     // XなどのOGPキャッシュには新しいURLとして認識させる。
-     const i=data.findIndex(v=>v.id===x.id);
-     if(i>=0){
-       data[i]=TRPG39.normalizeAlbum({...data[i],shareId,shareVersion:ogVersion});
-       persist();
-     }
-     const previewUrl=new URL("https://sakumeru-share.sakumeru.workers.dev/");
-     previewUrl.searchParams.set("id",shareId);
-     previewUrl.searchParams.set("v",String(ogVersion));
-     showShareUrl(previewUrl.href,
-       "この開催記録の共有URLを更新しました。\nXに貼ると、登録したスクリーンショットがカード画像になります。");
-     return;
-   }
- }catch(e){console.error(e);alert("共有URLを作成できませんでした: "+(e.message||e));}
+ let shareId=x.shareId||"";
+ if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);
+ else shareId=await TRPG39Cloud.createSharedPage(payload);
+
+ const i=data.findIndex(v=>v.id===x.id);
+ if(i>=0){
+   data[i]=TRPG39.normalizeAlbum({...data[i],shareId,shareVersion:ogVersion});
+   persist();
+ }
+
+ const previewUrl=new URL("https://sakumeru-share.sakumeru.workers.dev/");
+ previewUrl.searchParams.set("id",shareId);
+ previewUrl.searchParams.set("v",String(ogVersion));
+ return {url:previewUrl.href,item:data.find(v=>v.id===id)||x};
+}
+async function shareAlbum(id){
+ try{
+   const result=await prepareShareUrl(id);
+   showShareUrl(result.url,
+     "この開催記録の共有URLを更新しました。\nXに貼ると、登録したスクリーンショットがカード画像になります。");
+ }catch(e){
+   console.error(e);
+   alert(e.message||e);
+ }
+}
+async function postAlbumToX(id){
+ // Open immediately so browsers do not block the composer after async sharing work.
+ const popup=window.open("about:blank","_blank","noopener,noreferrer");
+ try{
+   const result=await prepareShareUrl(id);
+   const text=buildXReportText(result.item);
+   const intent=new URL("https://x.com/intent/tweet");
+   intent.searchParams.set("text",text);
+   intent.searchParams.set("url",result.url);
+   intent.searchParams.set("lang","ja");
+   if(popup)popup.location.href=intent.href;
+   else window.open(intent.href,"_blank","noopener,noreferrer");
+ }catch(e){
+   if(popup)popup.close();
+   console.error(e);
+   alert(e.message||e);
+ }
 }
 function addForScenario(id){
  reset(id);q("runId").value=TRPG39.uuid();showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
@@ -572,7 +646,7 @@ function render(){
            <div class="lib-child-meta">${x.role?esc(x.role):""}${(x.participants||[]).length?`　参加：${participantHtml(x)}`:""}　${esc(vis[x.visibility]||"自分のみ")}</div>
            ${x.comment?`<div class="lib-child-note">${esc(x.comment)}</div>`:""}${diceAnalysisHtml(x)}${linksHtml(x)}
          </div>
-         <div class="lib-child-actions"><button data-share="${x.id}">共有</button><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div>
+         <div class="lib-child-actions"><button data-share="${x.id}">共有</button><button data-post-x="${x.id}">Xで卓報告</button><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div>
        </article>`).join("")}
      </details>`}).join("")}
    </div>
@@ -584,6 +658,7 @@ function render(){
  });
  document.querySelectorAll("[data-add-run]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();addForRun(b.dataset.runScenario,b.dataset.addRun,b.dataset.runLabel)});
  document.querySelectorAll("[data-share]").forEach(b=>b.onclick=()=>shareAlbum(b.dataset.share));
+ document.querySelectorAll("[data-post-x]").forEach(b=>b.onclick=()=>postAlbumToX(b.dataset.postX));
  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));
  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>del(b.dataset.del));
 }

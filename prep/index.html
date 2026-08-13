@@ -42,7 +42,8 @@ html[data-theme="light"] .prep-item{
  .prep-add{grid-template-columns:1fr}
  .deadline{min-width:0}
 }
-</style></head><body><main class="prep-wrap"><p><a href="../scenario/index.html?v=0292">← SCENARIO</a></p><h1>卓準備</h1><div id="scenarioTitle" class="small muted"></div>
+</style><script src="../assets/js/beta-gate.js?v=02313"></script>
+</head><body><main class="prep-wrap"><p><a href="../scenario/index.html?v=0292">← SCENARIO</a></p><h1>卓準備</h1><div id="scenarioTitle" class="small muted"></div>
 <div class="prep-grid"><aside class="prep-panel"><h2>テンプレート</h2><button class="template-btn" data-template="kp">CoC KP基本セット</button><button class="template-btn" data-template="pl">CoC PL基本セット</button><h3>自作テンプレート</h3><div id="customTemplates"></div><button id="saveTemplate">現在の項目をテンプレート保存</button></aside>
 <section class="prep-panel"><div class="prep-head"><div><label>準備の種類</label><select id="scope"><option value="scenario">シナリオ共通準備</option><option value="kpRun">陣ごとのKP準備</option><option value="plSession">卓ごとのPL準備</option></select></div><div><label>陣・卓名</label><input id="runLabel" placeholder="例：1陣目／自陣"></div></div><div id="progress" style="margin:12px 0"></div><div id="items" class="prep-list"></div><hr><h3>項目を追加</h3><input id="newTitle" placeholder="例：キャラシ提出"><div class="prep-add"><input id="newDeadline" class="deadline" type="datetime-local"><input id="newUrl" type="url" placeholder="関連URL"><input id="newMemo" placeholder="メモ"><button id="addItem">追加</button></div></section></div></main>
 <script src="../assets/js/shared-data.js?v=0292"></script><script>

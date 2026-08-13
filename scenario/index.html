@@ -166,6 +166,21 @@ const matchesExtraFilters=x=>{const p=Number(q("playersFilter").value)||0,h=Numb
 function reset(){q("editId").value="";["title","system","author","url","thumbnailUrl","playersMin","playersMax","hoursMin","hoursMax","summaryText","privateMemo","tagInput"].forEach(x=>q(x).value="");editingTags=[];renderTagEditor();renderTagSuggestions();document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("publicationStatus").value="public";q("sourceType").value="";q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true;q("thumbStatus").textContent="";updateThumbPreview();q("scenarioForm").classList.remove("open")}
 function openForm(){q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
 function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");addTypedTag();let id=q("editId").value||TRPG39.uuid(),old=data.find(x=>x.id===id)||{};let item={...old,id,title,system:q("system").value.trim(),author:q("author").value.trim(),playersMin:Number(q("playersMin").value)||null,playersMax:Number(q("playersMax").value)||null,hoursMin:Number(q("hoursMin").value)||null,hoursMax:Number(q("hoursMax").value)||null,url:q("url").value.trim(),thumbnailUrl:q("thumbnailUrl").value.trim(),publicationStatus:q("publicationStatus").value||"public",sourceType:q("sourceType").value||"",summaryText:q("summaryText").value.trim(),privateMemo:q("privateMemo").value.trim(),tags:uniqTags(editingTags),lastChecked:new Date().toISOString().slice(0,10),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),createdAt:old.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);persist();refreshTagFilter();reset();render()}
+function delScenario(id){
+ const x=data.find(v=>v.id===id);if(!x)return;
+ const linkedAlbum=(TRPG39.loadAlbum?TRPG39.loadAlbum():[]).filter(a=>a.scenarioId===id);
+ const linkedEvents=(TRPG39.loadEvents?TRPG39.loadEvents():[]).filter(e=>e.scenarioId===id);
+ const linkedCount=linkedAlbum.length+linkedEvents.length;
+ const extra=linkedCount
+   ? `\n\nこのシナリオに紐づくLIBRARY/CALENDAR記録が ${linkedCount}件あります。\nそれらの記録は削除せず、そのまま残します。`
+   : "";
+ if(!confirm(`「${x.title||"名称未設定"}」をSCENARIOから削除しますか？\nこの操作は元に戻せません。${extra}`))return;
+ data=data.filter(v=>v.id!==id);
+ persist();
+ refreshTagFilter();
+ renderTagSuggestions();
+ render();
+}
 function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("editId").value=x.id;q("title").value=x.title||"";q("system").value=x.system||"";q("author").value=x.author||"";q("playersMin").value=x.playersMin??"";q("playersMax").value=x.playersMax??"";q("hoursMin").value=x.hoursMin??"";q("hoursMax").value=x.hoursMax??"";q("url").value=x.url||"";q("thumbnailUrl").value=x.thumbnailUrl||"";q("publicationStatus").value=x.publicationStatus||"public";q("sourceType").value=x.sourceType||"";q("summaryText").value=x.summaryText||"";q("privateMemo").value=x.privateMemo||"";editingTags=uniqTags(x.tags||[]);renderTagEditor();renderTagSuggestions();updateThumbPreview(x.ogTitle||x.title||"");document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
 function del(id){if(confirm("このシナリオを削除しますか？")){data=data.filter(x=>x.id!==id);persist();render()}}
 function schedule(id){
@@ -308,6 +323,7 @@ function render(){
  document.querySelectorAll("[data-open]").forEach(c=>{c.onclick=e=>{if(e.target.closest("button,a,.sc-menu"))return;detail(c.dataset.open)};c.onkeydown=e=>{if(e.key==="Enter")detail(c.dataset.open)}});
  document.querySelectorAll("[data-menu]").forEach(b=>b.onclick=e=>{e.stopPropagation();const panel=document.querySelector(`[data-menu-panel="${b.dataset.menu}"]`);document.querySelectorAll(".sc-menu.open").forEach(m=>{if(m!==panel)m.classList.remove("open")});panel.classList.toggle("open")});
  document.querySelectorAll("[data-library]").forEach(b=>b.onclick=e=>{e.stopPropagation();library(b.dataset.library)});document.querySelectorAll("[data-prep]").forEach(b=>b.onclick=e=>{e.stopPropagation();prep(b.dataset.prep)});document.querySelectorAll("[data-schedule]").forEach(b=>b.onclick=e=>{e.stopPropagation();schedule(b.dataset.schedule)});
+ document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>delScenario(b.dataset.del));
  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=e=>{e.stopPropagation();edit(b.dataset.edit)});
  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>{e.stopPropagation();del(b.dataset.del)});
  q("addCard").onclick=openForm;

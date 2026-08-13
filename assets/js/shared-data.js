@@ -84,6 +84,8 @@
       visibility: input.visibility || "private",
       runId: input.runId || "",
       runLabel: input.runLabel || "",
+      shareId: input.shareId || "",
+      shareVersion: Number(input.shareVersion || 0),
       calendarLinked: !!input.eventId,
       createdAt: input.createdAt || nowISO(),
       updatedAt: nowISO()

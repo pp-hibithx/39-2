@@ -64,6 +64,14 @@ async function getSharedPage(id) {
 }
 
 
+function sharePreviewUrl(id, version=0) {
+  if (!configured()) return "";
+  const u = new URL(String(cfg.projectUrl).replace(/\/$/, "") + "/functions/v1/share-preview");
+  u.searchParams.set("id", id);
+  if (version) u.searchParams.set("v", String(version));
+  return u.href;
+}
+
 async function updateSharedPage(id,data) {
   if (!configured()) throw new Error("SupabaseのPublishable keyが未設定です。");
   const res = await fetch(cfg.projectUrl + "/rest/v1/rpc/update_shared_page", {
@@ -75,5 +83,5 @@ async function updateSharedPage(id,data) {
   }
 }
 
-window.TRPG39Cloud = { configured, createSharedPage, getSharedPage, updateSharedPage };
+window.TRPG39Cloud = { configured, createSharedPage, getSharedPage, updateSharedPage, sharePreviewUrl };
 })();

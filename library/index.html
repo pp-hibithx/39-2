@@ -2,7 +2,15 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LIBRARY | SAKU+MERU</title>
+<title>LIBRARY｜SAKU+MERU</title>
+<meta name="description" content="「一緒に」探す・遊ぶ・記録・共有。卓のあれこれをサクッとまとめるサイト。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SAKU+MERU">
+<meta property="og:title" content="SAKU+MERU">
+<meta property="og:description" content="「一緒に」探す・遊ぶ・記録・共有。卓のあれこれをサクッとまとめるサイト。">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SAKU+MERU">
+<meta name="twitter:description" content="「一緒に」探す・遊ぶ・記録・共有。卓のあれこれをサクッとまとめるサイト。">
 <script>
 (()=>{try{const k="trpg39_theme",v=localStorage.getItem(k)||"system",m=(v==="light"||v==="dark")?v:(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"),r=document.documentElement;r.setAttribute("data-theme",m);r.setAttribute("data-theme-mode",v);r.classList.remove("theme-light","theme-dark");r.classList.add(m==="light"?"theme-light":"theme-dark");r.style.colorScheme=m;}catch(e){}})();
 </script>
@@ -187,11 +195,11 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
 <script src="../assets/js/main.js?v=0292"></script>
 <script src="../assets/js/migrate-v02.js?v=0292"></script>
-<script src="../assets/js/shared-data.js?v=0292"></script>
+<script src="../assets/js/shared-data.js?v=02304"></script>
 <script src="../assets/js/supabase-config.js?v=0292"></script>
 <script src="../assets/js/supabase-sync.js?v=0292"></script>
 <script>TRPG39Sync.initAutoSync();</script>
-<script src="../assets/js/supabase-share.js?v=0292"></script>
+<script src="../assets/js/supabase-share.js?v=02304"></script>
 <script>
 (()=>{"use strict";
 const q=id=>document.getElementById(id);
@@ -413,12 +421,24 @@ async function shareAlbum(id){
    alert("「同卓者のみ」は今後のアカウント共有用です。現在はリンク限定を使ってください。");
    return;
  }
- const payload={kind:"library-session",version:3,title:x.title,date:x.date,start:x.start||"",end:x.end||"",status:x.status||"done",system:x.system,role:x.role,pcName:x.pcName,participants:x.participants||[],image:(x.imageUrls||[])[0]||"",comment:x.comment||"",articleBody:x.articleBody||"",spoiler:x.spoilerVisibility==="link"?(x.spoilerBody||x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
+ const ogVersion=Date.now();
+ const payload={kind:"library-session",version:4,ogVersion,title:x.title,date:x.date,start:x.start||"",end:x.end||"",status:x.status||"done",system:x.system,role:x.role,pcName:x.pcName,participants:x.participants||[],image:(x.imageUrls||[])[0]||"",comment:x.comment||"",articleBody:x.articleBody||"",spoiler:x.spoilerVisibility==="link"?(x.spoilerBody||x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
  try{
    if(TRPG39Cloud&&TRPG39Cloud.configured()){
-     const shareId=await TRPG39Cloud.createSharedPage(payload);
-     const url=new URL("../share/index.html",location.href);url.searchParams.set("id",shareId);
-     showShareUrl(url.href,"この開催記録の共有URLを作成しました。");
+     let shareId=x.shareId||"";
+     if(shareId) await TRPG39Cloud.updateSharedPage(shareId,payload);
+     else shareId=await TRPG39Cloud.createSharedPage(payload);
+
+     // 同じ共有IDを維持しつつ、共有し直すたびにvを更新。
+     // XなどのOGPキャッシュには新しいURLとして認識させる。
+     const i=data.findIndex(v=>v.id===x.id);
+     if(i>=0){
+       data[i]=TRPG39.normalizeAlbum({...data[i],shareId,shareVersion:ogVersion});
+       persist();
+     }
+     const previewUrl=TRPG39Cloud.sharePreviewUrl?.(shareId,ogVersion);
+     const fallback=new URL("../share/index.html",location.href);fallback.searchParams.set("id",shareId);fallback.searchParams.set("v",String(ogVersion));
+     showShareUrl(previewUrl||fallback.href,"この開催記録の共有URLを更新しました。\nXに貼ると、登録したスクリーンショットがカード画像になります。");
      return;
    }
  }catch(e){console.error(e);alert("共有URLを作成できませんでした: "+(e.message||e));}

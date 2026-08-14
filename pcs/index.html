@@ -73,6 +73,20 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .directory-page{display:grid;gap:14px}.dir-panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
 .dir-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:9px}.dir-card{border:1px solid var(--line);border-radius:9px;padding:10px}
 .dir-card h3{font-size:14px;margin:0 0 5px}.dir-meta{font-size:12px;color:var(--muted);margin:3px 0}.dir-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.pc-variants{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.pc-variants-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:8px}
+.pc-variant-card{border:1px solid var(--line);border-radius:8px;padding:6px;background:rgba(255,255,255,.02)}
+.pc-variant-card img{width:100%;aspect-ratio:3/4;object-fit:contain;object-position:center top;border-radius:6px;background:rgba(255,255,255,.02)}
+.pc-variant-label{font-size:12px;margin-top:5px;overflow-wrap:anywhere}
+.pc-variant-main{font-size:10px;color:var(--muted);margin-top:2px}
+.pc-variant-edit-list{display:grid;gap:10px;margin-top:8px}
+.pc-variant-edit-row{border:1px solid var(--line);border-radius:9px;padding:10px}
+.pc-variant-edit-grid{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:8px;align-items:end}
+.pc-variant-edit-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.pc-variant-preview{margin-top:8px}
+.pc-variant-preview img{width:110px;max-height:180px;object-fit:contain;object-position:center top;border:1px solid var(--line);border-radius:7px;background:rgba(255,255,255,.02)}
+@media(max-width:700px){.pc-variant-edit-grid{grid-template-columns:1fr}}
+
 .dir-form{display:grid;gap:7px}.dir-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dir-thumb{width:100%;aspect-ratio:16/10;object-fit:cover;object-position:center top;border-radius:7px;border:1px solid var(--line)}.pc-image-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}.pc-image-preview{margin-top:8px;display:flex;align-items:flex-start;gap:10px}.pc-image-preview[hidden]{display:none}.pc-image-preview img{width:160px;max-height:220px;object-fit:contain;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.02)}
 @media(max-width:700px){.dir-two,.pc-image-row{grid-template-columns:1fr}}
 </style>
@@ -102,11 +116,28 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 </div>
 <p class="small muted">URL貼り付けと直接アップロードの両方に対応します。</p>
 <div id="pcImagePreview" class="pc-image-preview" hidden><img id="pcImagePreviewImg" alt="PC画像のプレビュー"></div>
+
+<div class="pc-variants">
+  <div class="row"><div><strong>立ち絵差分</strong><div class="small muted">通常・笑顔・クリティカル・ファンブルなど、自由な名前で追加できます。</div></div><button id="addPcVariant" type="button">＋ 差分を追加</button></div>
+  <div id="pcVariantRows" class="pc-variant-edit-list"></div>
+</div>
+
+<div class="pc-variants">
+  <strong>立ち絵情報</strong>
+  <div class="small muted">使用したメーカーや立ち絵の出典を記録できます。共有PCにも表示されます。</div>
+  <div class="dir-two">
+    <div><label>サービス</label><input id="pcArtService" placeholder="例：Picrew / CHARAT / 自作 / 依頼"></div>
+    <div><label>メーカー・作者名</label><input id="pcArtMaker" placeholder="メーカー名・作者名"></div>
+  </div>
+  <label>メーカー・配布元URL</label><input id="pcArtUrl" type="url" placeholder="https://...">
+  <label>立ち絵メモ</label><input id="pcArtNote" placeholder="利用規約・加工内容など任意">
+</div>
+
 <label>キャラクターシートURL</label><input id="pcSheet" type="url" placeholder="https://...">
 <label>公開範囲</label><select id="pcVisibility"><option value="private">自分のみ</option><option value="link">リンク限定</option><option value="public">公開</option></select>
 <label>紹介</label><textarea id="pcBio"></textarea>
 <div class="dir-actions"><button id="pcSave">保存</button><button id="pcCancel">編集をやめる</button></div></section>
-</div><div class="wrap small muted" data-build-marker="0298">build v0.2.29.8</div></main><footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
+</div><div class="wrap small muted" data-build-marker="0300">build v0.2.30.0</div></main><footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
 <script src="../assets/js/main.js?v=0292"></script><script src="../assets/js/shared-data.js?v=0292"></script>
 <script src="../assets/js/supabase-config.js?v=0292"></script><script src="../assets/js/supabase-share.js?v=0292"></script>
 <script>
@@ -115,25 +146,68 @@ const q=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"']/g,
 let pcs=TRPG39.loadPCs(),album=TRPG39.loadAlbum();
 const uuid=()=>TRPG39.uuid?TRPG39.uuid():crypto.randomUUID();
 function updatePcImagePreview(){const u=q("pcImage").value.trim();q("pcImagePreview").hidden=!u;q("pcImagePreviewImg").src=u||""}
-async function uploadPcImage(){
- const file=q("pcImageFile")?.files?.[0];
- if(!file)return alert("画像ファイルを選んでください。");
+function pcVariantsFrom(x){return Array.isArray(x?.variants)?x.variants.filter(v=>v&&v.url):[]}
+function addPcVariantRow(v={}){
+ const row=document.createElement("div");row.className="pc-variant-edit-row";
+ const id=v.id||uuid(),label=String(v.label||""),url=String(v.url||"");
+ row.dataset.variantId=id;
+ row.innerHTML=`<div class="pc-variant-edit-grid">
+   <div><label>差分名</label><input class="pcVarLabel" value="${esc(label)}" placeholder="例：笑顔 / クリティカル"></div>
+   <div><label>画像URL</label><input class="pcVarUrl" type="url" value="${esc(url)}" placeholder="https://..."></div>
+   <div><label>画像ファイル</label><input class="pcVarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></div>
+ </div>
+ <div class="pc-variant-edit-actions">
+   <button type="button" class="pcVarUpload">画像をアップロード</button>
+   <button type="button" class="pcVarMain">メインにする</button>
+   <button type="button" class="danger pcVarRemove">削除</button>
+ </div>
+ <div class="pc-variant-preview" ${url?"":"hidden"}><img src="${esc(url)}" alt=""></div>`;
+ const urlInput=row.querySelector(".pcVarUrl"),preview=row.querySelector(".pc-variant-preview"),img=preview.querySelector("img");
+ const sync=()=>{const u=urlInput.value.trim();preview.hidden=!u;img.src=u||""};
+ urlInput.oninput=sync;
+ row.querySelector(".pcVarRemove").onclick=()=>row.remove();
+ row.querySelector(".pcVarMain").onclick=()=>{const u=urlInput.value.trim();if(!u)return alert("先に差分画像を登録してください。");q("pcImage").value=u;updatePcImagePreview()};
+ row.querySelector(".pcVarUpload").onclick=async()=>{
+   const file=row.querySelector(".pcVarFile")?.files?.[0];if(!file)return alert("差分画像ファイルを選んでください。");
+   try{
+     const btn=row.querySelector(".pcVarUpload");btn.disabled=true;btn.textContent="アップロード中…";
+     const u=await uploadImageFile(file);urlInput.value=u||"";sync();row.querySelector(".pcVarFile").value="";
+   }catch(e){console.error(e);alert(e.message||e)}
+   finally{const btn=row.querySelector(".pcVarUpload");btn.disabled=false;btn.textContent="画像をアップロード";}
+ };
+ q("pcVariantRows").appendChild(row);
+}
+function setPcVariantRows(rows=[]){q("pcVariantRows").innerHTML="";(rows||[]).forEach(addPcVariantRow)}
+function collectPcVariants(){
+ return [...q("pcVariantRows").querySelectorAll(".pc-variant-edit-row")].map(r=>({
+   id:r.dataset.variantId||uuid(),
+   label:r.querySelector(".pcVarLabel").value.trim(),
+   url:r.querySelector(".pcVarUrl").value.trim()
+ })).filter(v=>v.url);
+}
+async function uploadImageFile(file){
  const cfg=window.SUPABASE_CONFIG||{};
- const base=String(cfg.projectUrl||"").trim();const key=String(cfg.publishableKey||"").trim();
- if(!base||!key)return alert("Supabase設定がありません。");
+ const base=String(cfg.projectUrl||"").trim(),key=String(cfg.publishableKey||"").trim();
+ if(!base||!key)throw new Error("Supabase設定がありません。");
  const syncId=window.TRPG39Sync?.getSyncId?.()||localStorage.getItem("39x2_cloud_sync_id_v1")||"";
- if(!syncId)return alert("同期コードが見つかりません。先にBACKUPでクラウド同期を設定してください。");
+ if(!syncId)throw new Error("同期コードが見つかりません。先にBACKUPでクラウド同期を設定してください。");
  const fd=new FormData();fd.append("file",file);fd.append("sync_id",syncId);
  const r=await fetch(base.replace(/\/$/,"")+"/functions/v1/image-upload",{method:"POST",headers:{apikey:key},body:fd});
  const body=await r.json().catch(()=>({}));if(!r.ok)throw new Error(body.error||("アップロードエラー "+r.status));
- q("pcImage").value=body.publicUrl||"";q("pcImageFile").value="";updatePcImagePreview();return body.publicUrl;
+ return body.publicUrl||"";
+}
+async function uploadPcImage(){
+ const file=q("pcImageFile")?.files?.[0];
+ if(!file)return alert("画像ファイルを選んでください。");
+ const url=await uploadImageFile(file);
+ q("pcImage").value=url||"";q("pcImageFile").value="";updatePcImagePreview();return url;
 }
 function stats(name){const xs=album.filter(x=>(x.pcName||"").trim()===name.trim()),dates=xs.map(x=>x.date).filter(Boolean).sort(),m=new Map();xs.forEach(x=>{const k=x.scenarioId||x.title;if(!m.has(k))m.set(k,{title:x.title||"名称未設定",scenarioId:x.scenarioId||"",first:x.date||""});else if(x.date&&(!m.get(k).first||x.date<m.get(k).first))m.get(k).first=x.date});return {count:m.size,first:dates[0]||"",scenarios:[...m.values()].sort((a,b)=>String(a.first||"9999").localeCompare(String(b.first||"9999")))}}
-function reset(){["pcId","pcName","pcReading","pcSystem","pcJob","pcImage","pcSheet","pcBio"].forEach(x=>q(x).value="");if(q("pcImageFile"))q("pcImageFile").value="";q("pcVisibility").value="private";q("pcHeading").textContent="PCを追加";updatePcImagePreview()}
-function render(){q("pcSummary").textContent=`登録 ${pcs.length}人`;q("pcList").innerHTML=pcs.length?pcs.map(x=>{const st=stats(x.name);return `<details class="dir-card" ${new URLSearchParams(location.search).get("focus")===x.id?"open":""}><summary>${x.image?`<img class="dir-thumb" src="${esc(x.image)}" alt="">`:`<div class="dir-thumb" style="display:grid;place-items:center;font-size:30px">🌺</div>`}<h3>${esc(x.name)}</h3><div class="dir-meta">${esc(x.system||"")}${x.job?` ／ ${esc(x.job)}`:""}</div><div class="dir-meta">参加シナリオ ${st.count}本${st.first?` ／ 初卓 ${esc(st.first)}`:""}</div></summary><div class="scenario-history">${st.scenarios.length?st.scenarios.map(s=>`<div class="history-row"><a class="link" href="../library/index.html?pc=${encodeURIComponent(x.name)}${s.scenarioId?`&scenario=${encodeURIComponent(s.scenarioId)}`:""}">${esc(s.title)}</a>${s.first?` <span class="small muted">${esc(s.first)}</span>`:""}</div>`).join(""):'<div class="small muted">参加記録はまだありません。</div>'}<div class="dir-actions"><a class="link" href="../library/index.html?pc=${encodeURIComponent(x.name)}">LIBRARYで全記録を見る</a><button data-edit="${x.id}">編集</button><button data-share="${x.id}">共有</button></div></div></details>`}).join(""):'<div class="empty">まだPCが登録されていません。</div>';document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=e=>{e.preventDefault();edit(b.dataset.edit)});document.querySelectorAll("[data-share]").forEach(b=>b.onclick=e=>{e.preventDefault();share(b.dataset.share)});}
-function edit(id){const x=pcs.find(v=>v.id===id);if(!x)return;q("pcId").value=x.id;q("pcName").value=x.name||"";q("pcReading").value=x.reading||"";q("pcSystem").value=x.system||"";q("pcJob").value=x.job||"";q("pcImage").value=x.image||"";q("pcSheet").value=x.sheet||"";q("pcVisibility").value=x.visibility||"private";q("pcBio").value=x.bio||"";q("pcHeading").textContent="PCを編集";updatePcImagePreview();q("pcEditor").hidden=false;}
-function save(){const name=q("pcName").value.trim();if(!name)return alert("PC名を入力してください。");const id=q("pcId").value||uuid();const x={id,name,reading:q("pcReading").value.trim(),system:q("pcSystem").value.trim(),job:q("pcJob").value.trim(),image:q("pcImage").value.trim(),sheet:q("pcSheet").value.trim(),visibility:q("pcVisibility").value,bio:q("pcBio").value.trim()};const i=pcs.findIndex(v=>v.id===id);if(i>=0)pcs[i]=x;else pcs.push(x);TRPG39.savePCs(pcs);reset();q("pcEditor").hidden=true;render();}
-async function share(id){const x=pcs.find(v=>v.id===id);if(!x)return;if(x.visibility==="private")return alert("このPCは「自分のみ」です。");const st=stats(x.name);try{const sid=await TRPG39Cloud.createSharedPage({kind:"pc-profile",version:1,...x,stats:st});const u=new URL("../share/index.html",location.href);u.searchParams.set("id",sid);prompt("PC紹介の共有URLです。",u.href)}catch(e){alert("共有URLを作成できませんでした: "+(e.message||e))}}
-q("addPc").onclick=()=>{reset();q("pcEditor").hidden=false};q("pcSave").onclick=save;q("pcCancel").onclick=()=>q("pcEditor").hidden=true;q("pcImage").oninput=updatePcImagePreview;q("pcUploadImage").onclick=async()=>{try{q("pcUploadImage").disabled=true;q("pcUploadImage").textContent="アップロード中…";await uploadPcImage()}catch(e){console.error(e);alert(e.message||e)}finally{q("pcUploadImage").disabled=false;q("pcUploadImage").textContent="画像をアップロード"}};render();
+function reset(){["pcId","pcName","pcReading","pcSystem","pcJob","pcImage","pcArtService","pcArtMaker","pcArtUrl","pcArtNote","pcSheet","pcBio"].forEach(x=>q(x).value="");if(q("pcImageFile"))q("pcImageFile").value="";setPcVariantRows([]);q("pcVisibility").value="private";q("pcHeading").textContent="PCを追加";updatePcImagePreview()}
+function render(){q("pcSummary").textContent=`登録 ${pcs.length}人`;q("pcList").innerHTML=pcs.length?pcs.map(x=>{const st=stats(x.name);return `<details class="dir-card" ${new URLSearchParams(location.search).get("focus")===x.id?"open":""}><summary>${x.image?`<img class="dir-thumb" src="${esc(x.image)}" alt="">`:`<div class="dir-thumb" style="display:grid;place-items:center;font-size:30px">🌺</div>`}<h3>${esc(x.name)}</h3><div class="dir-meta">${esc(x.system||"")}${x.job?` ／ ${esc(x.job)}`:""}</div><div class="dir-meta">参加シナリオ ${st.count}本${st.first?` ／ 初卓 ${esc(st.first)}`:""}</div></summary><div class="scenario-history">${pcVariantsFrom(x).length?`<div class="pc-variants"><strong>立ち絵差分</strong><div class="pc-variants-grid">${pcVariantsFrom(x).map(v=>`<div class="pc-variant-card"><img src="${esc(v.url)}" alt=""><div class="pc-variant-label">${esc(v.label||"差分")}</div>${v.url===x.image?`<div class="pc-variant-main">メイン</div>`:""}</div>`).join("")}</div></div>`:""}${(x.artService||x.artMaker||x.artUrl||x.artNote)?`<div class="pc-variants"><strong>立ち絵情報</strong>${x.artService?`<div class="dir-meta">${esc(x.artService)}</div>`:""}${x.artMaker?`<div class="dir-meta">${esc(x.artMaker)}</div>`:""}${x.artUrl?`<div><a class="link" href="${esc(x.artUrl)}" target="_blank" rel="noopener">メーカー・配布元を開く</a></div>`:""}${x.artNote?`<div class="small muted" style="margin-top:5px">${esc(x.artNote)}</div>`:""}</div>`:""}${st.scenarios.length?st.scenarios.map(s=>`<div class="history-row"><a class="link" href="../library/index.html?pc=${encodeURIComponent(x.name)}${s.scenarioId?`&scenario=${encodeURIComponent(s.scenarioId)}`:""}">${esc(s.title)}</a>${s.first?` <span class="small muted">${esc(s.first)}</span>`:""}</div>`).join(""):'<div class="small muted">参加記録はまだありません。</div>'}<div class="dir-actions"><a class="link" href="../library/index.html?pc=${encodeURIComponent(x.name)}">LIBRARYで全記録を見る</a><button data-edit="${x.id}">編集</button><button data-share="${x.id}">共有</button></div></div></details>`}).join(""):'<div class="empty">まだPCが登録されていません。</div>';document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=e=>{e.preventDefault();edit(b.dataset.edit)});document.querySelectorAll("[data-share]").forEach(b=>b.onclick=e=>{e.preventDefault();share(b.dataset.share)});}
+function edit(id){const x=pcs.find(v=>v.id===id);if(!x)return;q("pcId").value=x.id;q("pcName").value=x.name||"";q("pcReading").value=x.reading||"";q("pcSystem").value=x.system||"";q("pcJob").value=x.job||"";q("pcImage").value=x.image||"";q("pcSheet").value=x.sheet||"";q("pcVisibility").value=x.visibility||"private";q("pcBio").value=x.bio||"";q("pcArtService").value=x.artService||"";q("pcArtMaker").value=x.artMaker||"";q("pcArtUrl").value=x.artUrl||"";q("pcArtNote").value=x.artNote||"";setPcVariantRows(pcVariantsFrom(x));q("pcHeading").textContent="PCを編集";updatePcImagePreview();q("pcEditor").hidden=false;}
+function save(){const name=q("pcName").value.trim();if(!name)return alert("PC名を入力してください。");const id=q("pcId").value||uuid();const x={id,name,reading:q("pcReading").value.trim(),system:q("pcSystem").value.trim(),job:q("pcJob").value.trim(),image:q("pcImage").value.trim(),variants:collectPcVariants(),artService:q("pcArtService").value.trim(),artMaker:q("pcArtMaker").value.trim(),artUrl:q("pcArtUrl").value.trim(),artNote:q("pcArtNote").value.trim(),sheet:q("pcSheet").value.trim(),visibility:q("pcVisibility").value,bio:q("pcBio").value.trim()};const i=pcs.findIndex(v=>v.id===id);if(i>=0)pcs[i]=x;else pcs.push(x);TRPG39.savePCs(pcs);reset();q("pcEditor").hidden=true;render();}
+async function share(id){const x=pcs.find(v=>v.id===id);if(!x)return;if(x.visibility==="private")return alert("このPCは「自分のみ」です。");const st=stats(x.name);try{const sid=await TRPG39Cloud.createSharedPage({kind:"pc-profile",version:3,...x,variants:pcVariantsFrom(x),stats:st});const u=new URL("../share/index.html",location.href);u.searchParams.set("id",sid);prompt("PC紹介の共有URLです。",u.href)}catch(e){alert("共有URLを作成できませんでした: "+(e.message||e))}}
+q("addPc").onclick=()=>{reset();q("pcEditor").hidden=false};q("addPcVariant").onclick=()=>addPcVariantRow();q("pcSave").onclick=save;q("pcCancel").onclick=()=>q("pcEditor").hidden=true;q("pcImage").oninput=updatePcImagePreview;q("pcUploadImage").onclick=async()=>{try{q("pcUploadImage").disabled=true;q("pcUploadImage").textContent="アップロード中…";await uploadPcImage()}catch(e){console.error(e);alert(e.message||e)}finally{q("pcUploadImage").disabled=false;q("pcUploadImage").textContent="画像をアップロード"}};render();
 })();
 </script></body></html>

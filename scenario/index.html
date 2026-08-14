@@ -209,15 +209,24 @@ function normScenarioUrl(v){
    .replace(/[#?].*$/,"")
    .replace(/\/+$/,"");
 }
+function normScenarioSystem(v){
+ const s=normScenarioText(v);
+ if(!s)return "";
+ if(/(coc6|クトゥルフ神話trpg6版|クトゥルフ6版|6版)/.test(s))return "coc6";
+ if(/(coc7|新クトゥルフ神話trpg|クトゥルフ7版|7版)/.test(s))return "coc7";
+ if(/(エモクロア|emoklore|emokuroa)/.test(s))return "emoklore";
+ return s;
+}
 function scenarioIdentityKey(x){
  const title=normScenarioText(x.title);
+ const system=normScenarioSystem(x.system);
  const author=normScenarioText(x.author);
- // この一覧では「同じ作品を誰が持っているか」を見ることが目的なので、
- // タイトル一致を主キーにする。作者はタイトルが空のケースの補助だけに使う。
- if(title)return "title:"+title;
+ // 同名でも別システム版は別作品として扱う。
+ // 例：同名のCoC版とエモクロア版は統合しない。
+ if(title)return "title:"+title+"|system:"+system;
  const url=normScenarioUrl(x.url);
- if(url)return "url:"+url;
- return "fallback:"+author+"|"+normScenarioText(x.system);
+ if(url)return "url:"+url+"|system:"+system;
+ return "fallback:"+author+"|"+system;
 }
 function isOwnedScenario(x,source="friend"){
  if(source==="mine")return !!(x.flags&&x.flags.owned);

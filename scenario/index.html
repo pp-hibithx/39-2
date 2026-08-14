@@ -39,6 +39,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 .friend-view-tools{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:10px}
 .friend-view-tools select{width:auto;min-width:150px}
 .friend-owner-list{margin-top:6px;font-size:12px;color:var(--muted)}
+.friend-basic-info{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
 .friend-tag-groups{display:grid;gap:4px;margin-top:7px}
 .friend-tag-row{font-size:11px;color:var(--muted);line-height:1.5}
 .friend-tag-row .badge{margin-left:3px}
@@ -295,9 +296,55 @@ function ownerTagRows(group){
  }
  return rows.length?`<div class="friend-tag-groups">${rows.join("")}</div>`:"";
 }
+function friendRangeText(a,b,suffix){
+ a=Number(a)||0;b=Number(b)||0;
+ if(a&&b)return a===b?`${a}${suffix}`:`${a}–${b}${suffix}`;
+ if(a)return `${a}${suffix}〜`;
+ if(b)return `〜${b}${suffix}`;
+ return "";
+}
+function groupMatches(g){
+ const term=q("search").value.trim().toLowerCase();
+ const players=Number(q("playersFilter").value||0);
+ const hours=Number(q("hoursFilter").value||0);
+ const searchable=[g.item?.title,g.item?.system,g.item?.author,...(g.owners||[])].join(" ").toLowerCase();
+ if(term&&!searchable.includes(term))return false;
+
+ // 人数・時間は、所持者のうち一人でも条件を満たす登録情報があれば候補に残す。
+ if(players){
+   const ok=(g.sources||[]).some(s=>{
+     const x=s.item||{};
+     const lo=Number(x.playersMin)||0,hi=Number(x.playersMax)||0;
+     return (!lo||players>=lo)&&(!hi||players<=hi);
+   });
+   if(!ok)return false;
+ }
+ if(hours){
+   const ok=(g.sources||[]).some(s=>{
+     const x=s.item||{};
+     const hi=Number(x.hoursMax)||Number(x.hoursMin)||0;
+     return !hi||hi<=hours;
+   });
+   if(!ok)return false;
+ }
+ return true;
+}
+function mergedBasicInfo(g){
+ const items=(g.sources||[]).map(s=>s.item||{});
+ const firstNum=key=>{
+   const vals=items.map(x=>Number(x[key])||0).filter(Boolean);
+   return vals.length?vals[0]:0;
+ };
+ return {
+   playersMin:firstNum("playersMin"),
+   playersMax:firstNum("playersMax"),
+   hoursMin:firstNum("hoursMin"),
+   hoursMax:firstNum("hoursMax")
+ };
+}
 function renderFriendResults(){
  const mode=q("friendViewMode")?.value||"scenario";
- const groups=groupedFriendScenarios().filter(g=>friendMatches({...g.item,_friend:g.owners.join(" ")}));
+ const groups=groupedFriendScenarios().filter(groupMatches);
  q("friendMatchCount").textContent=friendSources.length?`登録 ${friendSources.length}人 ／ 一致 ${groups.length}件`:"";
  if(q("search").value.trim()&&groups.length)q("friendPanel").open=true;
 
@@ -310,11 +357,11 @@ function renderFriendResults(){
    }
   }
   const rows=[...people.entries()].sort((a,b)=>a[0].localeCompare(b[0],"ja"));
-  q("friendResults").innerHTML=rows.length?rows.map(([owner,gs])=>`<section class="friend-person-group"><h3>${esc(owner)}</h3><div class="friend-person-items">${gs.sort((a,b)=>String(a.item.title||"").localeCompare(String(b.item.title||""),"ja")).map(g=>{const x=g.item;const ownSrc=g.sources.find(s=>s.owner===owner);const tags=Array.isArray(ownSrc?.item?.tags)?ownSrc.item.tags.filter(Boolean):[];return `<div class="friend-person-item">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="friend-person-thumb">🌺</div>`}<div><b>${esc(x.title)}</b>${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}${tags.length?`<div class="friend-tag-row">${tags.map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>`:""}</div></div>`}).join("")}</div></section>`).join(""):(friendSources.length?'<div class="small muted">条件に合う所持シナリオはありません。</div>':"");
+  q("friendResults").innerHTML=rows.length?rows.map(([owner,gs])=>`<section class="friend-person-group"><h3>${esc(owner)}</h3><div class="friend-person-items">${gs.sort((a,b)=>String(a.item.title||"").localeCompare(String(b.item.title||""),"ja")).map(g=>{const x=g.item;const ownSrc=g.sources.find(s=>s.owner===owner);const tags=Array.isArray(ownSrc?.item?.tags)?ownSrc.item.tags.filter(Boolean):[];return `<div class="friend-person-item">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="friend-person-thumb">🌺</div>`}<div><b>${esc(x.title)}</b>${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}${(()=>{const p=friendRangeText(ownSrc?.item?.playersMin,ownSrc?.item?.playersMax,"人"),h=friendRangeText(ownSrc?.item?.hoursMin,ownSrc?.item?.hoursMax,"h");return p||h?`<div class="friend-basic-info">${p?`<span class="badge">👥 ${esc(p)}</span>`:""}${h?`<span class="badge">⏱ ${esc(h)}</span>`:""}</div>`:""})()}${tags.length?`<div class="friend-tag-row">${tags.map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>`:""}</div></div>`}).join("")}</div></section>`).join(""):(friendSources.length?'<div class="small muted">条件に合う所持シナリオはありません。</div>':"");
   return;
  }
 
- q("friendResults").innerHTML=groups.length?groups.sort((a,b)=>String(a.item.title||"").localeCompare(String(b.item.title||""),"ja")).map(g=>{const x=g.item;g.owners.sort((a,b)=>a==="自分"?-1:b==="自分"?1:a.localeCompare(b,"ja"));const friendSource=g.sources.find(s=>s.source==="friend");return `<article class="friend-card">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<b>${esc(x.title)}</b>${x.publicationStatus&&x.publicationStatus!=="public"?` <span class="badge">${esc(publicationLabels[x.publicationStatus]||x.publicationStatus)}</span>`:""}${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}<div class="friend-owner-list">所持：${g.owners.map(esc).join("、")}</div>${ownerTagRows(g)}<div class="friend-actions">${x.url?`<a class="button" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布ページ</a>`:""}${friendSource&&!g.owners.includes("自分")?`<button type="button" data-friend-import="${esc(friendSource.item._key)}">自分に追加</button>`:""}</div></article>`}).join(""):(friendSources.length?'<div class="small muted">条件に合う所持シナリオはありません。</div>':"");
+ q("friendResults").innerHTML=groups.length?groups.sort((a,b)=>String(a.item.title||"").localeCompare(String(b.item.title||""),"ja")).map(g=>{const x=g.item;g.owners.sort((a,b)=>a==="自分"?-1:b==="自分"?1:a.localeCompare(b,"ja"));const friendSource=g.sources.find(s=>s.source==="friend");return `<article class="friend-card">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<b>${esc(x.title)}</b>${x.publicationStatus&&x.publicationStatus!=="public"?` <span class="badge">${esc(publicationLabels[x.publicationStatus]||x.publicationStatus)}</span>`:""}${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}${(()=>{const bi=mergedBasicInfo(g),p=friendRangeText(bi.playersMin,bi.playersMax,"人"),h=friendRangeText(bi.hoursMin,bi.hoursMax,"h");return p||h?`<div class="friend-basic-info">${p?`<span class="badge">👥 ${esc(p)}</span>`:""}${h?`<span class="badge">⏱ ${esc(h)}</span>`:""}</div>`:""})()}<div class="friend-owner-list">所持：${g.owners.map(esc).join("、")}</div>${ownerTagRows(g)}<div class="friend-actions">${x.url?`<a class="button" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布ページ</a>`:""}${friendSource&&!g.owners.includes("自分")?`<button type="button" data-friend-import="${esc(friendSource.item._key)}">自分に追加</button>`:""}</div></article>`}).join(""):(friendSources.length?'<div class="small muted">条件に合う所持シナリオはありません。</div>':"");
  document.querySelectorAll("[data-friend-import]").forEach(b=>b.onclick=()=>importFriendScenario(b.dataset.friendImport));
 }
 function importFriendScenario(key){

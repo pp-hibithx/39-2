@@ -97,7 +97,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 </div><div class="sc-tools"><button id="shareScenarioList" type="button">共有</button><button id="openForm" type="button">＋ 追加</button></div></div><div id="summary" class="small" style="margin-top:8px"></div>
 <div id="list" class="sc-list"></div>
 <details class="sc-panel friend-panel" id="friendPanel">
- <summary class="friend-panel-summary"><div><b>友人のシナリオ一覧</b> <span id="friendMatchCount" class="small muted"></span><div class="small">一度登録した共有URLはこのブラウザに保存されます。</div></div></summary>
+ <summary class="friend-panel-summary"><div><b>友人のシナリオ一覧</b> <span id="friendMatchCount" class="small muted"></span><div class="small">一度登録した共有URLはこのブラウザに保存されます。シナリオ表示では自分所持との重複を省き、友人表示では各人の所持一覧をそのまま表示します。</div></div></summary>
  <div class="friend-panel-body">
  <div class="friend-head"><div class="small">共有されたSAKU+MERUのシナリオ一覧を登録すると、上の検索と一緒に探せます。</div>
  <div class="friend-add"><div><label>名前</label><input id="friendName" placeholder="例：Aさん"></div><div><label>共有URL</label><input id="friendUrl" placeholder="SAKU+MERUの共有URL"></div><button id="friendAdd" type="button">＋ 登録</button></div></div>
@@ -196,7 +196,7 @@ async function loadFriendSources(){
    src.error="";
   }catch(e){src.error=e.message||"読み込み失敗"}
  }
- saveFriendSources();renderFriendSources();renderFriendResults();
+ saveFriendSources();renderFriendSources();render();
 }
 function renderFriendSources(){
  q("friendSources").innerHTML=friendSources.length?friendSources.map((x,i)=>`<span class="badge">${esc(x.name||"友人")}${x.error?` ⚠ ${esc(x.error)}`:""} <button type="button" data-friend-del="${i}" style="padding:2px 6px;margin-left:5px;font-size:11px">削除</button></span>`).join(" "):"共有一覧はまだ登録されていません。";
@@ -298,6 +298,23 @@ function groupedFriendScenarios(){
 
  return [...map.values()];
 }
+function friendOwnersForScenario(x){
+ const key=scenarioIdentityKey(x);
+ if(!key)return [];
+ const owners=[];
+ for(const item of friendItems){
+   if(scenarioIdentityKey(item)!==key)continue;
+   const name=item._friend||"友人";
+   if(!owners.includes(name))owners.push(name);
+ }
+ return owners.sort((a,b)=>a.localeCompare(b,"ja"));
+}
+function scenarioGroupsForView(mode="scenario"){
+ const groups=groupedFriendScenarios().filter(groupMatches);
+ // 「シナリオから見る」は、自分の一覧との重複だけを省く。
+ // 「友人から見る」は各友人の棚なので、自分と同じ作品も残す。
+ return mode==="scenario" ? groups.filter(g=>!g.owners.includes("自分")) : groups;
+}
 function ownerTagRows(group){
  const tagged=(group.sources||[]).map(src=>({
    owner:src.owner||"友人",
@@ -359,7 +376,7 @@ function mergedBasicInfo(g){
 }
 function renderFriendResults(){
  const mode=q("friendViewMode")?.value||"scenario";
- const groups=groupedFriendScenarios().filter(groupMatches);
+ const groups=scenarioGroupsForView(mode);
  q("friendMatchCount").textContent=friendSources.length?`登録 ${friendSources.length}人 ／ 一致 ${groups.length}件`:"";
  if(q("search").value.trim()&&groups.length)q("friendPanel").open=true;
 
@@ -487,8 +504,8 @@ function render(){
  let term=q("search").value.trim().toLowerCase(),f=q("filter").value;
  refreshTagFilter();const archiveMode=q("archiveFilter")?.value||"active";let xs=data.filter(x=>(archiveMode==="all"||(archiveMode==="archived"?!!x.archived:!x.archived))&&(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author,(x.tags||[]).join(" ")].join(" ").toLowerCase().includes(term))&&matchesExtraFilters(x));
  const rows=sortScenarios(xs);xs=rows.map(r=>r.x);
- q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件${friendSources.length?` ／ 共有 ${friendItems.filter(friendMatches).length}件`:""}`;
- const cards=xs.map(x=>`<article class="sc-card" data-open="${x.id}" tabindex="0"><div class="sc-thumb-wrap">${x.thumbnailUrl?`<img class="sc-thumb" src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="sc-placeholder">🌺</div>`}</div><div class="sc-menu-wrap"><button class="sc-menu-btn" data-menu="${x.id}" type="button" aria-label="メニュー">⋯</button><div class="sc-menu" data-menu-panel="${x.id}">${x.url?`<a target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布ページ</a>`:""}<button data-record="${x.id}" type="button">LIBRARYに記録</button><button data-library="${x.id}" type="button">過去の開催記録</button><button data-prep="${x.id}" type="button">準備チェック</button><button data-schedule="${x.id}" type="button">卓予定を作る</button><button data-edit="${x.id}" type="button">編集</button><button data-archive="${x.id}" type="button">${x.archived?"アーカイブから戻す":"アーカイブ"}</button><button class="danger" data-del="${x.id}" type="button">削除</button></div></div><div class="sc-body"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${pubBadge(x)}${rangeText(x.playersMin,x.playersMax,"人")?`<span class="badge">${rangeText(x.playersMin,x.playersMax,"人")}</span>`:""}${rangeText(x.hoursMin,x.hoursMax,"h")?`<span class="badge">${rangeText(x.hoursMin,x.hoursMax,"h")}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}${(x.tags||[]).slice(0,3).map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>${x.author?`<div class="small muted sc-author">${esc(x.author)}</div>`:""}</div></article>`).join("");
+ q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件${friendSources.length?` ／ 友人のみ ${scenarioGroupsForView("scenario").length}件`:""}`;
+ const cards=xs.map(x=>`<article class="sc-card" data-open="${x.id}" tabindex="0"><div class="sc-thumb-wrap">${x.thumbnailUrl?`<img class="sc-thumb" src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="sc-placeholder">🌺</div>`}</div><div class="sc-menu-wrap"><button class="sc-menu-btn" data-menu="${x.id}" type="button" aria-label="メニュー">⋯</button><div class="sc-menu" data-menu-panel="${x.id}">${x.url?`<a target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布ページ</a>`:""}<button data-record="${x.id}" type="button">LIBRARYに記録</button><button data-library="${x.id}" type="button">過去の開催記録</button><button data-prep="${x.id}" type="button">準備チェック</button><button data-schedule="${x.id}" type="button">卓予定を作る</button><button data-edit="${x.id}" type="button">編集</button><button data-archive="${x.id}" type="button">${x.archived?"アーカイブから戻す":"アーカイブ"}</button><button class="danger" data-del="${x.id}" type="button">削除</button></div></div><div class="sc-body"><div class="sc-head"><h3>${esc(x.title)}</h3></div><div class="sc-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${pubBadge(x)}${rangeText(x.playersMin,x.playersMax,"人")?`<span class="badge">${rangeText(x.playersMin,x.playersMax,"人")}</span>`:""}${rangeText(x.hoursMin,x.hoursMax,"h")?`<span class="badge">${rangeText(x.hoursMin,x.hoursMax,"h")}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}${(x.tags||[]).slice(0,3).map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>${x.author?`<div class="small muted sc-author">${esc(x.author)}</div>`:""}${(()=>{const owners=friendOwnersForScenario(x);return owners.length?`<div class="small muted" style="margin-top:5px">友人も所持：${owners.map(esc).join("、")}</div>`:""})()}</div></article>`).join("");
  q("list").innerHTML=cards+`<button id="addCard" class="sc-add-card" type="button"><span class="sc-add-plus">＋</span><span>追加</span></button>`;
  document.querySelectorAll("[data-open]").forEach(c=>{c.onclick=e=>{if(e.target.closest("button,a,.sc-menu"))return;detail(c.dataset.open)};c.onkeydown=e=>{if(e.key==="Enter")detail(c.dataset.open)}});
  document.querySelectorAll("[data-menu]").forEach(b=>b.onclick=e=>{e.stopPropagation();const panel=document.querySelector(`[data-menu-panel="${b.dataset.menu}"]`);document.querySelectorAll(".sc-menu.open").forEach(m=>{if(m!==panel)m.classList.remove("open")});panel.classList.toggle("open")});

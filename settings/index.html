@@ -51,6 +51,11 @@
         OFFの場合も、同卓者名は通常のテキストとして記録されます。
       </p>
 
+      <hr style="margin:18px 0;border:0;border-top:1px solid var(--line)">
+      <label for="selfSocialName"><strong>自分のSNS表示名</strong></label>
+      <input id="selfSocialName" placeholder="例：🌺 / はいびす">
+      <p class="small muted">X卓報告だけで「自分」の代わりに使います。空欄なら「自分」のままです。</p>
+      <button id="saveSelfSocialName" type="button">保存</button>
       <p id="settingsStatus" class="small" aria-live="polite"></p>
     </section>
   </div>
@@ -64,6 +69,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   const KEY="39x2_players_enabled_v1";
   const toggle=document.getElementById("playersFeatureToggle");
   const status=document.getElementById("settingsStatus");
+  const social=document.getElementById("selfSocialName"),saveSocial=document.getElementById("saveSelfSocialName"),SOCIAL_KEY="39x2_self_sns_name_v1";
+  if(social)social.value=localStorage.getItem(SOCIAL_KEY)||"";
+  if(saveSocial)saveSocial.addEventListener("click",()=>{localStorage.setItem(SOCIAL_KEY,social.value.trim());status.textContent="SNS表示名を保存しました。";});
   if(!toggle)return;
 
   toggle.checked=localStorage.getItem(KEY)==="1";

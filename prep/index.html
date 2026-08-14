@@ -18,7 +18,16 @@
 .prep-list{display:grid;gap:9px}
 .prep-item{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px;border:1px solid var(--line);border-radius:8px}
 .prep-item.done .prep-title{text-decoration:line-through;opacity:.6}
-.prep-meta{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.prep-item-body{min-width:0}
+.prep-meta{font-size:12px;color:var(--muted);overflow-wrap:anywhere;margin-top:3px}
+.prep-detail{margin-top:7px}
+.prep-detail summary{cursor:pointer;color:var(--muted);font-size:12px;user-select:none}
+.prep-detail-grid{display:grid;grid-template-columns:minmax(150px,.55fr) minmax(200px,1fr);gap:9px 12px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.prep-detail-grid label{display:grid;gap:5px;font-size:12px;color:var(--muted)}
+.prep-detail-grid .wide{grid-column:1/-1}
+.prep-detail-grid textarea{min-height:70px;resize:vertical}
+.prep-detail-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;align-items:center}
+.prep-completed{font-size:12px;color:var(--muted);margin-right:auto}
 .prep-actions{display:flex;gap:6px;flex-wrap:wrap}
 .prep-actions button{padding:5px 8px}
 .template-btn{width:100%;text-align:left;margin:4px 0}
@@ -40,12 +49,14 @@ html[data-theme="light"] .prep-item{
  .prep-panel{height:auto}
  .prep-head{grid-template-columns:1fr}
  .prep-add{grid-template-columns:1fr}
+ .prep-detail-grid{grid-template-columns:1fr}
+ .prep-detail-grid .wide{grid-column:auto}
  .deadline{min-width:0}
 }
 </style><script src="../assets/js/beta-gate.js?v=02315"></script>
 </head><body><main class="prep-wrap"><p><a href="../scenario/index.html?v=0292">← SCENARIO</a></p><h1>卓準備</h1><div id="scenarioTitle" class="small muted"></div>
 <div class="prep-grid"><aside class="prep-panel"><h2>テンプレート</h2><button class="template-btn" data-template="kp">CoC KP基本セット</button><button class="template-btn" data-template="pl">CoC PL基本セット</button><h3>自作テンプレート</h3><div id="customTemplates"></div><button id="saveTemplate">現在の項目をテンプレート保存</button></aside>
-<section class="prep-panel"><div class="prep-head"><div><label>準備の種類</label><select id="scope"><option value="scenario">シナリオ共通準備</option><option value="kpRun">陣ごとのKP準備</option><option value="plSession">卓ごとのPL準備</option></select></div><div><label>陣・卓名</label><input id="runLabel" placeholder="例：1陣目／自陣"></div></div><div id="progress" style="margin:12px 0"></div><div id="items" class="prep-list"></div><hr><h3>項目を追加</h3><input id="newTitle" placeholder="例：キャラシ提出"><div class="prep-add"><input id="newDeadline" class="deadline" type="datetime-local"><input id="newUrl" type="url" placeholder="関連URL"><input id="newMemo" placeholder="メモ"><button id="addItem">追加</button></div></section></div></main>
+<section class="prep-panel"><div class="prep-head"><div><label>準備の種類</label><select id="scope"><option value="scenario">シナリオ共通準備</option><option value="kpRun">陣ごとのKP準備</option><option value="plSession">卓ごとのPL準備</option></select></div><div><label>陣・卓名</label><input id="runLabel" placeholder="例：1陣目／自陣"></div></div><div id="progress" style="margin:12px 0"></div><div id="items" class="prep-list"></div><hr><h3>項目を追加</h3><input id="newTitle" placeholder="例：キャラシ提出"><div class="prep-add"><input id="newDeadline" class="deadline" type="date"><input id="newUrl" type="url" placeholder="関連URL"><input id="newMemo" placeholder="メモ"><button id="addItem">追加</button></div></section></div></main>
 <script src="../assets/js/shared-data.js?v=0292"></script><script>
 (()=>{"use strict";const q=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const KEY="39x2_prep_v1",TK="39x2_prep_templates_v1",sid=new URLSearchParams(location.search).get("scenario")||"general";let all=(()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}})();let custom=(()=>{try{return JSON.parse(localStorage.getItem(TK)||"[]")}catch{return []}})();
@@ -53,9 +64,16 @@ const scenarios=TRPG39.loadScenarios(),sc=scenarios.find(x=>x.id===sid);q("scena
 const defaults={kp:[["シナリオを読む","scenario"],["ココフォリア部屋作成","scenario"],["マップ・素材準備","scenario"],["BGM準備","scenario"],["PL確定","kpRun"],["HO配布","kpRun"],["PC・キャラシ確認","kpRun"],["日程確認","kpRun"]],pl:[["レギュレーション確認","plSession"],["KPハウスルール確認","plSession"],["HO確認","plSession"],["キャラクター作成","plSession"],["キャラシ提出","plSession"],["KP確認・修正対応","plSession"],["立ち絵・駒準備","plSession"],["日程・開始時刻確認","plSession"]]};
 function bucket(){const scope=q("scope").value,label=q("runLabel").value.trim()||"_";all[sid]??={};all[sid][scope]??={};all[sid][scope][label]??=[];return all[sid][scope][label]}
 function save(){localStorage.setItem(KEY,JSON.stringify(all));render()}
-function add(title,deadline="",url="",memo=""){if(!title.trim())return;bucket().push({id:crypto.randomUUID?crypto.randomUUID():Date.now()+"",title:title.trim(),done:false,deadline,url,memo});save()}
+function localDate(){const d=new Date(),p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}
+function dateOnly(v){return String(v||"").split("T")[0]}
+function persist(){localStorage.setItem(KEY,JSON.stringify(all))}
+function save(){persist();render()}
+function add(title,deadline="",url="",memo=""){if(!title.trim())return;bucket().push({id:crypto.randomUUID?crypto.randomUUID():Date.now()+"",title:title.trim(),done:false,deadline:dateOnly(deadline),url,memo,completedAt:""});save()}
 function applyTemplate(kind){const rows=kind==="custom"?[]:defaults[kind]||[];rows.forEach(([title,scope])=>{q("scope").value=scope;add(title)});render()}
-function render(){const xs=bucket(),done=xs.filter(x=>x.done).length;q("progress").innerHTML=`<b>準備 ${done}/${xs.length}</b>`;q("items").innerHTML=xs.length?xs.map(x=>`<div class="prep-item ${x.done?"done":""}"><input type="checkbox" data-check="${x.id}" ${x.done?"checked":""}><div><div class="prep-title"><b>${esc(x.title)}</b></div><div class="prep-meta">${x.deadline?`期限：${esc(x.deadline.replace("T"," "))}`:""}${x.memo?` ／ ${esc(x.memo)}`:""}${x.url?` ／ <a href="${esc(x.url)}" target="_blank" rel="noopener">関連URL</a>`:""}</div></div><button data-del="${x.id}">削除</button></div>`).join(""):'<div class="small muted">まだ準備項目はありません。</div>';document.querySelectorAll("[data-check]").forEach(c=>c.onchange=()=>{const x=xs.find(v=>v.id===c.dataset.check);x.done=c.checked;save()});document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const i=xs.findIndex(v=>v.id===b.dataset.del);xs.splice(i,1);save()});renderTemplates()}
+function render(){const xs=bucket(),done=xs.filter(x=>x.done).length;q("progress").innerHTML=`<b>準備 ${done}/${xs.length}</b>`;q("items").innerHTML=xs.length?xs.map(x=>{const deadline=dateOnly(x.deadline),completed=dateOnly(x.completedAt);return `<div class="prep-item ${x.done?"done":""}"><input type="checkbox" data-check="${x.id}" ${x.done?"checked":""}><div class="prep-item-body"><div class="prep-title"><b>${esc(x.title)}</b></div><div class="prep-meta">${deadline?`締切：${esc(deadline.replaceAll("-","/"))}`:""}${completed?`${deadline?" ／ ":""}完了：${esc(completed.replaceAll("-","/"))}`:""}${x.memo?`${deadline||completed?" ／ ":""}${esc(x.memo)}`:""}${x.url?` ／ <a href="${esc(x.url)}" target="_blank" rel="noopener">関連URL</a>`:""}</div><details class="prep-detail"><summary>締切日・URL・メモを編集</summary><div class="prep-detail-grid"><label>締切日<input type="date" data-edit-deadline="${x.id}" value="${esc(deadline)}"></label><label>関連URL<input type="url" data-edit-url="${x.id}" value="${esc(x.url||"")}" placeholder="https://..."></label><label class="wide">メモ<textarea data-edit-memo="${x.id}" placeholder="準備メモ">${esc(x.memo||"")}</textarea></label><div class="prep-detail-actions"><span class="prep-completed">${completed?`完了日：${esc(completed.replaceAll("-","/"))}`:"未完了"}</span><button type="button" data-save-detail="${x.id}">詳細を保存</button></div></div></details></div><button data-del="${x.id}">削除</button></div>`}).join(""):'<div class="small muted">まだ準備項目はありません。</div>';
+document.querySelectorAll("[data-check]").forEach(c=>c.onchange=()=>{const x=xs.find(v=>v.id===c.dataset.check);x.done=c.checked;x.completedAt=c.checked?localDate():"";save()});
+document.querySelectorAll("[data-save-detail]").forEach(b=>b.onclick=()=>{const id=b.dataset.saveDetail,x=xs.find(v=>v.id===id);if(!x)return;x.deadline=document.querySelector(`[data-edit-deadline="${CSS.escape(id)}"]`)?.value||"";x.url=document.querySelector(`[data-edit-url="${CSS.escape(id)}"]`)?.value.trim()||"";x.memo=document.querySelector(`[data-edit-memo="${CSS.escape(id)}"]`)?.value.trim()||"";save()});
+document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const i=xs.findIndex(v=>v.id===b.dataset.del);xs.splice(i,1);save()});renderTemplates()}
 function renderTemplates(){q("customTemplates").innerHTML=custom.map((t,i)=>`<button class="template-btn" data-custom="${i}">${esc(t.name)}</button>`).join("");document.querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{const t=custom[Number(b.dataset.custom)];t.items.forEach(x=>add(x.title,x.deadline||"",x.url||"",x.memo||""))})}
 q("addItem").onclick=()=>{add(q("newTitle").value,q("newDeadline").value,q("newUrl").value,q("newMemo").value);q("newTitle").value=q("newDeadline").value=q("newUrl").value=q("newMemo").value=""};document.querySelectorAll("[data-template]").forEach(b=>b.onclick=()=>applyTemplate(b.dataset.template));q("scope").onchange=render;q("runLabel").oninput=render;q("saveTemplate").onclick=()=>{const name=prompt("テンプレート名");if(!name)return;custom.push({name,items:bucket().map(({title,deadline,url,memo})=>({title,deadline,url,memo}))});localStorage.setItem(TK,JSON.stringify(custom));renderTemplates()};render();
 })();

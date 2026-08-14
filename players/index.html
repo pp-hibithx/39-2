@@ -25,6 +25,14 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 @media(max-width:850px){.album-row{grid-template-columns:1fr}}
 .image-preview{margin-top:8px;display:flex;align-items:flex-start;gap:10px}.image-preview[hidden]{display:none}.image-preview img{width:150px;aspect-ratio:16/10;object-fit:cover;border:1px solid var(--line);border-radius:8px}.library-editor{border-top:1px solid var(--line);padding-top:22px}
 .scenario-history{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}.history-row{padding:5px 0}.dir-card summary{cursor:pointer;list-style:none}.dir-card summary::-webkit-details-marker{display:none}
+.player-pc-groups{display:grid;gap:10px;margin-top:10px}
+.player-pc-group{border:1px solid var(--line);border-radius:8px;padding:9px;background:rgba(255,255,255,.015)}
+.player-pc-title{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:5px}
+.player-pc-title strong{font-size:13px}
+.player-pc-meta{font-size:11px;color:var(--muted)}
+.player-pc-scenarios{display:grid;gap:3px}
+.player-pc-scenarios .history-row{padding:3px 0}
+
 </style>
 
 <style>
@@ -106,7 +114,7 @@ body.players-feature-off [data-player-management]{display:none!important}
 <label>公開範囲</label><select id="plVisibility"><option value="private">自分のみ</option><option value="link">リンク限定</option><option value="public">公開</option></select>
 <label>メモ</label><textarea id="plMemo" placeholder="自分用メモ。共有ページには表示しません。"></textarea>
 <div class="dir-actions"><button id="plSave">保存</button><button id="plCancel">編集をやめる</button></div></section>
-</div><div class="wrap small muted" data-build-marker="02320">build v0.2.32.0</div></main><footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
+</div><div class="wrap small muted" data-build-marker="02321">build v0.2.32.1</div></main><footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
 <script src="../assets/js/main.js?v=0292"></script><script src="../assets/js/shared-data.js?v=0292"></script>
 <script src="../assets/js/supabase-config.js?v=0292"></script><script src="../assets/js/supabase-share.js?v=02306"></script>
 <script>
@@ -116,32 +124,112 @@ let players=TRPG39.loadPlayers(),album=TRPG39.loadAlbum();const uuid=()=>TRPG39.
 function stats(name){
  const key=String(name||"").trim();
  const xs=album.filter(x=>{
-   const rows=Array.isArray(x.participantRows)&&x.participantRows.length?x.participantRows:(x.participants||[]).map(n=>({plName:n}));
+   const rows=Array.isArray(x.participantRows)&&x.participantRows.length
+     ? x.participantRows
+     : (x.participants||[]).map(n=>({plName:n}));
    return rows.some(r=>String(r.plName||"").trim()===key);
  });
- const dates=xs.map(x=>x.date).filter(Boolean).sort(),m=new Map(),pcMap=new Map();
+
+ const dates=xs.map(x=>x.date).filter(Boolean).sort();
+ const scenarioMap=new Map();
+ const pcGroups=new Map();
+
  xs.forEach(x=>{
-   const k=x.scenarioId||x.title;
-   if(!m.has(k))m.set(k,{title:x.title||"名称未設定",scenarioId:x.scenarioId||"",first:x.date||""});
-   else if(x.date&&(!m.get(k).first||x.date<m.get(k).first))m.get(k).first=x.date;
-   const rows=Array.isArray(x.participantRows)&&x.participantRows.length?x.participantRows:(x.participants||[]).map(n=>({plName:n,pcName:"",relation:""}));
+   const scenarioKey=x.scenarioId||x.title;
+   if(!scenarioMap.has(scenarioKey)){
+     scenarioMap.set(scenarioKey,{title:x.title||"名称未設定",scenarioId:x.scenarioId||"",first:x.date||""});
+   }else if(x.date&&(!scenarioMap.get(scenarioKey).first||x.date<scenarioMap.get(scenarioKey).first)){
+     scenarioMap.get(scenarioKey).first=x.date;
+   }
+
+   const rows=Array.isArray(x.participantRows)&&x.participantRows.length
+     ? x.participantRows
+     : (x.participants||[]).map(n=>({plName:n,pcName:"",relation:""}));
+
    rows.filter(r=>String(r.plName||"").trim()===key).forEach(r=>{
-     const pc=String(r.pcName||"").trim(); if(!pc)return;
-     const relKey=[pc,x.pcName||"",r.relation||""].join("||");
-     if(!pcMap.has(relKey))pcMap.set(relKey,{pcName:pc,selfPcName:x.pcName||"",relation:r.relation||"",first:x.date||"",last:x.date||""});
-     else{
-       const v=pcMap.get(relKey);
-       if(x.date&&(!v.first||x.date<v.first))v.first=x.date;
-       if(x.date&&(!v.last||x.date>v.last))v.last=x.date;
+     const pcName=String(r.pcName||"").trim()||"PC不明";
+     if(!pcGroups.has(pcName)){
+       pcGroups.set(pcName,{pcName,first:x.date||"",last:x.date||"",sessions:[],relations:new Set(),selfPcs:new Set()});
      }
+     const g=pcGroups.get(pcName);
+     if(x.date&&(!g.first||x.date<g.first))g.first=x.date;
+     if(x.date&&(!g.last||x.date>g.last))g.last=x.date;
+     if(r.relation)g.relations.add(r.relation);
+     if(x.pcName)g.selfPcs.add(x.pcName);
+     g.sessions.push({
+       title:x.title||"名称未設定",
+       scenarioId:x.scenarioId||"",
+       date:x.date||"",
+       recordId:x.id||""
+     });
    });
  });
- return {count:m.size,first:dates[0]||"",last:dates.slice(-1)[0]||"",scenarios:[...m.values()].sort((a,b)=>String(a.first||"9999").localeCompare(String(b.first||"9999"))),pcs:[...pcMap.values()].sort((a,b)=>a.pcName.localeCompare(b.pcName,"ja"))};
+
+ const pcs=[...pcGroups.values()].map(g=>{
+   const uniq=new Map();
+   g.sessions.forEach(s=>{
+     const k=[s.scenarioId||s.title,s.date||"",s.recordId||""].join("||");
+     if(!uniq.has(k))uniq.set(k,s);
+   });
+   g.sessions=[...uniq.values()].sort((a,b)=>String(a.date||"9999").localeCompare(String(b.date||"9999"))||String(a.title).localeCompare(String(b.title),"ja"));
+   g.relations=[...g.relations];
+   g.selfPcs=[...g.selfPcs];
+   return g;
+ }).sort((a,b)=>{
+   if(a.pcName==="PC不明")return 1;
+   if(b.pcName==="PC不明")return -1;
+   return a.pcName.localeCompare(b.pcName,"ja");
+ });
+
+ return {
+   count:scenarioMap.size,
+   first:dates[0]||"",
+   last:dates.slice(-1)[0]||"",
+   scenarios:[...scenarioMap.values()].sort((a,b)=>String(a.first||"9999").localeCompare(String(b.first||"9999"))),
+   pcs
+ };
 }
 function reset(){["plId","plName","plPublicName","plSocialName","plMemo"].forEach(x=>q(x).value="");q("plExcluded").checked=false;q("plVisibility").value="private";q("plHeading").textContent="人物を追加"}
-function render(){q("plSummary").textContent=`登録 ${players.length}人`;const mode=q("plSort")?.value||"name";const rows=players.map(x=>({x,st:stats(x.name)})).sort((a,b)=>mode==="count"?(b.st.count-a.st.count)||a.x.name.localeCompare(b.x.name,"ja"):mode==="recent"?String(b.st.last||"").localeCompare(String(a.st.last||""))||a.x.name.localeCompare(b.x.name,"ja"):a.x.name.localeCompare(b.x.name,"ja"));q("plList").innerHTML=rows.length?rows.map(({x,st})=>`<details class="dir-card" ${new URLSearchParams(location.search).get("focus")===x.id?"open":""}><summary><h3 style="display:inline">${esc(x.name)}</h3><div class="dir-meta">公開名：${esc(x.publicName||x.name)}${x.socialName?` ／ SNS：${esc(x.socialName)}`:""}${x.excluded?` ／ <span class="muted">表示から除外</span>`:""}</div><div class="dir-meta">同卓 ${st.count}シナリオ${st.first?` ／ 初同卓 ${esc(st.first)}`:""}${st.last?` ／ 最終同卓 ${esc(st.last)}`:""}</div></summary><div class="scenario-history">${st.scenarios.length?st.scenarios.map(s=>`<div class="history-row"><a class="link" href="../library/index.html?player=${encodeURIComponent(x.name)}${s.scenarioId?`&scenario=${encodeURIComponent(s.scenarioId)}`:""}">${esc(s.title)}</a>${s.first?` <span class="small muted">${esc(s.first)}</span>`:""}</div>`).join(""):'<div class="small muted">同卓記録はまだありません。</div>'}
-${st.pcs.length?`<div class="player-pc-history"><div class="small muted" style="margin:10px 0 4px">使用PC</div>${st.pcs.map(pc=>`<div class="history-row"><strong>${esc(pc.pcName)}</strong>${pc.selfPcName?` ／ 自PC：${esc(pc.selfPcName)}`:""}${pc.relation?` ／ ${esc(pc.relation)}`:""}</div>`).join("")}</div>`:""}
-<div class="dir-actions"><a class="link" href="../library/index.html?player=${encodeURIComponent(x.name)}">LIBRARYで全記録を見る</a><button data-edit="${x.id}">編集</button><button data-share="${x.id}">共有</button></div></div></details>`).join(""):'<div class="empty">まだ人物が登録されていません。</div>';document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=e=>{e.preventDefault();edit(b.dataset.edit)});document.querySelectorAll("[data-share]").forEach(b=>b.onclick=e=>{e.preventDefault();share(b.dataset.share)});}
+function render(){
+ q("plSummary").textContent=`登録 ${players.length}人`;
+ const mode=q("plSort")?.value||"name";
+ const rows=players.map(x=>({x,st:stats(x.name)})).sort((a,b)=>
+   mode==="count"?(b.st.count-a.st.count)||a.x.name.localeCompare(b.x.name,"ja")
+   :mode==="recent"?String(b.st.last||"").localeCompare(String(a.st.last||""))||a.x.name.localeCompare(b.x.name,"ja")
+   :a.x.name.localeCompare(b.x.name,"ja")
+ );
+
+ q("plList").innerHTML=rows.length?rows.map(({x,st})=>`<details class="dir-card" ${new URLSearchParams(location.search).get("focus")===x.id?"open":""}>
+   <summary>
+     <h3 style="display:inline">${esc(x.name)}</h3>
+     <div class="dir-meta">公開名：${esc(x.publicName||x.name)}${x.socialName?` ／ SNS：${esc(x.socialName)}`:""}${x.excluded?` ／ <span class="muted">表示から除外</span>`:""}</div>
+     <div class="dir-meta">同卓 ${st.count}シナリオ${st.first?` ／ 初同卓 ${esc(st.first)}`:""}${st.last?` ／ 最終同卓 ${esc(st.last)}`:""}</div>
+   </summary>
+   <div class="scenario-history">
+     ${st.pcs.length?`<div class="player-pc-groups">${st.pcs.map(pc=>`
+       <section class="player-pc-group">
+         <div class="player-pc-title">
+           <strong>${esc(pc.pcName)}</strong>
+           <span class="player-pc-meta">${pc.sessions.length}卓${pc.first?` ／ 初同卓 ${esc(pc.first)}`:""}${pc.last&&pc.last!==pc.first?` ／ 最終 ${esc(pc.last)}`:""}</span>
+         </div>
+         ${pc.selfPcs.length?`<div class="small muted">自PC：${pc.selfPcs.map(esc).join("、")}</div>`:""}
+         ${pc.relations.length?`<div class="small muted">関係：${pc.relations.map(esc).join("、")}</div>`:""}
+         <div class="player-pc-scenarios">
+           ${pc.sessions.map(s=>`<div class="history-row"><a class="link" href="../library/index.html?player=${encodeURIComponent(x.name)}${s.scenarioId?`&scenario=${encodeURIComponent(s.scenarioId)}`:""}">${esc(s.title)}</a>${s.date?` <span class="small muted">${esc(s.date)}</span>`:""}</div>`).join("")}
+         </div>
+       </section>`).join("")}</div>`:'<div class="small muted">同卓記録はまだありません。</div>'}
+
+     <div class="dir-actions">
+       <a class="link" href="../library/index.html?player=${encodeURIComponent(x.name)}">LIBRARYで全記録を見る</a>
+       <button data-edit="${x.id}">編集</button>
+       <button data-share="${x.id}">共有</button>
+     </div>
+   </div>
+ </details>`).join(""):'<div class="empty">まだ人物が登録されていません。</div>';
+
+ document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=e=>{e.preventDefault();edit(b.dataset.edit)});
+ document.querySelectorAll("[data-share]").forEach(b=>b.onclick=e=>{e.preventDefault();share(b.dataset.share)});
+}
 function edit(id){const x=players.find(v=>v.id===id);if(!x)return;q("plId").value=x.id;q("plName").value=x.name||"";q("plPublicName").value=x.publicName||"";q("plSocialName").value=x.socialName||"";q("plExcluded").checked=!!x.excluded;q("plVisibility").value=x.visibility||"private";q("plMemo").value=x.memo||"";q("plHeading").textContent="人物を編集";q("plEditor").hidden=false}
 function save(){const name=q("plName").value.trim();if(!name)return alert("管理名を入力してください。");const id=q("plId").value||uuid(),old=players.find(v=>v.id===id)||{},x={...old,id,name,publicName:q("plPublicName").value.trim(),socialName:q("plSocialName").value.trim(),excluded:q("plExcluded").checked,visibility:q("plVisibility").value,memo:q("plMemo").value.trim()};const i=players.findIndex(v=>v.id===id);if(i>=0)players[i]=x;else players.push(x);TRPG39.savePlayers(players);reset();q("plEditor").hidden=true;render()}
 async function share(id){const x=players.find(v=>v.id===id);if(!x)return;if(x.visibility==="private")return alert("この人物は「自分のみ」です。");const st=stats(x.name);try{const sid=await TRPG39Cloud.createSharedPage({kind:"player-profile",version:1,name:x.publicName||x.name,stats:st});const u=new URL("../share/index.html",location.href);u.searchParams.set("id",sid);prompt("同卓プロフィールの共有URLです。",u.href)}catch(e){alert("共有URLを作成できませんでした: "+(e.message||e))}}

@@ -52,6 +52,7 @@
       runId: input.runId || "",
       runLabel: input.runLabel || "",
       sessionDay: Number(input.sessionDay || 0),
+      sessionKind: ["prelude","main","aftertalk"].includes(input.sessionKind) ? input.sessionKind : "main",
       timeBand: input.timeBand || "",
       timeSpecified: input.timeSpecified !== undefined ? !!input.timeSpecified : /T\d{2}:\d{2}/.test(String(input.start || "")),
       createdAt: input.createdAt || nowISO(),

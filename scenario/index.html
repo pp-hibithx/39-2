@@ -199,40 +199,78 @@ function friendMatches(x){
  if(hours&&x.hoursMin&&Number(x.hoursMin)>hours)return false;
  return true;
 }
-function normScenarioText(v){return String(v||"").trim().toLowerCase().normalize("NFKC").replace(/[\s　]+/g,"").replace(/[!！?？:：・･,，.。'’"“”「」『』【】()（）\[\]［］]/g,"")}
-function normScenarioUrl(v){return String(v||"").trim().toLowerCase().replace(/[#?].*$/,"").replace(/\/+$/,"")}
-function sameScenario(a,b){
- const au=normScenarioUrl(a.url),bu=normScenarioUrl(b.url);
- if(au&&bu&&au===bu)return true;
- const at=normScenarioText(a.title),bt=normScenarioText(b.title);
- if(!at||!bt||at!==bt)return false;
- const aa=normScenarioText(a.author),ba=normScenarioText(b.author);
- // タイトルが同一で、作者も同一、または片方の作者が未登録なら同一作品としてまとめる。
- if(!aa||!ba||aa===ba)return true;
- return false;
+function normScenarioText(v){
+ return String(v||"").trim().toLowerCase().normalize("NFKC")
+   .replace(/[\s　]+/g,"")
+   .replace(/[!！?？:：・･,，.。'’"“”「」『』【】()（）\[\]［］]/g,"");
+}
+function normScenarioUrl(v){
+ return String(v||"").trim().toLowerCase()
+   .replace(/[#?].*$/,"")
+   .replace(/\/+$/,"");
+}
+function scenarioIdentityKey(x){
+ const title=normScenarioText(x.title);
+ const author=normScenarioText(x.author);
+ // この一覧では「同じ作品を誰が持っているか」を見ることが目的なので、
+ // タイトル一致を主キーにする。作者はタイトルが空のケースの補助だけに使う。
+ if(title)return "title:"+title;
+ const url=normScenarioUrl(x.url);
+ if(url)return "url:"+url;
+ return "fallback:"+author+"|"+normScenarioText(x.system);
 }
 function isOwnedScenario(x,source="friend"){
  if(source==="mine")return !!(x.flags&&x.flags.owned);
  if(typeof x.owned==="boolean")return x.owned;
  const labels=Array.isArray(x.labels)?x.labels:[];
- // 旧共有URLとの互換。旧形式で「所持」があれば所持扱い。
- // labels自体が無い古い共有データは、一覧登録済みシナリオとして所持扱いに寄せる。
  return labels.includes("所持") || !("labels" in x);
 }
 function groupedFriendScenarios(){
- const groups=[];
+ const map=new Map();
+
  const add=(x,owner,source)=>{
-  let g=groups.find(v=>sameScenario(v.item,x));
-  if(!g){g={item:x,owners:[],sources:[]};groups.push(g)}
+  const key=scenarioIdentityKey(x);
+  if(!key)return;
+  if(!map.has(key)){
+    map.set(key,{
+      key,
+      item:{...x},
+      owners:[],
+      sources:[]
+    });
+  }
+  const g=map.get(key);
+
   if(!g.owners.includes(owner))g.owners.push(owner);
   g.sources.push({owner,source,item:x});
-  // 自分側の情報を基本表示に使い、サムネがない場合だけ友人側から補う。
-  if(source==="mine")g.item={...g.item,...x,thumbnailUrl:x.thumbnailUrl||g.item.thumbnailUrl||""};
-  else if(!g.item.thumbnailUrl&&x.thumbnailUrl)g.item={...g.item,thumbnailUrl:x.thumbnailUrl};
+
+  // 表示内容は自分側の登録を優先。ただし不足情報は友人側で補完する。
+  if(source==="mine"){
+    g.item={
+      ...g.item,
+      ...x,
+      thumbnailUrl:x.thumbnailUrl||g.item.thumbnailUrl||"",
+      url:x.url||g.item.url||"",
+      author:x.author||g.item.author||"",
+      system:x.system||g.item.system||""
+    };
+  }else{
+    if(!g.item.thumbnailUrl&&x.thumbnailUrl)g.item.thumbnailUrl=x.thumbnailUrl;
+    if(!g.item.url&&x.url)g.item.url=x.url;
+    if(!g.item.author&&x.author)g.item.author=x.author;
+    if(!g.item.system&&x.system)g.item.system=x.system;
+  }
  };
- data.filter(x=>!x.archived&&isOwnedScenario(x,"mine")).forEach(x=>add(x,"自分","mine"));
- friendItems.filter(x=>isOwnedScenario(x,"friend")).forEach(x=>add(x,x._friend||"友人","friend"));
- return groups;
+
+ data
+   .filter(x=>!x.archived&&isOwnedScenario(x,"mine"))
+   .forEach(x=>add(x,"自分","mine"));
+
+ friendItems
+   .filter(x=>isOwnedScenario(x,"friend"))
+   .forEach(x=>add(x,x._friend||"友人","friend"));
+
+ return [...map.values()];
 }
 function renderFriendResults(){
  const mode=q("friendViewMode")?.value||"scenario";
@@ -253,7 +291,7 @@ function renderFriendResults(){
   return;
  }
 
- q("friendResults").innerHTML=groups.length?groups.sort((a,b)=>String(a.item.title||"").localeCompare(String(b.item.title||""),"ja")).map(g=>{const x=g.item;const friendSource=g.sources.find(s=>s.source==="friend");return `<article class="friend-card">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<b>${esc(x.title)}</b>${x.publicationStatus&&x.publicationStatus!=="public"?` <span class="badge">${esc(publicationLabels[x.publicationStatus]||x.publicationStatus)}</span>`:""}${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}<div class="friend-owner-list">所持：${g.owners.map(esc).join("、")}</div><div class="friend-actions">${x.url?`<a class="button" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布ページ</a>`:""}${friendSource&&!g.owners.includes("自分")?`<button type="button" data-friend-import="${esc(friendSource.item._key)}">自分に追加</button>`:""}</div></article>`}).join(""):(friendSources.length?'<div class="small muted">条件に合う所持シナリオはありません。</div>':"");
+ q("friendResults").innerHTML=groups.length?groups.sort((a,b)=>String(a.item.title||"").localeCompare(String(b.item.title||""),"ja")).map(g=>{const x=g.item;g.owners.sort((a,b)=>a==="自分"?-1:b==="自分"?1:a.localeCompare(b,"ja"));const friendSource=g.sources.find(s=>s.source==="friend");return `<article class="friend-card">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<b>${esc(x.title)}</b>${x.publicationStatus&&x.publicationStatus!=="public"?` <span class="badge">${esc(publicationLabels[x.publicationStatus]||x.publicationStatus)}</span>`:""}${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}<div class="friend-owner-list">所持：${g.owners.map(esc).join("、")}</div><div class="friend-actions">${x.url?`<a class="button" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布ページ</a>`:""}${friendSource&&!g.owners.includes("自分")?`<button type="button" data-friend-import="${esc(friendSource.item._key)}">自分に追加</button>`:""}</div></article>`}).join(""):(friendSources.length?'<div class="small muted">条件に合う所持シナリオはありません。</div>':"");
  document.querySelectorAll("[data-friend-import]").forEach(b=>b.onclick=()=>importFriendScenario(b.dataset.friendImport));
 }
 function importFriendScenario(key){

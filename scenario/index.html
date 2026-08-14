@@ -36,6 +36,16 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 @media(max-width:620px){.sc-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.sc-body{padding:9px}.sc-head h3{font-size:.92rem}.sc-author{display:none}.sc-inline{align-items:stretch;flex-direction:column}.sc-inline button{width:100%}.sc-row{grid-template-columns:1fr}.sc-toolbar-main{width:100%}.sc-toolbar-main>div{min-width:0;flex:1}.sc-add-card{min-height:160px}}
 @media(max-width:390px){.sc-list{grid-template-columns:1fr}}
 .friend-panel{margin-top:14px}.friend-panel-summary{cursor:pointer;list-style:none;display:flex;align-items:flex-start;gap:7px}.friend-panel-summary::-webkit-details-marker{display:none}.friend-panel-summary:before{content:"▶";font-size:11px;line-height:1.5;flex:0 0 auto}.friend-panel[open]>.friend-panel-summary:before{content:"▼"}.friend-panel-summary>div{min-width:0}.friend-panel-body{margin-top:12px}.friend-head{display:flex;justify-content:space-between;gap:10px;align-items:end;flex-wrap:wrap}.friend-add{display:flex;gap:7px;align-items:end;flex-wrap:wrap}.friend-add input{width:260px}.friend-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:10px}.friend-card{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--panel)}.friend-card img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:7px;margin-bottom:7px}.friend-owner{font-size:11px;color:var(--muted)}.friend-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.friend-actions button,.friend-actions a{font-size:12px;padding:6px 8px}
+.friend-view-tools{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:10px}
+.friend-view-tools select{width:auto;min-width:150px}
+.friend-owner-list{margin-top:6px;font-size:12px;color:var(--muted)}
+.friend-person-group{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--panel)}
+.friend-person-group h3{margin:0 0 8px;font-size:1rem}
+.friend-person-items{display:grid;gap:7px}
+.friend-person-item{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px;align-items:center}
+.friend-person-item img{width:64px;aspect-ratio:16/10;object-fit:cover;border-radius:6px;margin:0}
+.friend-person-thumb{width:64px;aspect-ratio:16/10;border-radius:6px;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted)}
+
 </style>
 <script src="../assets/js/supabase-config.js?v=0292"></script>
 <script src="../assets/js/supabase-share.js?v=0292"></script>
@@ -75,6 +85,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
  <div class="friend-head"><div class="small">共有されたSAKU+MERUのシナリオ一覧を登録すると、上の検索と一緒に探せます。</div>
  <div class="friend-add"><div><label>名前</label><input id="friendName" placeholder="例：Aさん"></div><div><label>共有URL</label><input id="friendUrl" placeholder="SAKU+MERUの共有URL"></div><button id="friendAdd" type="button">＋ 登録</button></div></div>
  <div id="friendSources" class="small" style="margin-top:8px"></div>
+ <div class="friend-view-tools"><div><label>表示</label><select id="friendViewMode"><option value="scenario">シナリオから見る</option><option value="person">友人から見る</option></select></div></div>
  <div id="friendResults" class="friend-results"></div>
  </div>
 </details>
@@ -180,11 +191,52 @@ function friendMatches(x){
  if(hours&&x.hoursMin&&Number(x.hoursMin)>hours)return false;
  return true;
 }
+function normScenarioTitle(v){return String(v||"").trim().toLowerCase().replace(/\s+/g," ")}
+function scenarioGroupKey(x){
+ const url=String(x.url||"").trim();
+ if(url)return "url:"+url.replace(/[#?].*$/,"").replace(/\/+$/,"").toLowerCase();
+ return "meta:"+[normScenarioTitle(x.title),normScenarioTitle(x.author),normScenarioTitle(x.system)].join("|");
+}
+function isOwnedScenario(x,source="friend"){
+ if(source==="mine")return !!(x.flags&&x.flags.owned);
+ const labels=Array.isArray(x.labels)?x.labels:[];
+ return labels.includes("所持") || labels.length===0;
+}
+function groupedFriendScenarios(){
+ const map=new Map();
+ const add=(x,owner,source)=>{
+  const key=scenarioGroupKey(x);
+  if(!map.has(key))map.set(key,{key,item:x,owners:[],sources:[]});
+  const g=map.get(key);
+  if(!g.owners.includes(owner))g.owners.push(owner);
+  g.sources.push({owner,source,item:x});
+  if(source==="mine"&&x.thumbnailUrl)g.item={...g.item,...x};
+  else if(!g.item.thumbnailUrl&&x.thumbnailUrl)g.item={...g.item,thumbnailUrl:x.thumbnailUrl};
+ };
+ data.filter(x=>!x.archived&&isOwnedScenario(x,"mine")).forEach(x=>add(x,"自分","mine"));
+ friendItems.filter(x=>isOwnedScenario(x,"friend")).forEach(x=>add(x,x._friend||"友人","friend"));
+ return [...map.values()];
+}
 function renderFriendResults(){
- const xs=friendItems.filter(friendMatches);
- q("friendMatchCount").textContent=friendSources.length?`登録 ${friendSources.length}人 ／ 一致 ${xs.length}件`:"";
- if(q("search").value.trim()&&xs.length)q("friendPanel").open=true;
- q("friendResults").innerHTML=xs.length?xs.map(x=>`<article class="friend-card">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<div class="friend-owner">${esc(x._friend)}の一覧</div><b>${esc(x.title)}</b>${x.publicationStatus&&x.publicationStatus!=="public"?` <span class="badge">${esc(publicationLabels[x.publicationStatus]||x.publicationStatus)}</span>`:""}${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}<div class="friend-actions">${x.url?`<a class="button" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布ページ</a>`:""}<button type="button" data-friend-import="${esc(x._key)}">自分に追加</button></div></article>`).join(""):(friendSources.length?'<div class="small muted">条件に合う共有シナリオはありません。</div>':"");
+ const mode=q("friendViewMode")?.value||"scenario";
+ const groups=groupedFriendScenarios().filter(g=>friendMatches({...g.item,_friend:g.owners.join(" ")}));
+ q("friendMatchCount").textContent=friendSources.length?`登録 ${friendSources.length}人 ／ 一致 ${groups.length}件`:"";
+ if(q("search").value.trim()&&groups.length)q("friendPanel").open=true;
+
+ if(mode==="person"){
+  const people=new Map();
+  for(const g of groups){
+   for(const owner of g.owners){
+    if(!people.has(owner))people.set(owner,[]);
+    people.get(owner).push(g);
+   }
+  }
+  const rows=[...people.entries()].sort((a,b)=>a[0].localeCompare(b[0],"ja"));
+  q("friendResults").innerHTML=rows.length?rows.map(([owner,gs])=>`<section class="friend-person-group"><h3>${esc(owner)}</h3><div class="friend-person-items">${gs.sort((a,b)=>String(a.item.title||"").localeCompare(String(b.item.title||""),"ja")).map(g=>{const x=g.item;return `<div class="friend-person-item">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="friend-person-thumb">🌺</div>`}<div><b>${esc(x.title)}</b>${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}</div></div>`}).join("")}</div></section>`).join(""):(friendSources.length?'<div class="small muted">条件に合う所持シナリオはありません。</div>':"");
+  return;
+ }
+
+ q("friendResults").innerHTML=groups.length?groups.sort((a,b)=>String(a.item.title||"").localeCompare(String(b.item.title||""),"ja")).map(g=>{const x=g.item;const friendSource=g.sources.find(s=>s.source==="friend");return `<article class="friend-card">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<b>${esc(x.title)}</b>${x.publicationStatus&&x.publicationStatus!=="public"?` <span class="badge">${esc(publicationLabels[x.publicationStatus]||x.publicationStatus)}</span>`:""}${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}<div class="friend-owner-list">所持：${g.owners.map(esc).join("、")}</div><div class="friend-actions">${x.url?`<a class="button" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布ページ</a>`:""}${friendSource&&!g.owners.includes("自分")?`<button type="button" data-friend-import="${esc(friendSource.item._key)}">自分に追加</button>`:""}</div></article>`}).join(""):(friendSources.length?'<div class="small muted">条件に合う所持シナリオはありません。</div>':"");
  document.querySelectorAll("[data-friend-import]").forEach(b=>b.onclick=()=>importFriendScenario(b.dataset.friendImport));
 }
 function importFriendScenario(key){
@@ -308,7 +360,7 @@ function render(){
  renderFriendResults();
 }
 q("system").addEventListener("input",updateFacilitatorUI);q("facilitatorPresence").onchange=updateFacilitatorUI;q("facilitatorTermMode").onchange=updateFacilitatorUI;q("facilitatorTermCustom").addEventListener("input",updateFacilitatorUI);
-q("shareScenarioList").onclick=shareScenarioList;q("openForm").onclick=openForm;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;q("playersFilter").oninput=render;q("hoursFilter").oninput=render;q("tagFilter").onchange=render;q("archiveFilter").onchange=render;q("sort").onchange=render;q("friendAdd").onclick=addFriendSource;renderFriendSources();render();loadFriendSources();
+q("shareScenarioList").onclick=shareScenarioList;q("openForm").onclick=openForm;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;q("playersFilter").oninput=render;q("hoursFilter").oninput=render;q("tagFilter").onchange=render;q("archiveFilter").onchange=render;q("sort").onchange=render;q("friendViewMode").onchange=renderFriendResults;q("friendAdd").onclick=addFriendSource;renderFriendSources();render();loadFriendSources();
 })();
 </script>
 </body></html>

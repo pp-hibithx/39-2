@@ -85,6 +85,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
  <div class="friend-head"><div class="small">共有されたSAKU+MERUのシナリオ一覧を登録すると、上の検索と一緒に探せます。</div>
  <div class="friend-add"><div><label>名前</label><input id="friendName" placeholder="例：Aさん"></div><div><label>共有URL</label><input id="friendUrl" placeholder="SAKU+MERUの共有URL"></div><button id="friendAdd" type="button">＋ 登録</button></div></div>
  <div id="friendSources" class="small" style="margin-top:8px"></div>
+ <div class="small muted" style="margin-top:4px">所持情報は共有元が「共有」を押して更新すると反映されます。古い共有URLも同じURLのまま更新できます。</div>
  <div class="friend-view-tools"><div><label>表示</label><select id="friendViewMode"><option value="scenario">シナリオから見る</option><option value="person">友人から見る</option></select></div></div>
  <div id="friendResults" class="friend-results"></div>
  </div>
@@ -212,8 +213,11 @@ function sameScenario(a,b){
 }
 function isOwnedScenario(x,source="friend"){
  if(source==="mine")return !!(x.flags&&x.flags.owned);
+ if(typeof x.owned==="boolean")return x.owned;
  const labels=Array.isArray(x.labels)?x.labels:[];
- return labels.includes("所持") || labels.length===0;
+ // 旧共有URLとの互換。旧形式で「所持」があれば所持扱い。
+ // labels自体が無い古い共有データは、一覧登録済みシナリオとして所持扱いに寄せる。
+ return labels.includes("所持") || !("labels" in x);
 }
 function groupedFriendScenarios(){
  const groups=[];
@@ -255,7 +259,7 @@ function renderFriendResults(){
 function importFriendScenario(key){
  const x=friendItems.find(v=>v._key===key);if(!x)return;
  if(data.some(v=>String(v.title||"").trim()===String(x.title||"").trim()))return alert("同名のシナリオはすでに登録されています。");
- const flagsObj={};(x.labels||[]).forEach(label=>{const hit=Object.entries(flags).find(([,v])=>v===label);if(hit)flagsObj[hit[0]]=true});
+ const flagsObj={};(x.labels||[]).forEach(label=>{const hit=Object.entries(flags).find(([,v])=>v===label);if(hit)flagsObj[hit[0]]=true});if(x.owned===true)flagsObj.owned=true;
  data.unshift({id:TRPG39.uuid(),title:x.title||"",shortTitle:x.shortTitle||"",system:x.system||"",author:x.author||"",url:x.url||"",thumbnailUrl:x.thumbnailUrl||"",playersMin:x.playersMin||null,playersMax:x.playersMax||null,hoursMin:x.hoursMin||null,hoursMax:x.hoursMax||null,publicationStatus:x.publicationStatus||"public",sourceType:x.sourceType||"",summaryText:x.summaryText||"",handoutInfo:x.handoutInfo||"",tags:Array.isArray(x.tags)?x.tags:[],privateMemo:"",flags:flagsObj,memo:"",sourceFriend:x._friend,createdAt:new Date().toISOString()});
  persist();render();alert("自分のSCENARIOへ追加しました。");
 }
@@ -279,8 +283,8 @@ function showShareUrl(url,message){
 async function shareScenarioList(){
  const term=q("search").value.trim().toLowerCase(),f=q("filter").value;
  const xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term))&&matchesExtraFilters(x));
- const items=xs.map(x=>({title:x.title,shortTitle:x.shortTitle||"",system:x.system||"",author:x.author||"",url:x.url||"",thumbnailUrl:x.thumbnailUrl||"",playersMin:x.playersMin||null,playersMax:x.playersMax||null,hoursMin:x.hoursMin||null,hoursMax:x.hoursMax||null,publicationStatus:x.publicationStatus||"public",sourceType:x.sourceType||"",summaryText:x.summaryText||"",facilitatorPresence:x.facilitatorPresence||"present",facilitatorTermMode:x.facilitatorTermMode||"auto",facilitatorTermCustom:x.facilitatorTermCustom||"",tags:Array.isArray(x.tags)?x.tags:[],labels:Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>v)}));
- const payload={kind:"scenario-list",version:2,title:"シナリオ一覧",updatedAt:new Date().toISOString(),items};
+ const items=xs.map(x=>({title:x.title,shortTitle:x.shortTitle||"",system:x.system||"",author:x.author||"",url:x.url||"",thumbnailUrl:x.thumbnailUrl||"",playersMin:x.playersMin||null,playersMax:x.playersMax||null,hoursMin:x.hoursMin||null,hoursMax:x.hoursMax||null,publicationStatus:x.publicationStatus||"public",sourceType:x.sourceType||"",summaryText:x.summaryText||"",facilitatorPresence:x.facilitatorPresence||"present",facilitatorTermMode:x.facilitatorTermMode||"auto",facilitatorTermCustom:x.facilitatorTermCustom||"",tags:Array.isArray(x.tags)?x.tags:[],owned:!!(x.flags&&x.flags.owned),labels:Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>v)}));
+ const payload={kind:"scenario-list",version:3,title:"シナリオ一覧",updatedAt:new Date().toISOString(),items};
  try{
    if(TRPG39Cloud && TRPG39Cloud.configured()){
      let shareId=localStorage.getItem(MY_FIXED_SHARE_KEY)||"";

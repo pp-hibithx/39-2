@@ -181,8 +181,15 @@ async function loadFriendSources(){
  saveFriendSources();renderFriendSources();renderFriendResults();
 }
 function renderFriendSources(){
- q("friendSources").innerHTML=friendSources.length?friendSources.map((x,i)=>`<span class="badge">${esc(x.name||"友人")}${x.error?` ⚠ ${esc(x.error)}`:""} <button type="button" data-friend-del="${i}" style="padding:0 4px;margin-left:3px">×</button></span>`).join(" "):"共有一覧はまだ登録されていません。";
- document.querySelectorAll("[data-friend-del]").forEach(b=>b.onclick=()=>{friendSources.splice(Number(b.dataset.friendDel),1);saveFriendSources();loadFriendSources()});
+ q("friendSources").innerHTML=friendSources.length?friendSources.map((x,i)=>`<span class="badge">${esc(x.name||"友人")}${x.error?` ⚠ ${esc(x.error)}`:""} <button type="button" data-friend-del="${i}" style="padding:2px 6px;margin-left:5px;font-size:11px">削除</button></span>`).join(" "):"共有一覧はまだ登録されていません。";
+ document.querySelectorAll("[data-friend-del]").forEach(b=>b.onclick=()=>{
+   const i=Number(b.dataset.friendDel),src=friendSources[i];
+   if(!src)return;
+   if(!confirm(`「${src.name||"友人"}」の共有URL登録を削除しますか？\n削除すると、もう一度表示するには共有URLの再登録が必要です。`))return;
+   friendSources.splice(i,1);
+   saveFriendSources();
+   loadFriendSources();
+ });
 }
 function friendMatches(x){
  const term=q("search").value.trim().toLowerCase(),players=Number(q("playersFilter").value||0),hours=Number(q("hoursFilter").value||0);
@@ -191,11 +198,17 @@ function friendMatches(x){
  if(hours&&x.hoursMin&&Number(x.hoursMin)>hours)return false;
  return true;
 }
-function normScenarioTitle(v){return String(v||"").trim().toLowerCase().replace(/\s+/g," ")}
-function scenarioGroupKey(x){
- const url=String(x.url||"").trim();
- if(url)return "url:"+url.replace(/[#?].*$/,"").replace(/\/+$/,"").toLowerCase();
- return "meta:"+[normScenarioTitle(x.title),normScenarioTitle(x.author),normScenarioTitle(x.system)].join("|");
+function normScenarioText(v){return String(v||"").trim().toLowerCase().normalize("NFKC").replace(/[\s　]+/g,"").replace(/[!！?？:：・･,，.。'’"“”「」『』【】()（）\[\]［］]/g,"")}
+function normScenarioUrl(v){return String(v||"").trim().toLowerCase().replace(/[#?].*$/,"").replace(/\/+$/,"")}
+function sameScenario(a,b){
+ const au=normScenarioUrl(a.url),bu=normScenarioUrl(b.url);
+ if(au&&bu&&au===bu)return true;
+ const at=normScenarioText(a.title),bt=normScenarioText(b.title);
+ if(!at||!bt||at!==bt)return false;
+ const aa=normScenarioText(a.author),ba=normScenarioText(b.author);
+ // タイトルが同一で、作者も同一、または片方の作者が未登録なら同一作品としてまとめる。
+ if(!aa||!ba||aa===ba)return true;
+ return false;
 }
 function isOwnedScenario(x,source="friend"){
  if(source==="mine")return !!(x.flags&&x.flags.owned);
@@ -203,19 +216,19 @@ function isOwnedScenario(x,source="friend"){
  return labels.includes("所持") || labels.length===0;
 }
 function groupedFriendScenarios(){
- const map=new Map();
+ const groups=[];
  const add=(x,owner,source)=>{
-  const key=scenarioGroupKey(x);
-  if(!map.has(key))map.set(key,{key,item:x,owners:[],sources:[]});
-  const g=map.get(key);
+  let g=groups.find(v=>sameScenario(v.item,x));
+  if(!g){g={item:x,owners:[],sources:[]};groups.push(g)}
   if(!g.owners.includes(owner))g.owners.push(owner);
   g.sources.push({owner,source,item:x});
-  if(source==="mine"&&x.thumbnailUrl)g.item={...g.item,...x};
+  // 自分側の情報を基本表示に使い、サムネがない場合だけ友人側から補う。
+  if(source==="mine")g.item={...g.item,...x,thumbnailUrl:x.thumbnailUrl||g.item.thumbnailUrl||""};
   else if(!g.item.thumbnailUrl&&x.thumbnailUrl)g.item={...g.item,thumbnailUrl:x.thumbnailUrl};
  };
  data.filter(x=>!x.archived&&isOwnedScenario(x,"mine")).forEach(x=>add(x,"自分","mine"));
  friendItems.filter(x=>isOwnedScenario(x,"friend")).forEach(x=>add(x,x._friend||"友人","friend"));
- return [...map.values()];
+ return groups;
 }
 function renderFriendResults(){
  const mode=q("friendViewMode")?.value||"scenario";

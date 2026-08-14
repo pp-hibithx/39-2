@@ -49,6 +49,9 @@
       linkedAlbumId: input.linkedAlbumId || "",
       runId: input.runId || "",
       runLabel: input.runLabel || "",
+      sessionDay: Number(input.sessionDay || 0),
+      timeBand: input.timeBand || "",
+      timeSpecified: input.timeSpecified !== undefined ? !!input.timeSpecified : /T\d{2}:\d{2}/.test(String(input.start || "")),
       createdAt: input.createdAt || nowISO(),
       updatedAt: nowISO()
     };
@@ -92,6 +95,9 @@
       visibility: input.visibility || "private",
       runId: input.runId || "",
       runLabel: input.runLabel || "",
+      sessionDay: Number(input.sessionDay || 0),
+      timeBand: input.timeBand || "",
+      timeSpecified: input.timeSpecified !== undefined ? !!input.timeSpecified : /T\d{2}:\d{2}/.test(String(input.start || "")),
       shareId: input.shareId || "",
       shareVersion: Number(input.shareVersion || 0),
       calendarLinked: !!input.eventId,
@@ -119,6 +125,9 @@
       participantIds: e.participantIds,
       runId: e.runId || existing.runId || "",
       runLabel: e.runLabel || existing.runLabel || "",
+      sessionDay: e.sessionDay || existing.sessionDay || 0,
+      timeBand: e.timeBand || existing.timeBand || "",
+      timeSpecified: e.timeSpecified,
       visibility: existing.visibility || e.visibility || "private"
     });
   }

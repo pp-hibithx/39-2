@@ -73,7 +73,12 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 function localYmd(d=new Date()){const p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}
 function dayDiff(ymd){const [y,m,d]=String(ymd).split("-").map(Number),t=new Date(y,m-1,d),now=new Date();now.setHours(0,0,0,0);return Math.round((t-now)/86400000)}
 function dueText(ymd){const n=dayDiff(ymd);if(n<0)return `期限切れ ${Math.abs(n)}日`;if(n===0)return "今日";if(n===1)return "明日";return `あと${n}日`}
-function loadScenarios(){try{return window.TRPG39?.loadScenarios?.()||[]}catch{return []}}
+function loadScenarios(){
+ try{
+   if(window.TRPG39?.loadScenarios)return window.TRPG39.loadScenarios()||[];
+   return [];
+ }catch{return []}
+}
 function renderPrepTasks(){
  let all={};try{all=JSON.parse(localStorage.getItem(KEY)||"{}")}catch{}
  const scenarios=loadScenarios(), names=new Map(scenarios.map(s=>[String(s.id),s.title||"シナリオ"])), tasks=[];
@@ -103,4 +108,5 @@ function renderPrepTasks(){
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",renderPrepTasks);else renderPrepTasks();
 })();
 </script>
+<script src="./assets/js/shared-data.js?v=0292"></script>
 <script src="./assets/js/main.js"></script></body></html>

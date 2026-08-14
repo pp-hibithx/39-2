@@ -148,7 +148,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   </div>
   <div class="lib-toolbar">
     <div><label>検索</label><input id="search" type="search" placeholder="シナリオ・PC・友達"></div>
-    <div><label>役割</label><select id="filter"><option value="">すべて</option><option>PL</option><option>KP</option><option>SKP</option><option>その他</option></select></div>
+    <div><label>役割</label><select id="filter"><option value="">すべて</option><option>PL</option><option>KP</option><option>DL</option><option>GM</option><option>SKP</option><option>その他</option></select></div>
     <div></div>
   </div>
   <div id="list" class="lib-list"></div>
@@ -167,6 +167,8 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
       <div><label>陣名（任意）</label><input id="runLabel" placeholder="例：1陣目／土曜組"></div>
       <div><label>状態</label><select id="status"><option value="tentative">仮押さえ</option><option value="planned">予定</option><option value="done">完了</option><option value="rescheduling">リスケ中</option><option value="postponed">延期</option><option value="cancelled">中止</option></select></div>
       <div><label>システム</label><input id="system" placeholder="CoC6版 など"></div>
+      <div><label>進行形式</label><select id="facilitatorPresence"><option value="present">進行役あり</option><option value="less">進行役レス</option></select></div>
+      <div><label>進行役の呼称</label><select id="facilitatorTermMode"><option value="auto">自動</option><option value="KP">KP</option><option value="DL">DL</option><option value="GM">GM</option><option value="custom">任意</option></select><input id="facilitatorTermCustom" placeholder="任意の呼称" hidden></div>
     </div>
     <div class="lib-form-grid">
       <div><label>開始</label><input id="start" type="datetime-local"></div>
@@ -220,7 +222,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02320">build v0.2.32.0</div></main>
+</div><div class="wrap small muted" data-build-marker="02328">build v0.2.32.8</div></main>
 
 <dialog id="xPreviewDialog" class="x-preview"><h2>X卓報告プレビュー</h2><p class="small muted">投稿前に自由に編集できます。SNS表示名が設定されている人は短縮名で表示します。</p><textarea id="xPreviewText"></textarea><div class="x-preview-actions"><span id="xPreviewCount" class="small muted"></span><div class="row"><button id="xPreviewCancel" type="button">戻る</button><button id="xPreviewPost" type="button">X投稿画面へ</button></div></div></dialog>
 <footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
@@ -309,6 +311,9 @@ function fillScenarioSelect(){
     .map(s=>`<option value="${esc(s.id)}">${esc(s.title)}</option>`).join("");
 }
 function scenarioById(id){return scenarios.find(s=>s.id===id)}
+function facilitatorConfig(source={}){const scenario=scenarioById(source.scenarioId||q("scenarioSelect").value)||{};const system=source.system||q("system").value||scenario.system||"";const mode=source.facilitatorTermMode||q("facilitatorTermMode")?.value||scenario.facilitatorTermMode||"auto";const custom=source.facilitatorTermCustom||q("facilitatorTermCustom")?.value||scenario.facilitatorTermCustom||"";const label=source.facilitatorLabel||TRPG39.resolveFacilitatorLabel?.(system,{facilitatorTermMode:mode,facilitatorTermCustom:custom})||"GM";const less=source.facilitatorless!==undefined?!!source.facilitatorless:(source.facilitatorPresence||q("facilitatorPresence")?.value||scenario.facilitatorPresence||"present")==="less";return {label,less,mode,custom}}
+function roleOptions(selected="",label="GM"){const base=["PL",label,...(label==="KP"?["SKP"]:[]),"その他"];if(selected&&!base.includes(selected))base.splice(1,0,selected);return [...new Set(base)].map(v=>`<option ${v===selected?"selected":""}>${esc(v)}</option>`).join("")}
+function updateFacilitatorControls(fromScenario=false){const scenario=scenarioById(q("scenarioSelect").value)||{};if(fromScenario){q("facilitatorPresence").value=scenario.facilitatorPresence||"present";q("facilitatorTermMode").value=scenario.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=scenario.facilitatorTermCustom||""}const cfg=facilitatorConfig({});q("facilitatorTermCustom").hidden=q("facilitatorTermMode").value!=="custom";const old=q("role").value||"PL";q("role").innerHTML=roleOptions(old,cfg.label);if(cfg.less&&["KP","DL","GM"].includes(q("role").value))q("role").value="PL";[...q("participantRows").querySelectorAll(".partRole")].forEach(sel=>{const old=sel.value||"PL";sel.innerHTML=roleOptions(old,cfg.label)});return cfg}
 function addLinkRow(v={label:"",url:"",spoiler:false}){
  const wrap=document.createElement("div");wrap.className="card ext-row";
  wrap.innerHTML=`<div class="lib-form-grid"><div><label>表示名</label><input class="extLabel" value="${esc(v.label)}" placeholder="ふせったー感想 など"></div><div><label>URL</label><input class="extUrl" type="url" value="${esc(v.url)}" placeholder="https://..."></div></div><label class="checkline"><input class="extSpoiler" type="checkbox" ${v.spoiler?"checked":""}> ネタバレあり</label><button class="danger extRemove" type="button">削除</button>`;
@@ -319,7 +324,8 @@ function updateImagePreview(){const u=q("image").value.trim();q("imagePreview").
 function addParticipantRow(v={}){
  const row=document.createElement("div");row.className="participant-row";
  const role=String(v.role||"PL"),ho=String(v.ho||""),pl=String(v.plName||v.name||""),pc=String(v.pcName||""),relation=String(v.relation||"");
- row.innerHTML=`<div><label>役割</label><select class="partRole"><option ${role==="KP"?"selected":""}>KP</option><option ${role==="PL"?"selected":""}>PL</option><option ${role==="SKP"?"selected":""}>SKP</option><option ${role==="その他"?"selected":""}>その他</option></select></div>
+ const cfg=facilitatorConfig({});
+ row.innerHTML=`<div><label>役割</label><select class="partRole">${roleOptions(role,cfg.label)}</select></div>
  <div><label>HO</label><input class="partHo" value="${esc(ho)}" placeholder="HO1 / 探偵 など"></div>
  <div><label>PL</label><input class="partPl" value="${esc(pl)}" placeholder="PL名"></div>
  <div><label>PC</label><input class="partPc" value="${esc(pc)}" placeholder="PC名"></div>
@@ -348,13 +354,13 @@ function setParticipantRows(rows=[]){
 function reset(prefillScenarioId=""){
  q("editId").value="";
  ["title","date","start","end","system","selfHo","pc","image","comment","spoilerBody","runId","runLabel"].forEach(x=>q(x).value="");
- q("status").value="done";q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
+ q("status").value="done";q("facilitatorPresence").value="present";q("facilitatorTermMode").value="auto";q("facilitatorTermCustom").value="";q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
  q("externalLinks").innerHTML="";addLinkRow();setParticipantRows();updateImagePreview();fillScenarioSelect();fillPCSelect();
  q("scenarioSelect").value=prefillScenarioId||"";
  if(prefillScenarioId){
    const s=scenarioById(prefillScenarioId);
-   if(s){q("title").value=s.title||"";q("system").value=s.system||""}
- }
+   if(s){q("title").value=s.title||"";q("system").value=s.system||"";updateFacilitatorControls(true)}
+ } else updateFacilitatorControls(false);
 }
 
 async function uploadLibraryImage(){
@@ -398,14 +404,14 @@ function save(){
  const ownPcId=(()=>{const sid=q("pcSelect").value;if(sid)return sid;if(!ownPcName)return "";const pc=TRPG39.ensurePC?TRPG39.ensurePC(ownPcName,{system:q("system").value.trim()}):null;return pc?.id||""})();
  let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,runId,runLabel,date:String(start||"").slice(0,10),start,end:q("end").value,status:q("status").value,
    articleBody:old?.articleBody||"",
-   spoilerBody:q("spoilerBody")?.value.trim()||"",spoiler:"",system:q("system").value.trim(),role:q("role").value,selfHo:q("selfHo").value.trim(),pcName:ownPcName,pcId:ownPcId,
+   spoilerBody:q("spoilerBody")?.value.trim()||"",spoiler:"",system:q("system").value.trim(),facilitatorLabel:facilitatorConfig({}).label,facilitatorless:q("facilitatorPresence").value==="less",role:q("role").value,selfHo:q("selfHo").value.trim(),pcName:ownPcName,pcId:ownPcId,
    participants,participantIds,participantRows:rows,
    imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
  let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);
  if(item.start){
    let evs=TRPG39.loadEvents(),eventId=item.eventId||TRPG39.uuid();
    const ei=evs.findIndex(e=>e.id===eventId),base=ei>=0?evs[ei]:{};
-   const ev=TRPG39.normalizeEvent({...base,id:eventId,type:"trpg",scenarioId:item.scenarioId,title:item.title,scenarioTitle:item.title,start:item.start,end:item.end,status:item.status,system:item.system,role:item.role,pcName:item.pcName,pcId:item.pcId,participants:item.participants,participantIds:item.participantIds,runId:item.runId,runLabel:item.runLabel,linkedAlbumId:item.id});
+   const ev=TRPG39.normalizeEvent({...base,id:eventId,type:"trpg",scenarioId:item.scenarioId,title:item.title,scenarioTitle:item.title,start:item.start,end:item.end,status:item.status,system:item.system,facilitatorLabel:item.facilitatorLabel,facilitatorless:item.facilitatorless,role:item.role,pcName:item.pcName,pcId:item.pcId,participants:item.participants,participantIds:item.participantIds,runId:item.runId,runLabel:item.runLabel,linkedAlbumId:item.id});
    if(ei>=0)evs[ei]=ev;else evs.push(ev);TRPG39.saveEvents(evs);
    item=TRPG39.normalizeAlbum({...item,eventId,date:String(item.start).slice(0,10)});
    i=data.findIndex(x=>x.id===item.id);if(i>=0)data[i]=item;
@@ -414,7 +420,7 @@ function save(){
 }
 function edit(id){
  let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";q("title").value=x.title||"";q("date").value=x.date||"";q("start").value=(x.start||((x.date||"")+"T21:00")).slice(0,16);q("end").value=(x.end||"").slice(0,16);q("status").value=x.status||"done";q("system").value=x.system||"";q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setParticipantRows(rowsFromRecord(x));q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
+ q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";q("title").value=x.title||"";q("date").value=x.date||"";q("start").value=(x.start||((x.date||"")+"T21:00")).slice(0,16);q("end").value=(x.end||"").slice(0,16);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setParticipantRows(rowsFromRecord(x));q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -457,7 +463,7 @@ function groupData(xs){
      if(r.label)return;
      const roles=new Set(r.items.map(x=>String(x.role||"").toUpperCase()));
      const isPl=[...roles].some(v=>v==="PL");
-     const isKp=[...roles].some(v=>v==="KP"||v==="GM"||v==="KPGM");
+     const isKp=[...roles].some(v=>v==="KP"||v==="DL"||v==="GM"||v==="KPGM"||v==="SKP");
      if(isPl&&!isKp)r.label="自陣";
      else r.label=`${++kpNo}陣目`;
    });
@@ -469,12 +475,13 @@ function groupData(xs){
    }
    g.people=[...new Set(g.items.flatMap(x=>x.participants||[]))];
    g.pcs=[...new Set(g.items.map(x=>x.pcName).filter(Boolean))];
-   g.roles=[...new Set(g.items.map(x=>x.role).filter(Boolean))];
+   g.roles=[...new Set(g.items.map(displayRoleForRecord).filter(Boolean))];
    g.firstDate=g.items.map(x=>x.date).filter(Boolean).sort()[0]||"";
    g.lastDate=g.items.map(x=>x.date).filter(Boolean).sort().slice(-1)[0]||"";
    return g;
  }).sort((a,b)=>String(b.lastDate||"").localeCompare(String(a.lastDate||""))||a.title.localeCompare(b.title,"ja"));
 }
+function displayRoleForRecord(x){const role=String(x?.role||"");if(["KP","DL","GM"].includes(role))return facilitatorConfig(x).label;return role}
 function dateRange(g){
  if(!g.firstDate)return "";
  return g.firstDate===g.lastDate?g.firstDate:`${g.firstDate} → ${g.lastDate}`;
@@ -512,12 +519,13 @@ function reportRowsWithSelf(x){
 function buildXReportText(x){
  const rows=reportRowsWithSelf(x),groups=new Map();
  rows.forEach(r=>{const role=String(r.role||"PL");if(!groups.has(role))groups.set(role,[]);groups.get(role).push(r)});
- const scenario=scenarioById(x.scenarioId||"")||{},system=String(x.system||scenario.system||"").trim(),title=String(x.title||scenario.title||"").trim(),author=String(scenario.author||"").trim();
+ const scenario=scenarioById(x.scenarioId||"")||{},system=String(x.system||scenario.system||"").trim(),title=String(x.title||scenario.title||"").trim(),author=String(scenario.author||"").trim(),cfg=facilitatorConfig({...x,system,scenarioId:x.scenarioId});
  const head=[system,title?`「${title}」`:"",author?`（${author}様作）`:""].join("");
  const lines=[head].filter(Boolean);
- for(const role of ["KP","SKP"]){
-   const rs=groups.get(role)||[];if(rs.length){const values=rs.map(r=>`${r.ho?`${r.ho}：`:""}${r.plName||""}${r.pcName?`/${r.pcName}`:""}`).filter(Boolean);if(values.length)lines.push(`${role}：${values.join("、")}`)}
- }
+ if(cfg.less)lines.push(`${cfg.label}レス`);
+ const facilitatorRows=[...(groups.get("KP")||[]),...(groups.get("DL")||[]),...(groups.get("GM")||[])];
+ if(facilitatorRows.length&&!cfg.less){const values=facilitatorRows.map(r=>`${r.ho?`${r.ho}：`:""}${r.plName||""}${r.pcName?`/${r.pcName}`:""}`).filter(Boolean);if(values.length)lines.push(`${cfg.label}：${values.join("、")}`)}
+ const skps=groups.get("SKP")||[];if(skps.length){const values=skps.map(r=>`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`).filter(Boolean);if(values.length)lines.push(`SKP：${values.join("、")}`)}
  const pls=groups.get("PL")||[];
  if(pls.length){pls.forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(r.ho?`${r.ho}：${who}`:`PL：${who}`)})}
  (groups.get("その他")||[]).forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(`${r.ho?`${r.ho}：`:""}${who}`)});
@@ -537,7 +545,7 @@ async function prepareShareUrl(id){
  if(!(TRPG39Cloud&&TRPG39Cloud.configured()))throw new Error("共有機能の設定がありません。");
 
  const ogVersion=Date.now();
- const payload={kind:"library-session",version:5,ogVersion,title:x.title,date:x.date,start:x.start||"",end:x.end||"",status:x.status||"done",system:x.system,selfRole:x.role||"",selfHo:x.selfHo||"",selfPcName:x.pcName||"",participantRows:rowsFromRecord(x),image:(x.imageUrls||[])[0]||"",comment:x.comment||"",spoiler:x.spoilerVisibility==="link"?(x.spoilerBody||x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
+ const payload={kind:"library-session",version:5,ogVersion,title:x.title,date:x.date,start:x.start||"",end:x.end||"",status:x.status||"done",system:x.system,facilitatorLabel:facilitatorConfig(x).label,facilitatorless:facilitatorConfig(x).less,selfRole:x.role||"",selfHo:x.selfHo||"",selfPcName:x.pcName||"",participantRows:rowsFromRecord(x),image:(x.imageUrls||[])[0]||"",comment:x.comment||"",spoiler:x.spoilerVisibility==="link"?(x.spoilerBody||x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
 
  let shareId=x.shareId||"";
  if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);
@@ -602,11 +610,12 @@ function participantHtml(x){
  if(!rows.length&&!excludedCount)return "";
  const body=rows.map(r=>{
    const role=String(r.role||"PL"),name=r.playerId&&TRPG39.playersEnabled?.()?`<a class="participant-link" href="../players/index.html?focus=${encodeURIComponent(r.playerId)}">${esc(r.plName)}</a>`:esc(r.plName),pc=r.pcName?` / ${esc(r.pcName)}`:"";
-   if(role==="KP"||role==="SKP")return `<div>${esc(role)}：${name}${pc}</div>`;
+   const cfg=facilitatorConfig(x);if(["KP","DL","GM"].includes(role))return `<div>${esc(cfg.label)}：${name}${pc}</div>`;
+   if(role==="SKP")return `<div>SKP：${name}${pc}</div>`;
    if(role==="PL")return `<div>${r.ho?`<strong>${esc(r.ho)}</strong>　`:"PL："}${name}${pc}${r.relation?` <span class="small muted">（自PCとの関係：${esc(r.relation)}）</span>`:""}</div>`;
    return `<div>${r.ho?`${esc(r.ho)}　`:""}${name}${pc}</div>`;
  }).join("")+ (excludedCount?`<div class="muted">ほか${excludedCount}名</div>`:"");
- return `<div class="lib-participants">${body}${rows.length?`<div class="small muted honorific-note">※敬称略</div>`:""}</div>`;
+ const cfg=facilitatorConfig(x);const lessNote=cfg.less?`<div><strong>${esc(cfg.label)}レス</strong></div>`:"";return `<div class="lib-participants">${lessNote}${body}${rows.length?`<div class="small muted honorific-note">※敬称略</div>`:""}</div>`;
 }
 function render(){
  const term=q("search").value.trim().toLowerCase(),role=q("filter").value,params=new URLSearchParams(location.search);
@@ -636,7 +645,7 @@ function render(){
        ${r.items.map((x,i)=>`<article class="lib-child" id="record-${esc(x.id)}">
          <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}${x.start&&String(x.start).slice(11,16)?` ${esc(String(x.start).slice(11,16))}`:""}<br><span class="badge">${esc(statusLabel[x.status]||"完了")}</span></div>
          <div>${(x.imageUrls||[])[0]?`<img class="lib-child-thumb" src="${esc((x.imageUrls||[])[0])}" alt="" loading="lazy">`:""}
-           <div class="lib-child-title">${esc(x.pcName?`PC：${x.pcName}`:(x.role||"開催記録"))}${x.selfHo?` <span class="badge">${esc(x.selfHo)}</span>`:""}</div>${x.articleBody?`<div class="lib-article-body">${esc(x.articleBody).replace(/\n/g,"<br>")}</div>`:""}${x.spoilerBody?`<details class="lib-spoiler"><summary>ネタバレを表示</summary><div class="spoiler-body">${esc(x.spoilerBody).replace(/\n/g,"<br>")}</div></details>`:""}
+           <div class="lib-child-title">${esc(x.pcName?`PC：${x.pcName}`:(displayRoleForRecord(x)||"開催記録"))}${x.selfHo?` <span class="badge">${esc(x.selfHo)}</span>`:""}</div>${x.articleBody?`<div class="lib-article-body">${esc(x.articleBody).replace(/\n/g,"<br>")}</div>`:""}${x.spoilerBody?`<details class="lib-spoiler"><summary>ネタバレを表示</summary><div class="spoiler-body">${esc(x.spoilerBody).replace(/\n/g,"<br>")}</div></details>`:""}
            <div class="lib-child-meta">${participantHtml(x)}<span class="badge lib-visibility">公開設定：${esc(vis[x.visibility]||"自分のみ")}</span></div>
            ${x.comment?`<div class="lib-child-note">${esc(x.comment)}</div>`:""}${diceAnalysisHtml(x)}${linksHtml(x)}
          </div>
@@ -659,9 +668,10 @@ function render(){
 q("pcSelect").onchange=()=>{const id=q("pcSelect").value;if(!id)return;const pc=(TRPG39.loadPCs?TRPG39.loadPCs():[]).find(p=>p.id===id);if(pc)q("pc").value=pc.name||""};
 q("scenarioSelect").onchange=()=>{
  const s=scenarioById(q("scenarioSelect").value);
- if(s){q("title").value=s.title||"";q("system").value=s.system||""}
+ if(s){q("title").value=s.title||"";q("system").value=s.system||"";updateFacilitatorControls(true)}
 };
 q("uploadImage").onclick=async()=>{try{q("uploadImage").disabled=true;q("uploadImage").textContent="アップロード中…";await uploadLibraryImage()}catch(e){console.error(e);alert(e.message||e)}finally{q("uploadImage").disabled=false;q("uploadImage").textContent="画像をアップロード"}};
+q("system").addEventListener("input",()=>updateFacilitatorControls(false));q("facilitatorPresence").onchange=()=>updateFacilitatorControls(false);q("facilitatorTermMode").onchange=()=>updateFacilitatorControls(false);q("facilitatorTermCustom").addEventListener("input",()=>updateFacilitatorControls(false));
 q("save").onclick=save;
 q("cancel").onclick=()=>{reset();hideEditor()};
 q("image").oninput=updateImagePreview;

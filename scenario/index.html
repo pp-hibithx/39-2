@@ -55,17 +55,17 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 </div>
 </div></header>
 <main><div class="wrap">
-<div class="hero"><h2>SCENARIO</h2><p>所持・通過済み・通過予定・KP予定など、 シナリオの状況をまとめて管理できます。</p></div>
+<div class="hero"><h2>SCENARIO</h2><p>所持・通過済み・通過予定・回す予定など、シナリオの状況をまとめて管理できます。</p></div>
 <div class="notice small">登録内容は、お使いのブラウザ内に保存されます。 他の利用者には共有されません。</div>
 <div class="sc-layout">
 <section>
 <div class="sc-toolbar"><div class="sc-toolbar-main">
 <div class="sc-search"><label>検索</label><input id="search" type="search" placeholder="タイトル・作者・システム"></div>
-<div class="sc-filter"><label>状態</label><select id="filter"><option value="">すべて</option><option value="owned">所持</option><option value="played">通過済み</option><option value="planned">通過予定</option><option value="kpDone">KP済み</option><option value="kpPlanned">KP予定</option><option value="wish">気になる</option></select></div>
+<div class="sc-filter"><label>状態</label><select id="filter"><option value="">すべて</option><option value="owned">所持</option><option value="played">通過済み</option><option value="planned">通過予定</option><option value="kpDone">回した</option><option value="kpPlanned">回す予定</option><option value="wish">気になる</option></select></div>
 <div class="sc-number-filter"><label>参加人数</label><input id="playersFilter" type="number" min="1" step="1" placeholder="例 4"></div>
 <div class="sc-number-filter"><label>遊べる時間</label><input id="hoursFilter" type="number" min="0.5" step="0.5" placeholder="最大h"></div>
 <div class="sc-tag-filter"><label>タグ</label><select id="tagFilter"><option value="">すべて</option></select></div>
-<div class="sc-sort"><label>並び順</label><select id="sort"><option value="name">50音順</option><option value="new">登録が新しい順</option><option value="old">登録が古い順</option><option value="recentRun">最近回した順</option><option value="recentPlay">最近遊んだ順</option><option value="kpCount">KP回数順</option></select></div>
+<div class="sc-sort"><label>並び順</label><select id="sort"><option value="name">50音順</option><option value="new">登録が新しい順</option><option value="old">登録が古い順</option><option value="recentRun">最近回した順</option><option value="recentPlay">最近遊んだ順</option><option value="kpCount">回した回数順</option></select></div>
 </div><div class="sc-tools"><button id="shareScenarioList" type="button">共有</button><button id="openForm" type="button">＋ 追加</button></div></div><div id="summary" class="small" style="margin-top:8px"></div>
 <div id="list" class="sc-list"></div>
 <details class="sc-panel friend-panel" id="friendPanel">
@@ -82,6 +82,8 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <h2 id="formHeading">シナリオを登録</h2><input id="editId" type="hidden">
 <div class="sc-row"><div><label>シナリオ名</label><input id="title"></div><div><label>略称 <span class="small muted">（CALENDARで優先表示）</span></label><input id="shortTitle" placeholder="例：うすりび、リゲコン"></div></div>
 <div class="sc-row"><div><label>システム</label><input id="system" placeholder="CoC6版 など"></div><div><label>作者・サークル</label><input id="author"></div></div>
+<div class="sc-row"><div><label>進行形式</label><select id="facilitatorPresence"><option value="present">進行役あり</option><option value="less">進行役レス</option></select></div><div><label>進行役の呼称</label><select id="facilitatorTermMode"><option value="auto">自動（システムから判定）</option><option value="KP">KP</option><option value="DL">DL</option><option value="GM">GM</option><option value="custom">任意</option></select><input id="facilitatorTermCustom" placeholder="例：MC、進行役" hidden></div></div>
+<div id="facilitatorPreview" class="small muted"></div>
 <div class="sc-row"><div><label>公開状況</label><select id="publicationStatus"><option value="public">公開中</option><option value="private">非公開</option><option value="ended">頒布終了</option><option value="unknown">URL不明</option></select></div><div><label>情報の出典</label><select id="sourceType"><option value="">未設定</option><option>BOOTH</option><option>pixiv</option><option>TALTO</option><option>公式ページ</option><option>手入力</option><option>その他</option></select></div></div>
 <div class="sc-row"><div><label>参加人数</label><div class="sc-row"><input id="playersMin" type="number" min="1" step="1" placeholder="最少"><input id="playersMax" type="number" min="1" step="1" placeholder="最大"></div></div><div><label>プレイ時間（時間）</label><div class="sc-row"><input id="hoursMin" type="number" min="0.5" step="0.5" placeholder="最短"><input id="hoursMax" type="number" min="0.5" step="0.5" placeholder="最長"></div></div></div>
 <label>配布・販売ページ</label>
@@ -92,14 +94,14 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <label>シナリオ概要</label><textarea id="summaryText" rows="4" placeholder="公開されている概要や、自分で残しておきたい説明"></textarea>
 <label>HO・基本情報</label><textarea id="handoutInfo" rows="3" placeholder="HO1、秘匿HOの有無、推奨技能など。自分の管理用"></textarea>
 <label>タグ <span class="small muted">（カンマ区切り）</span></label><input id="tags" placeholder="例：秘匿4PL, 現代日本, ホラー">
-<label>自分用メモ <span class="small muted">（共有一覧には出しません）</span></label><textarea id="privateMemo" rows="3" placeholder="KP準備、遊びたい相手など"></textarea>
+<label>自分用メモ <span class="small muted">（共有一覧には出しません）</span></label><textarea id="privateMemo" rows="3" placeholder="進行準備、遊びたい相手など"></textarea>
 <label>分類</label>
 <div class="sc-checks">
 <label><input type="checkbox" class="flag" value="owned">所持</label>
 <label><input type="checkbox" class="flag" value="played">通過済み</label>
 <label><input type="checkbox" class="flag" value="planned">通過予定</label>
-<label><input type="checkbox" class="flag" value="kpDone">KP済み</label>
-<label><input type="checkbox" class="flag" value="kpPlanned">KP予定</label>
+<label><input type="checkbox" class="flag" value="kpDone">回した</label>
+<label><input type="checkbox" class="flag" value="kpPlanned">回す予定</label>
 <label><input type="checkbox" class="flag" value="wish">気になる</label>
 </div>
 <div class="sc-tools"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
@@ -119,20 +121,22 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <script src="../assets/js/supabase-share.js?v=0292"></script>
 <script>
 (()=>{"use strict";
-const q=id=>document.getElementById(id),flags={owned:"所持",played:"通過済み",planned:"通過予定",kpDone:"KP済み",kpPlanned:"KP予定",wish:"気になる"};
+const q=id=>document.getElementById(id),flags={owned:"所持",played:"通過済み",planned:"通過予定",kpDone:"回した",kpPlanned:"回す予定",wish:"気になる"};
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let data=TRPG39.loadScenarios();
 const persist=()=>TRPG39.saveScenarios(data);
 const rangeText=(a,b,suffix)=>{a=Number(a)||0;b=Number(b)||0;if(a&&b)return a===b?`${a}${suffix}`:`${a}–${b}${suffix}`;if(a)return `${a}${suffix}〜`;if(b)return `〜${b}${suffix}`;return ""};
 const matchesExtraFilters=x=>{const p=Number(q("playersFilter").value)||0,h=Number(q("hoursFilter").value)||0,tag=q("tagFilter")?.value||"";let ok=true;if(p){const lo=Number(x.playersMin)||0,hi=Number(x.playersMax)||0;ok=ok&&(!lo||p>=lo)&&(!hi||p<=hi)}if(h){const hi=Number(x.hoursMax)||Number(x.hoursMin)||0;ok=ok&&(!hi||hi<=h)}if(tag)ok=ok&&Array.isArray(x.tags)&&x.tags.includes(tag);return ok};
-function reset(){q("editId").value="";["title","shortTitle","system","author","url","thumbnailUrl","playersMin","playersMax","hoursMin","hoursMax","summaryText","handoutInfo","tags","privateMemo"].forEach(x=>q(x).value="");document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("publicationStatus").value="public";q("sourceType").value="";q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true;q("thumbStatus").textContent="";updateThumbPreview();q("scenarioForm").classList.remove("open")}
+function facilitatorLabelFor(x={}){return TRPG39.resolveFacilitatorLabel?TRPG39.resolveFacilitatorLabel(x.system||q("system").value,x):"GM"}
+function updateFacilitatorUI(){const custom=q("facilitatorTermMode").value==="custom";q("facilitatorTermCustom").hidden=!custom;const label=TRPG39.resolveFacilitatorLabel?TRPG39.resolveFacilitatorLabel(q("system").value,{facilitatorTermMode:q("facilitatorTermMode").value,facilitatorTermCustom:q("facilitatorTermCustom").value}):"GM";q("facilitatorPreview").textContent=q("facilitatorPresence").value==="less"?`表示：${label}レス`:`表示：${label}`}
+function reset(){q("editId").value="";["title","shortTitle","system","author","url","thumbnailUrl","playersMin","playersMax","hoursMin","hoursMax","summaryText","handoutInfo","tags","privateMemo","facilitatorTermCustom"].forEach(x=>q(x).value="");document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("publicationStatus").value="public";q("sourceType").value="";q("facilitatorPresence").value="present";q("facilitatorTermMode").value="auto";q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true;q("thumbStatus").textContent="";updateFacilitatorUI();updateThumbPreview();q("scenarioForm").classList.remove("open")}
 function openForm(){q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
-function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");let id=q("editId").value||TRPG39.uuid(),i=data.findIndex(x=>x.id===id),old=i>=0?data[i]:null,now=new Date().toISOString();let item={...(old||{}),id,title,shortTitle:q("shortTitle").value.trim(),system:q("system").value.trim(),author:q("author").value.trim(),playersMin:Number(q("playersMin").value)||null,playersMax:Number(q("playersMax").value)||null,hoursMin:Number(q("hoursMin").value)||null,hoursMax:Number(q("hoursMax").value)||null,url:q("url").value.trim(),thumbnailUrl:q("thumbnailUrl").value.trim(),publicationStatus:q("publicationStatus").value||"public",sourceType:q("sourceType").value||"",summaryText:q("summaryText").value.trim(),handoutInfo:q("handoutInfo").value.trim(),tags:q("tags").value.split(/[,、]/).map(v=>v.trim()).filter(Boolean),privateMemo:q("privateMemo").value.trim(),lastChecked:new Date().toISOString().slice(0,10),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),createdAt:old?.createdAt||now,updatedAt:now};if(i>=0)data[i]=item;else data.unshift(item);persist();reset();render()}
-function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("editId").value=x.id;q("title").value=x.title||"";q("shortTitle").value=x.shortTitle||"";q("system").value=x.system||"";q("author").value=x.author||"";q("playersMin").value=x.playersMin??"";q("playersMax").value=x.playersMax??"";q("hoursMin").value=x.hoursMin??"";q("hoursMax").value=x.hoursMax??"";q("url").value=x.url||"";q("thumbnailUrl").value=x.thumbnailUrl||"";q("publicationStatus").value=x.publicationStatus||"public";q("sourceType").value=x.sourceType||"";q("summaryText").value=x.summaryText||"";q("handoutInfo").value=x.handoutInfo||"";q("tags").value=(x.tags||[]).join(", ");q("privateMemo").value=x.privateMemo||"";updateThumbPreview(x.ogTitle||x.title||"");document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
+function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");let id=q("editId").value||TRPG39.uuid(),i=data.findIndex(x=>x.id===id),old=i>=0?data[i]:null,now=new Date().toISOString();let item={...(old||{}),id,title,shortTitle:q("shortTitle").value.trim(),system:q("system").value.trim(),author:q("author").value.trim(),playersMin:Number(q("playersMin").value)||null,playersMax:Number(q("playersMax").value)||null,hoursMin:Number(q("hoursMin").value)||null,hoursMax:Number(q("hoursMax").value)||null,url:q("url").value.trim(),thumbnailUrl:q("thumbnailUrl").value.trim(),publicationStatus:q("publicationStatus").value||"public",sourceType:q("sourceType").value||"",summaryText:q("summaryText").value.trim(),handoutInfo:q("handoutInfo").value.trim(),tags:q("tags").value.split(/[,、]/).map(v=>v.trim()).filter(Boolean),privateMemo:q("privateMemo").value.trim(),facilitatorPresence:q("facilitatorPresence").value||"present",facilitatorTermMode:q("facilitatorTermMode").value||"auto",facilitatorTermCustom:q("facilitatorTermCustom").value.trim(),lastChecked:new Date().toISOString().slice(0,10),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),createdAt:old?.createdAt||now,updatedAt:now};if(i>=0)data[i]=item;else data.unshift(item);persist();reset();render()}
+function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("editId").value=x.id;q("title").value=x.title||"";q("shortTitle").value=x.shortTitle||"";q("system").value=x.system||"";q("author").value=x.author||"";q("playersMin").value=x.playersMin??"";q("playersMax").value=x.playersMax??"";q("hoursMin").value=x.hoursMin??"";q("hoursMax").value=x.hoursMax??"";q("url").value=x.url||"";q("thumbnailUrl").value=x.thumbnailUrl||"";q("publicationStatus").value=x.publicationStatus||"public";q("sourceType").value=x.sourceType||"";q("summaryText").value=x.summaryText||"";q("handoutInfo").value=x.handoutInfo||"";q("tags").value=(x.tags||[]).join(", ");q("privateMemo").value=x.privateMemo||"";q("facilitatorPresence").value=x.facilitatorPresence||"present";q("facilitatorTermMode").value=x.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=x.facilitatorTermCustom||"";updateFacilitatorUI();updateThumbPreview(x.ogTitle||x.title||"");document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
 function del(id){if(confirm("このシナリオを削除しますか？")){data=data.filter(x=>x.id!==id);persist();render()}}
 function schedule(id){
  const x=data.find(v=>v.id===id);if(!x)return;
- const list=TRPG39.loadEvents(),e=TRPG39.normalizeEvent({scenarioId:x.id,title:x.title,scenarioTitle:x.title,system:x.system,status:"planned"});
+ const list=TRPG39.loadEvents(),label=facilitatorLabelFor(x),e=TRPG39.normalizeEvent({scenarioId:x.id,title:x.title,scenarioTitle:x.title,system:x.system,status:"planned",facilitatorLabel:label,facilitatorless:x.facilitatorPresence==="less"});
  list.push(e);TRPG39.saveEvents(list);location.href="../calendar/index.html?v=0292";
 }
 function library(id){location.href="../library/index.html?scenario="+encodeURIComponent(id)}
@@ -207,7 +211,7 @@ function showShareUrl(url,message){
 async function shareScenarioList(){
  const term=q("search").value.trim().toLowerCase(),f=q("filter").value;
  const xs=data.filter(x=>(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author].join(" ").toLowerCase().includes(term))&&matchesExtraFilters(x));
- const items=xs.map(x=>({title:x.title,shortTitle:x.shortTitle||"",system:x.system||"",author:x.author||"",url:x.url||"",thumbnailUrl:x.thumbnailUrl||"",playersMin:x.playersMin||null,playersMax:x.playersMax||null,hoursMin:x.hoursMin||null,hoursMax:x.hoursMax||null,publicationStatus:x.publicationStatus||"public",sourceType:x.sourceType||"",summaryText:x.summaryText||"",tags:Array.isArray(x.tags)?x.tags:[],labels:Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>v)}));
+ const items=xs.map(x=>({title:x.title,shortTitle:x.shortTitle||"",system:x.system||"",author:x.author||"",url:x.url||"",thumbnailUrl:x.thumbnailUrl||"",playersMin:x.playersMin||null,playersMax:x.playersMax||null,hoursMin:x.hoursMin||null,hoursMax:x.hoursMax||null,publicationStatus:x.publicationStatus||"public",sourceType:x.sourceType||"",summaryText:x.summaryText||"",facilitatorPresence:x.facilitatorPresence||"present",facilitatorTermMode:x.facilitatorTermMode||"auto",facilitatorTermCustom:x.facilitatorTermCustom||"",tags:Array.isArray(x.tags)?x.tags:[],labels:Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>v)}));
  const payload={kind:"scenario-list",version:2,title:"シナリオ一覧",updatedAt:new Date().toISOString(),items};
  try{
    if(TRPG39Cloud && TRPG39Cloud.configured()){
@@ -254,10 +258,10 @@ function scenarioStats(x){
  const album=TRPG39.loadAlbum?TRPG39.loadAlbum():[];
  const items=album.filter(a=>(x.id&&a.scenarioId===x.id)||(!a.scenarioId&&String(a.title||"").trim()===String(x.title||"").trim()));
  const byRole=role=>items.filter(a=>String(a.role||"").toUpperCase()===role);
- const runItems=items.filter(a=>["KP","SKP"].includes(String(a.role||"").toUpperCase()));
+ const runItems=items.filter(a=>["KP","DL","GM","SKP"].includes(String(a.role||"").toUpperCase()));
  const dates=items.map(a=>a.date||String(a.start||"").slice(0,10)).filter(Boolean).sort();
  const runDates=runItems.map(a=>a.date||String(a.start||"").slice(0,10)).filter(Boolean).sort();
- return {kp:byRole("KP").length,skp:byRole("SKP").length,pl:byRole("PL").length,last:dates.at(-1)||"",lastRun:runDates.at(-1)||""};
+ return {facilitator:items.filter(a=>["KP","DL","GM","SKP"].includes(String(a.role||"").toUpperCase())).length,pl:byRole("PL").length,last:dates.at(-1)||"",lastRun:runDates.at(-1)||""};
 }
 function refreshTagFilter(){
  const sel=q("tagFilter");if(!sel)return;const current=sel.value;const tags=[...new Set(data.flatMap(x=>Array.isArray(x.tags)?x.tags:[]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ja"));
@@ -266,7 +270,7 @@ function refreshTagFilter(){
 function sortScenarios(xs){
  const mode=q("sort")?.value||"name",idx=new Map(data.map((x,i)=>[x.id,i]));
  const rows=xs.map(x=>({x,st:scenarioStats(x)}));
- rows.sort((a,b)=>{const an=String(a.x.title||""),bn=String(b.x.title||"");if(mode==="new")return (idx.get(a.x.id)??9999)-(idx.get(b.x.id)??9999);if(mode==="old")return (idx.get(b.x.id)??-1)-(idx.get(a.x.id)??-1);if(mode==="recentRun")return String(b.st.lastRun||"").localeCompare(String(a.st.lastRun||""))||an.localeCompare(bn,"ja");if(mode==="recentPlay")return String(b.st.last||"").localeCompare(String(a.st.last||""))||an.localeCompare(bn,"ja");if(mode==="kpCount")return ((b.st.kp+b.st.skp)-(a.st.kp+a.st.skp))||an.localeCompare(bn,"ja");if(mode==="plCount")return (b.st.pl-a.st.pl)||an.localeCompare(bn,"ja");return an.localeCompare(bn,"ja")});
+ rows.sort((a,b)=>{const an=String(a.x.title||""),bn=String(b.x.title||"");if(mode==="new")return (idx.get(a.x.id)??9999)-(idx.get(b.x.id)??9999);if(mode==="old")return (idx.get(b.x.id)??-1)-(idx.get(a.x.id)??-1);if(mode==="recentRun")return String(b.st.lastRun||"").localeCompare(String(a.st.lastRun||""))||an.localeCompare(bn,"ja");if(mode==="recentPlay")return String(b.st.last||"").localeCompare(String(a.st.last||""))||an.localeCompare(bn,"ja");if(mode==="kpCount")return (b.st.facilitator-a.st.facilitator)||an.localeCompare(bn,"ja");if(mode==="plCount")return (b.st.pl-a.st.pl)||an.localeCompare(bn,"ja");return an.localeCompare(bn,"ja")});
  return rows;
 }
 function prep(id){location.href="../prep/index.html?scenario="+encodeURIComponent(id)}
@@ -274,7 +278,7 @@ function detail(id){
  const x=data.find(v=>v.id===id);if(!x)return;
  const labels=Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("");
  const st=scenarioStats(x),tagHtml=(x.tags||[]).map(t=>`<span class="badge">#${esc(t)}</span>`).join("");
- q("detailContent").innerHTML=`${x.thumbnailUrl?`<img class="sc-detail-img" src="${esc(x.thumbnailUrl)}" alt="">`:`<div class="sc-detail-img sc-placeholder" style="display:grid;place-items:center;font-size:64px">🌺</div>`}<div class="sc-detail-body"><div class="sc-detail-top"><div><h2>${esc(x.title)}</h2>${x.shortTitle?`<div class="small muted">略称：${esc(x.shortTitle)}</div>`:""}<div class="sc-meta">${x.autoCreated?`<span class="badge">仮登録</span>`:""}${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${pubBadge(x)}${labels}</div>${tagHtml?`<div class="sc-tags">${tagHtml}</div>`:""}</div><button class="sc-detail-close" data-close type="button">×</button></div>${x.author?`<p>作者・サークル：${esc(x.author)}</p>`:""}${(x.playersMin||x.playersMax||x.hoursMin||x.hoursMax)?`<p class="small muted">${rangeText(x.playersMin,x.playersMax,"人")}${(x.playersMin||x.playersMax)&&(x.hoursMin||x.hoursMax)?" ／ ":""}${rangeText(x.hoursMin,x.hoursMax,"時間")}</p>`:""}<div class="sc-stats"><span class="badge">KP/SKP ${st.kp+st.skp}回</span><span class="badge">PL ${st.pl}回</span>${st.last?`<span class="badge">最終プレイ ${esc(st.last)}</span>`:""}</div>${x.summaryText?`<section><h3>概要</h3><p style="white-space:pre-wrap">${esc(x.summaryText)}</p></section>`:""}${x.handoutInfo?`<section><h3>HO・基本情報</h3><p style="white-space:pre-wrap">${esc(x.handoutInfo)}</p></section>`:""}${x.privateMemo?`<section><h3>自分用メモ</h3><p style="white-space:pre-wrap">${esc(x.privateMemo)}</p></section>`:""}${x.sourceType||x.lastChecked?`<p class="small muted">${x.sourceType?`出典：${esc(x.sourceType)}`:""}${x.sourceType&&x.lastChecked?" ／ ":""}${x.lastChecked?`最終確認：${esc(x.lastChecked)}`:""}</p>`:""}<div class="sc-detail-actions">${x.url?`<a class="button" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・掲載ページ</a>`:""}<button data-detail-prep="${x.id}">卓準備へ</button><button data-detail-record="${x.id}">LIBRARYに記録</button><button data-detail-library="${x.id}">過去の開催記録</button><button data-detail-schedule="${x.id}">卓予定を作る</button><button data-detail-edit="${x.id}">編集</button></div></div>`;
+ q("detailContent").innerHTML=`${x.thumbnailUrl?`<img class="sc-detail-img" src="${esc(x.thumbnailUrl)}" alt="">`:`<div class="sc-detail-img sc-placeholder" style="display:grid;place-items:center;font-size:64px">🌺</div>`}<div class="sc-detail-body"><div class="sc-detail-top"><div><h2>${esc(x.title)}</h2>${x.shortTitle?`<div class="small muted">略称：${esc(x.shortTitle)}</div>`:""}<div class="sc-meta">${x.autoCreated?`<span class="badge">仮登録</span>`:""}${x.system?`<span class="badge">${esc(x.system)}</span>`:""}<span class="badge">${esc(facilitatorLabelFor(x)+(x.facilitatorPresence==="less"?"レス":""))}</span>${pubBadge(x)}${labels}</div>${tagHtml?`<div class="sc-tags">${tagHtml}</div>`:""}</div><button class="sc-detail-close" data-close type="button">×</button></div>${x.author?`<p>作者・サークル：${esc(x.author)}</p>`:""}${(x.playersMin||x.playersMax||x.hoursMin||x.hoursMax)?`<p class="small muted">${rangeText(x.playersMin,x.playersMax,"人")}${(x.playersMin||x.playersMax)&&(x.hoursMin||x.hoursMax)?" ／ ":""}${rangeText(x.hoursMin,x.hoursMax,"時間")}</p>`:""}<div class="sc-stats"><span class="badge">進行 ${st.facilitator}回</span><span class="badge">PL ${st.pl}回</span>${st.last?`<span class="badge">最終プレイ ${esc(st.last)}</span>`:""}</div>${x.summaryText?`<section><h3>概要</h3><p style="white-space:pre-wrap">${esc(x.summaryText)}</p></section>`:""}${x.handoutInfo?`<section><h3>HO・基本情報</h3><p style="white-space:pre-wrap">${esc(x.handoutInfo)}</p></section>`:""}${x.privateMemo?`<section><h3>自分用メモ</h3><p style="white-space:pre-wrap">${esc(x.privateMemo)}</p></section>`:""}${x.sourceType||x.lastChecked?`<p class="small muted">${x.sourceType?`出典：${esc(x.sourceType)}`:""}${x.sourceType&&x.lastChecked?" ／ ":""}${x.lastChecked?`最終確認：${esc(x.lastChecked)}`:""}</p>`:""}<div class="sc-detail-actions">${x.url?`<a class="button" target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布・掲載ページ</a>`:""}<button data-detail-prep="${x.id}">卓準備へ</button><button data-detail-record="${x.id}">LIBRARYに記録</button><button data-detail-library="${x.id}">過去の開催記録</button><button data-detail-schedule="${x.id}">卓予定を作る</button><button data-detail-edit="${x.id}">編集</button></div></div>`;
  q("detailDialog").showModal();
  q("detailContent").querySelector("[data-close]").onclick=()=>q("detailDialog").close();
  q("detailContent").querySelector("[data-detail-edit]").onclick=()=>{q("detailDialog").close();edit(id)};
@@ -298,6 +302,7 @@ function render(){
  q("addCard").onclick=openForm;
  renderFriendResults();
 }
+q("system").addEventListener("input",updateFacilitatorUI);q("facilitatorPresence").onchange=updateFacilitatorUI;q("facilitatorTermMode").onchange=updateFacilitatorUI;q("facilitatorTermCustom").addEventListener("input",updateFacilitatorUI);
 q("shareScenarioList").onclick=shareScenarioList;q("openForm").onclick=openForm;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;q("playersFilter").oninput=render;q("hoursFilter").oninput=render;q("tagFilter").onchange=render;q("sort").onchange=render;q("friendAdd").onclick=addFriendSource;renderFriendSources();render();loadFriendSources();
 })();
 </script>

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>セッションタイマー｜SAKU+MERU</title>
+<meta name="description" content="マーダーミステリーやTRPGの議論・密談・投票に使えるローカルタイマー。">
+<script>
+(()=>{try{const k="trpg39_theme",v=localStorage.getItem(k)||"system",m=(v==="light"||v==="dark")?v:(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"),r=document.documentElement;r.setAttribute("data-theme",m);r.setAttribute("data-theme-mode",v);r.classList.remove("theme-light","theme-dark");r.classList.add(m==="light"?"theme-light":"theme-dark");r.style.colorScheme=m;}catch(e){}})();
+</script>
+<link rel="stylesheet" href="../../assets/css/style-v0296.css">
+<script defer src="../../assets/js/theme-v0296.js"></script>
+<style>
+.timer-shell{max-width:760px;margin:0 auto}.timer-card{padding:22px}.timer-display{font-variant-numeric:tabular-nums;font-size:clamp(56px,12vw,104px);font-weight:800;line-height:1;text-align:center;letter-spacing:.02em;margin:18px 0 22px}.timer-label{text-align:center;font-weight:700;min-height:1.5em}.timer-controls,.preset-row,.mode-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.timer-controls button,.preset-row button{min-width:90px}.time-inputs{display:flex;gap:12px;justify-content:center;align-items:end;flex-wrap:wrap;margin:18px 0}.time-inputs label{display:grid;gap:6px;text-align:center}.time-inputs input{width:110px;text-align:center;font-size:1.2rem}.timer-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:18px}.option-box{border:1px solid var(--border,#6665);border-radius:12px;padding:14px}.option-box label{display:flex;align-items:center;gap:8px;margin:6px 0}.option-box select,.option-box input[type="text"]{width:100%}.phase-list{display:grid;gap:8px;margin-top:10px}.phase-row{display:grid;grid-template-columns:1fr 90px 90px auto;gap:8px;align-items:center}.phase-row input{width:100%}.status-note{font-size:.9rem;opacity:.78;margin-top:8px}.timer-flash{animation:timerFlash .55s ease-in-out 0s 6 alternate}@keyframes timerFlash{from{outline:0 solid transparent}to{outline:10px solid currentColor;outline-offset:-10px}}@media(max-width:620px){.phase-row{grid-template-columns:1fr 72px 72px}.phase-row button{grid-column:1/-1}.timer-card{padding:16px}}
+</style>
+</head>
+<body>
+<header class="site-header"><div class="wrap">
+<h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
+<div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div>
+<nav class="nav"><a href="../../index.html">HOME</a><a href="../../scenario/index.html?v=0292">SCENARIO</a><a href="../../calendar/index.html?v=0292">CALENDAR</a><a href="../../library/index.html?v=0292">LIBRARY</a><a href="../../pcs/index.html?v=0292">PC</a><a href="../../players/index.html?v=0292">PLAYERS</a><a href="../index.html" aria-current="page">TOOLS</a><a href="../../backup/index.html">BACKUP</a><a href="../../help/index.html">HELP</a><a href="../../about/index.html">ABOUT</a><a href="../../settings/index.html">SETTINGS</a></nav>
+<div class="theme-switcher" aria-label="テーマ"><button type="button" data-theme-choice="system">端末</button><span>·</span><button type="button" data-theme-choice="dark">ダーク</button><span>·</span><button type="button" data-theme-choice="light">ライト</button></div>
+</div></header>
+<main><div class="wrap timer-shell">
+<div class="hero"><h2>セッションタイマー</h2><p>議論・密談・投票など、時間管理がシビアな卓向けのローカルタイマーです。</p></div>
+<section class="card timer-card" id="timerCard">
+<div class="timer-label" id="currentLabel">タイマー</div>
+<div class="timer-display" id="display" aria-live="polite">10:00</div>
+<div class="timer-controls">
+<button type="button" class="primary" id="startBtn">開始</button>
+<button type="button" id="pauseBtn">一時停止</button>
+<button type="button" id="resetBtn">リセット</button>
+</div>
+<div class="preset-row" style="margin-top:14px">
+<button type="button" data-min="5">5分</button><button type="button" data-min="10">10分</button><button type="button" data-min="15">15分</button><button type="button" data-min="20">20分</button><button type="button" data-min="30">30分</button><button type="button" data-min="60">60分</button>
+</div>
+<div class="time-inputs">
+<label>分<input id="minutes" type="number" min="0" max="999" value="10" inputmode="numeric"></label>
+<label>秒<input id="seconds" type="number" min="0" max="59" value="0" inputmode="numeric"></label>
+<button type="button" id="setBtn">この時間に設定</button>
+</div>
+<div class="timer-options">
+<div class="option-box">
+<strong>終了時の通知</strong>
+<label><input type="checkbox" id="soundEnabled" checked> 音を鳴らす</label>
+<label><input type="checkbox" id="visualEnabled" checked> 画面でも知らせる</label>
+<label><input type="checkbox" id="vibrateEnabled"> 振動する（対応端末のみ）</label>
+<div class="status-note">音はこのブラウザだけで再生されます。録画ソフトがPC音声を収録している場合は録音されることがあります。</div>
+</div>
+<div class="option-box">
+<strong>音の出力先</strong>
+<select id="audioOutput"><option value="default">既定の出力先</option></select>
+<button type="button" id="loadDevices" style="margin-top:8px">出力先を読み込む</button>
+<div class="status-note" id="sinkNote">対応ブラウザではヘッドホン等を個別指定できます。</div>
+</div>
+</div>
+</section>
+<section class="card timer-card" style="margin-top:18px">
+<h3>フェーズタイマー</h3>
+<p class="muted">「議論20分 → 密談10分 → 投票5分」のように順番を作れます。終了すると次のフェーズへ進みます。</p>
+<div class="phase-list" id="phaseList"></div>
+<div class="mode-row" style="margin-top:12px"><button type="button" id="addPhase">フェーズ追加</button><button type="button" id="startPhases" class="primary">最初から開始</button><button type="button" id="nextPhase">次へ</button></div>
+</section>
+<p style="margin-top:16px"><a href="../index.html">← TOOLSへ戻る</a></p>
+</div></main>
+<footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
+<script src="../../assets/js/main.js?v=0292"></script>
+<script>
+(()=>{
+const $=s=>document.querySelector(s), display=$('#display'), card=$('#timerCard'), label=$('#currentLabel');
+let totalMs=600000, remainingMs=600000, endAt=0, running=false, raf=0, phaseIndex=-1;
+const pad=n=>String(n).padStart(2,'0');
+function render(){const sec=Math.max(0,Math.ceil(remainingMs/1000)),m=Math.floor(sec/60),s=sec%60;display.textContent=`${pad(m)}:${pad(s)}`;document.title=`${display.textContent}｜タイマー｜SAKU+MERU`;}
+function stopLoop(){cancelAnimationFrame(raf);raf=0;}
+function tick(){if(!running)return;remainingMs=Math.max(0,endAt-Date.now());render();if(remainingMs<=0){running=false;stopLoop();finish();return;}raf=requestAnimationFrame(tick);}
+function setTime(ms){running=false;stopLoop();totalMs=Math.max(0,ms);remainingMs=totalMs;render();}
+function start(){if(running)return;if(remainingMs<=0)remainingMs=totalMs;if(remainingMs<=0)return;endAt=Date.now()+remainingMs;running=true;tick();}
+function pause(){if(!running)return;remainingMs=Math.max(0,endAt-Date.now());running=false;stopLoop();render();}
+function reset(){running=false;stopLoop();remainingMs=totalMs;render();}
+let audioCtx=null;
+async function beep(){if(!$('#soundEnabled').checked)return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')await audioCtx.resume();const sink=$('#audioOutput').value;if(sink && sink!=='default' && typeof audioCtx.setSinkId==='function'){try{await audioCtx.setSinkId(sink)}catch(e){}}for(let i=0;i<3;i++){const o=audioCtx.createOscillator(),g=audioCtx.createGain(),t=audioCtx.currentTime+i*.32;o.frequency.value=880;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.12,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.22);o.connect(g).connect(audioCtx.destination);o.start(t);o.stop(t+.24)}}catch(e){console.warn(e)}}
+function finish(){beep();if($('#visualEnabled').checked){card.classList.remove('timer-flash');void card.offsetWidth;card.classList.add('timer-flash')}if($('#vibrateEnabled').checked&&navigator.vibrate)navigator.vibrate([250,120,250,120,400]);if(phaseIndex>=0){const rows=[...document.querySelectorAll('.phase-row')];if(phaseIndex+1<rows.length){phaseIndex++;loadPhase(rows[phaseIndex],true)}else{label.textContent='全フェーズ終了';phaseIndex=-1}}}
+$('#startBtn').onclick=start;$('#pauseBtn').onclick=pause;$('#resetBtn').onclick=reset;
+$('#setBtn').onclick=()=>{const m=Math.max(0,Number($('#minutes').value)||0),s=Math.min(59,Math.max(0,Number($('#seconds').value)||0));phaseIndex=-1;label.textContent='タイマー';setTime((m*60+s)*1000)};
+document.querySelectorAll('[data-min]').forEach(b=>b.onclick=()=>{const m=Number(b.dataset.min);$('#minutes').value=m;$('#seconds').value=0;phaseIndex=-1;label.textContent='タイマー';setTime(m*60000)});
+async function loadOutputs(){const note=$('#sinkNote');try{if(!navigator.mediaDevices?.enumerateDevices){note.textContent='このブラウザは出力先の選択に対応していません。';return}try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});stream.getTracks().forEach(t=>t.stop())}catch(e){}const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audiooutput');const sel=$('#audioOutput');sel.innerHTML='<option value="default">既定の出力先</option>';devs.forEach((d,i)=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||`音声出力 ${i+1}`;sel.append(o)});if(typeof (window.AudioContext||window.webkitAudioContext)?.prototype?.setSinkId==='function'||(window.AudioContext&&'setSinkId' in AudioContext.prototype)){note.textContent='出力先を選択できます。ヘッドホンを選べば、端末の他の出力と分けられます。'}else{note.textContent='出力先一覧は取得できますが、このブラウザではタイマー音の個別出力に未対応です。'}}catch(e){note.textContent='出力先を取得できませんでした。ブラウザの権限を確認してください。'}}
+$('#loadDevices').onclick=loadOutputs;
+const phaseList=$('#phaseList');
+function addPhase(name='議論',min=20,sec=0){const row=document.createElement('div');row.className='phase-row';row.innerHTML=`<input class="phase-name" type="text" value="${name.replace(/"/g,'&quot;')}" aria-label="フェーズ名"><input class="phase-min" type="number" min="0" value="${min}" aria-label="分"><input class="phase-sec" type="number" min="0" max="59" value="${sec}" aria-label="秒"><button type="button" class="phase-remove">削除</button>`;row.querySelector('.phase-remove').onclick=()=>row.remove();phaseList.append(row)}
+function loadPhase(row,auto=false){const name=row.querySelector('.phase-name').value.trim()||'フェーズ',m=Math.max(0,Number(row.querySelector('.phase-min').value)||0),s=Math.min(59,Math.max(0,Number(row.querySelector('.phase-sec').value)||0));label.textContent=name;setTime((m*60+s)*1000);if(auto)start()}
+$('#addPhase').onclick=()=>addPhase('フェーズ',10,0);
+$('#startPhases').onclick=()=>{const rows=[...document.querySelectorAll('.phase-row')];if(!rows.length)return;phaseIndex=0;loadPhase(rows[0],true)};
+$('#nextPhase').onclick=()=>{const rows=[...document.querySelectorAll('.phase-row')];if(!rows.length)return;phaseIndex=phaseIndex<0?0:Math.min(phaseIndex+1,rows.length-1);loadPhase(rows[phaseIndex],false)};
+addPhase('議論',20,0);addPhase('密談',10,0);addPhase('投票',5,0);render();
+})();
+</script>
+</body>
+</html>

@@ -485,13 +485,17 @@ function showShareUrl(url,message){
  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(url).then(()=>prompt(message+"\n\nコピー済みです。",url)).catch(()=>prompt(message,url))}
  else prompt(message,url);
 }
-function snsNameForRow(r){
+function playerForRow(r){
  const players=TRPG39.loadPlayers?TRPG39.loadPlayers():[];
- const hit=(r.playerId&&players.find(p=>p.id===r.playerId))||players.find(p=>String(p.name||"").trim()===String(r.plName||"").trim());
+ return (r.playerId&&players.find(p=>p.id===r.playerId))||players.find(p=>String(p.name||"").trim()===String(r.plName||"").trim())||null;
+}
+function snsNameForRow(r){
+ const hit=playerForRow(r);
  return String(hit?.socialName||r.plName||"").trim();
 }
+function rowIsExcluded(r){return !!playerForRow(r)?.excluded;}
 function reportRowsWithSelf(x){
- const rows=rowsFromRecord(x).map(r=>({...r,plName:snsNameForRow(r)}));
+ const rows=rowsFromRecord(x).map(r=>({...r,_excluded:rowIsExcluded(r),plName:snsNameForRow(r)}));
  const selfRole=String(x.role||"").trim();
  if(selfRole){
    const selfName=localStorage.getItem("39x2_self_sns_name_v1")||"自分";
@@ -500,7 +504,10 @@ function reportRowsWithSelf(x){
    rows.push({role:selfRole,ho:x.selfHo||selfCandidate?.ho||"",plName:selfName,pcName:selfRole==="PL"?(x.pcName||""):"",relation:"",_self:true});
    if(selfCandidate)rows.splice(rows.indexOf(selfCandidate),1);
  }
- return rows;
+ const excludedCount=rows.filter(r=>r._excluded&&!r._self).length;
+ const visible=rows.filter(r=>!r._excluded||r._self);
+ if(excludedCount)visible.push({role:"_excluded",plName:`ほか${excludedCount}名`,_excludedSummary:true});
+ return visible;
 }
 function buildXReportText(x){
  const rows=reportRowsWithSelf(x),groups=new Map();
@@ -514,7 +521,8 @@ function buildXReportText(x){
  const pls=groups.get("PL")||[];
  if(pls.length){pls.forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(r.ho?`${r.ho}：${who}`:`PL：${who}`)})}
  (groups.get("その他")||[]).forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(`${r.ho?`${r.ho}：`:""}${who}`)});
- if(rows.some(r=>r.plName))lines.push("※敬称略");
+ (groups.get("_excluded")||[]).forEach(r=>{if(r.plName)lines.push(r.plName)});
+ if(rows.some(r=>r.plName&&!r._excludedSummary))lines.push("※敬称略");
  if(String(x.comment||"").trim())lines.push("",String(x.comment).trim());
  return lines.join("\n");
 }
@@ -588,15 +596,17 @@ function diceAnalysisHtml(x){
 }
 
 function participantHtml(x){
- const rows=rowsFromRecord(x).filter(r=>r.plName);
- if(!rows.length)return "";
+ const allRows=rowsFromRecord(x).filter(r=>r.plName);
+ const excludedCount=allRows.filter(rowIsExcluded).length;
+ const rows=allRows.filter(r=>!rowIsExcluded(r));
+ if(!rows.length&&!excludedCount)return "";
  const body=rows.map(r=>{
    const role=String(r.role||"PL"),name=r.playerId&&TRPG39.playersEnabled?.()?`<a class="participant-link" href="../players/index.html?focus=${encodeURIComponent(r.playerId)}">${esc(r.plName)}</a>`:esc(r.plName),pc=r.pcName?` / ${esc(r.pcName)}`:"";
    if(role==="KP"||role==="SKP")return `<div>${esc(role)}：${name}${pc}</div>`;
    if(role==="PL")return `<div>${r.ho?`<strong>${esc(r.ho)}</strong>　`:"PL："}${name}${pc}${r.relation?` <span class="small muted">（自PCとの関係：${esc(r.relation)}）</span>`:""}</div>`;
    return `<div>${r.ho?`${esc(r.ho)}　`:""}${name}${pc}</div>`;
- }).join("");
- return `<div class="lib-participants">${body}<div class="small muted honorific-note">※敬称略</div></div>`;
+ }).join("")+ (excludedCount?`<div class="muted">ほか${excludedCount}名</div>`:"");
+ return `<div class="lib-participants">${body}${rows.length?`<div class="small muted honorific-note">※敬称略</div>`:""}</div>`;
 }
 function render(){
  const term=q("search").value.trim().toLowerCase(),role=q("filter").value,params=new URLSearchParams(location.search);

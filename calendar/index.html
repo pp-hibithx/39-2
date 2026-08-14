@@ -126,7 +126,38 @@ function hideEditor(){$("eventPanel").hidden=true}
 function clearBulkDays(){$("bulkDays").innerHTML=""}
 function nextBulkDay(){const vals=[Number($("eventDay").value)||1,...[...$("bulkDays").querySelectorAll(".bulk-day")].map(x=>Number(x.value)||1)];return Math.max(...vals)+1}
 function addBulkDay(date="",startTime="",endTime="",dayNo=null,timeBand=""){const row=document.createElement("div");row.className="bulk-row";const n=dayNo||nextBulkDay();row.innerHTML=`<label>卓日<input class="bulk-day" type="number" min="1" step="1" value="${esc(n)}"></label><label>日付<input class="bulk-date" type="date" value="${esc(date)}"></label><label>時間帯<select class="bulk-band"><option value="">指定なし</option><option value="morning">朝</option><option value="day">昼</option><option value="night">夜</option><option value="late">深夜</option></select></label><label>開始時刻<input class="bulk-start-time" type="time" value="${esc(startTime)}"></label><label>終了時刻<input class="bulk-end-time" type="time" value="${esc(endTime)}"></label><button type="button" class="danger remove-day">削除</button>`;row.querySelector(".bulk-band").value=timeBand||"";row.querySelector(".remove-day").onclick=()=>row.remove();$("bulkDays").appendChild(row)}
-function effectiveSessionDay(x,list=events()){const direct=Number(x.sessionDay||0);if(!x.runId)return direct>0?direct:1;const dates=[...new Set(list.filter(v=>v.type!=="blocked"&&v.runId===x.runId).map(v=>String(v.start||"").slice(0,10)).filter(Boolean))].sort();const ds=String(x.start||"").slice(0,10),i=dates.indexOf(ds),inferred=i>=0?i+1:1;if(direct>1)return direct;if(direct===1&&inferred>1)return inferred;return direct>0?direct:inferred}
+const nonPlayingStatuses=new Set(["rescheduling","cancelled","postponed"]);
+function runDayInfo(x,list=events()){
+ const direct=Math.max(1,Number(x.sessionDay||0)||1);
+ if(!x.runId)return {day:direct,excluded:nonPlayingStatuses.has(x.status),rawDay:direct};
+ const run=list.filter(v=>v.type!=="blocked"&&v.runId===x.runId);
+ if(!run.length)return {day:direct,excluded:nonPlayingStatuses.has(x.status),rawDay:direct};
+ const positiveDays=[...new Set(run.map(v=>Number(v.sessionDay||0)).filter(n=>n>0))].sort((a,b)=>a-b);
+ const useStoredDays=positiveDays.length>1;
+ const dateKeys=[...new Set(run.map(v=>String(v.start||"").slice(0,10)).filter(Boolean))].sort();
+ const groupKey=v=>{
+   const raw=Math.max(1,Number(v.sessionDay||0)||1);
+   if(useStoredDays)return `d:${raw}`;
+   const ds=String(v.start||"").slice(0,10);
+   return `date:${ds||raw}`;
+ };
+ const groups=new Map();
+ run.forEach(v=>{const k=groupKey(v);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(v)});
+ const ordered=[...groups.entries()].sort((a,b)=>{
+   const amin=Math.min(...a[1].map(v=>{const ds=String(v.start||"").slice(0,10);return ds?new Date(ds+"T00:00").getTime():Number.MAX_SAFE_INTEGER}));
+   const bmin=Math.min(...b[1].map(v=>{const ds=String(v.start||"").slice(0,10);return ds?new Date(ds+"T00:00").getTime():Number.MAX_SAFE_INTEGER}));
+   if(amin!==bmin)return amin-bmin;
+   const ad=Math.min(...a[1].map(v=>Math.max(1,Number(v.sessionDay||0)||1))),bd=Math.min(...b[1].map(v=>Math.max(1,Number(v.sessionDay||0)||1)));
+   return ad-bd;
+ });
+ let seq=0;const mapped=new Map();
+ ordered.forEach(([k,items])=>{const excluded=items.every(v=>nonPlayingStatuses.has(v.status));if(!excluded)seq++;mapped.set(k,{day:excluded?0:seq,excluded})});
+ const info=mapped.get(groupKey(x))||{day:direct,excluded:nonPlayingStatuses.has(x.status)};
+ // 完了済みは、その時点で確定した卓日番号を固定する。
+ if(x.status==="done")return {day:direct,excluded:false,rawDay:direct};
+ return {day:info.day||direct,excluded:info.excluded,rawDay:direct};
+}
+function effectiveSessionDay(x,list=events()){return runDayInfo(x,list).day}
 function updateDayLabel(){$("dateLabel").textContent="日付"}
 function updateTypeUI(){
  const blocked=$("eventType").value==="blocked";document.querySelectorAll(".trpg-field").forEach(x=>x.hidden=blocked);$("eventStatus").disabled=blocked;$("eventDay").parentElement.hidden=blocked;
@@ -136,13 +167,13 @@ function updateTypeUI(){
 }
 function resetForm(dateStr="",type="trpg"){
  ["eventId","eventTitle","eventSystem","eventPc","eventPeople","eventStartTime","eventEndTime"].forEach(id=>$(id).value="");fillEventPcSelect();fillScenarioSelect();clearBulkDays();
- $("eventType").value=type;$("eventStatus").value="planned";updateRoleOptions("");$("eventDay").value="1";$("eventTimeBand").value="";$("eventDate").value=dateStr||"";$("eventHeading").textContent=type==="blocked"?"卓以外の予定を登録":"卓予定を登録";$("deleteEvent").hidden=true;updateTypeUI();
+ $("eventType").value=type;$("eventStatus").value="planned";updateRoleOptions("");$("eventDay").value="1";delete $("eventDay").dataset.originalSessionDay;delete $("eventDay").dataset.loadedEffectiveDay;$("eventTimeBand").value="";$("eventDate").value=dateStr||"";$("eventHeading").textContent=type==="blocked"?"卓以外の予定を登録":"卓予定を登録";$("deleteEvent").hidden=true;updateTypeUI();
 }
-function editEvent(id){const list=events(),x=list.find(v=>v.id===id);if(!x)return;clearBulkDays();const sessionDay=effectiveSessionDay(x,list);$("eventId").value=x.id;$("eventType").value=x.type==="blocked"?"blocked":"trpg";$("eventTitle").value=x.type==="blocked"?(x.title==="予定あり"?"":x.title):(x.title||"");fillScenarioSelect(x.scenarioId||"");const start=String(x.start||""),end=String(x.end||"");$("eventDate").value=start.slice(0,10);$("eventDay").value=sessionDay;$("eventTimeBand").value=x.timeBand||"";$("eventStartTime").value=(x.timeSpecified!==false&&start.includes("T"))?start.slice(11,16):"";$("eventEndTime").value=end.includes("T")?end.slice(11,16):"";$("eventStatus").value=x.status==="blocked"?"planned":x.status||"planned";$("eventSystem").value=x.system||"";updateRoleOptions(x.role||"");$("eventPc").value=x.pcName||"";fillEventPcSelect(x.pcId||"");$("eventPeople").value=(x.participants||[]).join(", ");$("eventHeading").textContent=x.type==="blocked"?"卓以外の予定を編集":"卓予定を編集";$("deleteEvent").hidden=false;updateTypeUI();if(x.type!=="blocked")$("eventDay").value=sessionDay;showEditor();$("eventPanel").scrollIntoView({behavior:"smooth",block:"start"})}
+function editEvent(id){const list=events(),x=list.find(v=>v.id===id);if(!x)return;clearBulkDays();const info=runDayInfo(x,list),sessionDay=info.excluded?info.rawDay:info.day;$("eventId").value=x.id;$("eventType").value=x.type==="blocked"?"blocked":"trpg";$("eventTitle").value=x.type==="blocked"?(x.title==="予定あり"?"":x.title):(x.title||"");fillScenarioSelect(x.scenarioId||"");const start=String(x.start||""),end=String(x.end||"");$("eventDate").value=start.slice(0,10);$("eventDay").value=sessionDay;$("eventDay").dataset.originalSessionDay=String(info.rawDay);$("eventDay").dataset.loadedEffectiveDay=String(sessionDay);$("eventTimeBand").value=x.timeBand||"";$("eventStartTime").value=(x.timeSpecified!==false&&start.includes("T"))?start.slice(11,16):"";$("eventEndTime").value=end.includes("T")?end.slice(11,16):"";$("eventStatus").value=x.status==="blocked"?"planned":x.status||"planned";$("eventSystem").value=x.system||"";updateRoleOptions(x.role||"");$("eventPc").value=x.pcName||"";fillEventPcSelect(x.pcId||"");$("eventPeople").value=(x.participants||[]).join(", ");$("eventHeading").textContent=x.type==="blocked"?"卓以外の予定を編集":"卓予定を編集";$("deleteEvent").hidden=false;updateTypeUI();if(x.type!=="blocked")$("eventDay").value=sessionDay;showEditor();$("eventPanel").scrollIntoView({behavior:"smooth",block:"start"})}
 function renderCalendar(){
  const y=current.getFullYear(),m=current.getMonth();$("monthLabel").textContent=`${y}年${m+1}月`;$("weekdayHead").innerHTML=["日","月","火","水","木","金","土"].map(x=>`<div class="calendar-head">${x}</div>`).join("");
  const first=new Date(y,m,1),start=new Date(y,m,1-first.getDay()),ev=events(),today=new Date();let html="";
- for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;const dayEvents=ev.filter(x=>String(x.start||"").slice(0,10)===ds).sort((a,b)=>{const ta=(a.timeSpecified!==false&&String(a.start||"").includes("T"))?String(a.start).slice(11,16):"";const tb=(b.timeSpecified!==false&&String(b.start||"").includes("T"))?String(b.start).slice(11,16):"";if(ta&&tb)return ta.localeCompare(tb);if(ta)return -1;if(tb)return 1;return (timeBandOrder[a.timeBand||""]??9)-(timeBandOrder[b.timeBand||""]??9)});html+=`<div class="calendar-day ${d.getMonth()!==m?"out":""} ${d.toDateString()===today.toDateString()?"today":""}" data-date="${ds}"><div class="daynum">${d.getDate()}</div>${dayEvents.map(x=>{const blocked=x.type==="blocked"||x.status==="blocked";const hasTime=!blocked&&x.timeSpecified!==false&&String(x.start||"").includes("T");const tm=hasTime?String(x.start||"").slice(11,16):"";const sc=!blocked&&x.scenarioId?scenarios().find(v=>v.id===x.scenarioId):null;const title=blocked?(x.title&&x.title!=="予定あり"?x.title:"予定あり"):((sc&&sc.shortTitle)||x.title||"卓");const label=blocked?"× 卓以外の予定あり":(statusLabel[x.status]||"□ 予定");const line1=blocked?title:(tm?`${tm}：${title}`:title);const day=blocked?"":effectiveSessionDay(x,ev);const band=blocked?"":(timeBandLabel[x.timeBand||""]||"");const meta=blocked?"":`${day}日目${band?`・${band}`:""}`;return `<button type="button" class="event-chip ${blocked?"blocked":x.status}" data-id="${x.id}"><span class="event-chip-title">${esc(line1)}</span>${meta?`<span class="small session-meta">${esc(meta)}</span>`:""}<span class="small status-badge">${esc(label)}</span></button>`}).join("")}</div>`}
+ for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;const dayEvents=ev.filter(x=>String(x.start||"").slice(0,10)===ds).sort((a,b)=>{const ta=(a.timeSpecified!==false&&String(a.start||"").includes("T"))?String(a.start).slice(11,16):"";const tb=(b.timeSpecified!==false&&String(b.start||"").includes("T"))?String(b.start).slice(11,16):"";if(ta&&tb)return ta.localeCompare(tb);if(ta)return -1;if(tb)return 1;return (timeBandOrder[a.timeBand||""]??9)-(timeBandOrder[b.timeBand||""]??9)});html+=`<div class="calendar-day ${d.getMonth()!==m?"out":""} ${d.toDateString()===today.toDateString()?"today":""}" data-date="${ds}"><div class="daynum">${d.getDate()}</div>${dayEvents.map(x=>{const blocked=x.type==="blocked"||x.status==="blocked";const hasTime=!blocked&&x.timeSpecified!==false&&String(x.start||"").includes("T");const tm=hasTime?String(x.start||"").slice(11,16):"";const sc=!blocked&&x.scenarioId?scenarios().find(v=>v.id===x.scenarioId):null;const title=blocked?(x.title&&x.title!=="予定あり"?x.title:"予定あり"):((sc&&sc.shortTitle)||x.title||"卓");const label=blocked?"× 卓以外の予定あり":(statusLabel[x.status]||"□ 予定");const line1=blocked?title:(tm?`${tm}：${title}`:title);const dayInfo=blocked?null:runDayInfo(x,ev);const day=blocked?0:(dayInfo?.day||0);const band=blocked?"":(timeBandLabel[x.timeBand||""]||"");const meta=blocked?"":(dayInfo?.excluded?(band||""):`${day}日目${band?`・${band}`:""}`);return `<button type="button" class="event-chip ${blocked?"blocked":x.status}" data-id="${x.id}"><span class="event-chip-title">${esc(line1)}</span>${meta?`<span class="small session-meta">${esc(meta)}</span>`:""}<span class="small status-badge">${esc(label)}</span></button>`}).join("")}</div>`}
  $("calendar").innerHTML=html;
  document.querySelectorAll(".calendar-day").forEach(x=>{x.onclick=(ev)=>{if(ev.target.closest(".event-chip"))return;resetForm(x.dataset.date);showEditor();$("eventPanel").scrollIntoView({behavior:"smooth"})}});
  document.querySelectorAll(".event-chip").forEach(x=>x.onclick=e=>{e.stopPropagation();editEvent(x.dataset.id)})
@@ -161,7 +192,15 @@ function buildTrpgEvent(id,date,startTime,endTime,sessionDay,timeBand,old=null,r
  const title=$("eventTitle").value.trim();let scenarioId=$("scenarioSelect").value;let scenario=scenarios().find(x=>x.id===scenarioId);if(!scenario){scenario=TRPG39.ensureScenario(title,{system:$("eventSystem").value.trim()});scenarioId=scenario?.id||"";fillScenarioSelect(scenarioId)}
  const start=makeDateTime(date,startTime),end=makeEndDateTime(date,startTime,endTime);
  const cfg=facilitatorConfig(scenario,$("eventSystem").value.trim());
- return TRPG39.normalizeEvent({...(old||{}),id,type:"trpg",title,scenarioId,scenarioTitle:title,start,end,timeSpecified:!!startTime,timeBand:timeBand||"",sessionDay:Math.max(1,Number(sessionDay)||1),status:$("eventStatus").value,role:$("eventRole").value,system:$("eventSystem").value.trim(),facilitatorLabel:cfg.label,facilitatorless:cfg.less,pcName:$("eventPc").value.trim(),pcId:ensureEventPc(),participants:$("eventPeople").value.split(",").map(x=>x.trim()).filter(Boolean),runId:old?.runId||runId,runLabel:old?.runLabel||""});
+ let dayValue=Math.max(1,Number(sessionDay)||1);
+ if(old){
+   const loaded=Number($("eventDay").dataset.loadedEffectiveDay||0),original=Math.max(1,Number($("eventDay").dataset.originalSessionDay||old.sessionDay||1));
+   const manuallyChanged=loaded>0&&dayValue!==loaded;
+   // 予定・仮押さえ・リスケ等は元の番号を保持しておき、前の卓が復活した場合にも自動で戻せるようにする。
+   // 完了へ変更した時だけ、現在画面に見えている実際の「○日目」を確定値として保存する。
+   if(!manuallyChanged&&$("eventStatus").value!=="done")dayValue=original;
+ }
+ return TRPG39.normalizeEvent({...(old||{}),id,type:"trpg",title,scenarioId,scenarioTitle:title,start,end,timeSpecified:!!startTime,timeBand:timeBand||"",sessionDay:dayValue,status:$("eventStatus").value,role:$("eventRole").value,system:$("eventSystem").value.trim(),facilitatorLabel:cfg.label,facilitatorless:cfg.less,pcName:$("eventPc").value.trim(),pcId:ensureEventPc(),participants:$("eventPeople").value.split(",").map(x=>x.trim()).filter(Boolean),runId:old?.runId||runId,runLabel:old?.runLabel||""});
 }
 function buildBlockedEvent(id,date,old=null){const ds=String(date||"").slice(0,10);const a=new Date(ds+"T00:00:00"),b=new Date(a);b.setDate(b.getDate()+1);const local=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T00:00`;return TRPG39.normalizeEvent({...(old||{}),id,type:"blocked",title:$("eventTitle").value.trim()||"予定あり",scenarioId:"",scenarioTitle:"",start:local(a),end:local(b),timeSpecified:false,timeBand:"",sessionDay:0,status:"blocked",role:"",system:"",pcName:"",pcId:"",participants:[],linkedAlbumId:""})}
 $("saveEvent").onclick=()=>{

@@ -78,7 +78,7 @@
 <div><label>状態</label><select id="eventStatus"><option value="tentative">仮押さえ</option><option value="planned">予定</option><option value="done">完了</option><option value="rescheduling">リスケ中</option><option value="postponed">延期</option><option value="cancelled">中止</option></select></div>
 <div class="full trpg-field"><label>シナリオ</label><select id="scenarioSelect"><option value="">直接入力</option></select></div>
 <div class="full"><label>タイトル <span class="small muted" id="titleHint">直接入力したシナリオ名はSCENARIOにも自動登録されます</span></label><input id="eventTitle" placeholder="シナリオ名"></div>
-<div class="trpg-field"><label>予定内容</label><select id="eventSessionKind"><option value="prelude">事前導入</option><option value="main">本編</option><option value="aftertalk">感想戦</option></select></div>
+<div class="trpg-field"><label>予定内容</label><select id="eventSessionKind"><option value="prelude">事前導入</option><option value="main">本編</option><option value="reserve">予備日</option><option value="aftertalk">感想戦</option></select></div>
 <div id="eventDayWrap"><label>卓日</label><input id="eventDay" type="number" min="1" step="1" value="1"></div>
 <div><label id="dateLabel">日付</label><input id="eventDate" type="date"></div>
 <div class="trpg-field"><label>時間帯</label><select id="eventTimeBand"><option value="">指定なし</option><option value="morning">朝</option><option value="day">昼</option><option value="night">夜</option><option value="late">深夜</option></select></div>
@@ -88,6 +88,7 @@
 <div class="trpg-field"><label>システム</label><input id="eventSystem"></div>
 <div class="trpg-field"><label>PC</label><select id="eventPcSelect"><option value="">直接入力</option></select><input id="eventPc" placeholder="未登録PCは保存時にPC LIBRARYへ自動登録"></div>
 <div class="full trpg-field"><label>参加者</label><input id="eventPeople" placeholder="名前をカンマ区切り"><div class="small muted">カンマごとに個別の参加者として保存します。参加者図鑑・同卓履歴への連携用です。</div></div>
+<div class="full trpg-field"><label>メモ <span class="small muted">（カレンダーに表示）</span></label><input id="eventMemo" placeholder="例：2日目が延びた場合の予備日"></div>
 <div class="date-mode-box trpg-field" id="dateModeBox">
   <div class="date-mode-row">
     <div><label>日程入力</label><select id="dateMode"><option value="single">単日</option><option value="range">連続</option><option value="multiple">複数日</option></select></div>
@@ -126,7 +127,7 @@ let current=new Date(); current.setDate(1);
 const statusLabel={tentative:"△ 仮押さえ",planned:"□ 予定",confirmed:"□ 予定",done:"✓ 完了",rescheduling:"↻ リスケ中",cancelled:"× 中止",postponed:"→ 延期",blocked:"× 卓以外の予定あり"};
 const timeBandLabel={morning:"朝",day:"昼",night:"夜",late:"深夜","":""};
 const timeBandOrder={late:0,morning:1,day:2,night:3,"":4};
-const sessionKindLabel={prelude:"事前導入",main:"本編",aftertalk:"感想戦"};
+const sessionKindLabel={prelude:"事前導入",main:"本編",reserve:"予備日",aftertalk:"感想戦"};
 const pad=n=>String(n).padStart(2,"0");
 function scenarios(){return TRPG39.loadScenarios()}
 function facilitatorConfig(scenario=null,system=""){scenario=scenario||scenarios().find(v=>v.id===$("scenarioSelect").value)||{};const label=TRPG39.resolveFacilitatorLabel?.(system||$("eventSystem").value||scenario.system||"",scenario)||"GM";return {label,less:scenario.facilitatorPresence==="less"}}
@@ -175,36 +176,58 @@ function collectSimpleDateRanges(){
  return [{date:start,sessionDay:$("eventDay").value,...common}];
 }
 function nextBulkDay(){const vals=[Number($("eventDay").value)||1,...[...$("bulkDays").querySelectorAll(".bulk-day")].map(x=>Number(x.value)||1)];return Math.max(...vals)+1}
-function addBulkDay(date="",startTime="",endTime="",dayNo=null,timeBand="",sessionKind="main"){const row=document.createElement("div");row.className="bulk-row";const n=dayNo||nextBulkDay();row.innerHTML=`<label>予定内容<select class="bulk-kind"><option value="prelude">事前導入</option><option value="main">本編</option><option value="aftertalk">感想戦</option></select></label><label class="bulk-day-wrap">卓日<input class="bulk-day" type="number" min="1" step="1" value="${esc(n)}"></label><label>日付<input class="bulk-date" type="date" value="${esc(date)}"></label><label>時間帯<select class="bulk-band"><option value="">指定なし</option><option value="morning">朝</option><option value="day">昼</option><option value="night">夜</option><option value="late">深夜</option></select></label><label>開始時刻<input class="bulk-start-time" type="time" value="${esc(startTime)}"></label><label>終了時刻<input class="bulk-end-time" type="time" value="${esc(endTime)}"></label><button type="button" class="danger remove-day">削除</button>`;const kindSel=row.querySelector(".bulk-kind"),dayWrap=row.querySelector(".bulk-day-wrap");kindSel.value=sessionKind||"main";row.querySelector(".bulk-band").value=timeBand||"";const syncKind=()=>{dayWrap.hidden=kindSel.value!=="main"};kindSel.onchange=syncKind;syncKind();row.querySelector(".remove-day").onclick=()=>row.remove();$("bulkDays").appendChild(row)}
+function addBulkDay(date="",startTime="",endTime="",dayNo=null,timeBand="",sessionKind="main"){const row=document.createElement("div");row.className="bulk-row";const n=dayNo||nextBulkDay();row.innerHTML=`<label>予定内容<select class="bulk-kind"><option value="prelude">事前導入</option><option value="main">本編</option><option value="reserve">予備日</option><option value="aftertalk">感想戦</option></select></label><label class="bulk-day-wrap">卓日<input class="bulk-day" type="number" min="1" step="1" value="${esc(n)}"></label><label>日付<input class="bulk-date" type="date" value="${esc(date)}"></label><label>時間帯<select class="bulk-band"><option value="">指定なし</option><option value="morning">朝</option><option value="day">昼</option><option value="night">夜</option><option value="late">深夜</option></select></label><label>開始時刻<input class="bulk-start-time" type="time" value="${esc(startTime)}"></label><label>終了時刻<input class="bulk-end-time" type="time" value="${esc(endTime)}"></label><button type="button" class="danger remove-day">削除</button>`;const kindSel=row.querySelector(".bulk-kind"),dayWrap=row.querySelector(".bulk-day-wrap");kindSel.value=sessionKind||"main";row.querySelector(".bulk-band").value=timeBand||"";const syncKind=()=>{dayWrap.hidden=kindSel.value!=="main"};kindSel.onchange=syncKind;syncKind();row.querySelector(".remove-day").onclick=()=>row.remove();$("bulkDays").appendChild(row)}
 const nonPlayingStatuses=new Set(["rescheduling","cancelled","postponed"]);
 function runDayInfo(x,list=events()){
  const direct=Math.max(1,Number(x.sessionDay||0)||1);
- if((x.sessionKind||"main")!=="main")return {day:0,excluded:true,rawDay:direct,specialKind:(x.sessionKind||"main")};
+ const kind=x.sessionKind||"main";
+ if(kind!=="main")return {day:0,excluded:true,rawDay:direct,specialKind:kind};
  if(!x.runId)return {day:direct,excluded:nonPlayingStatuses.has(x.status),rawDay:direct};
+
  const run=list.filter(v=>v.type!=="blocked"&&v.runId===x.runId&&(v.sessionKind||"main")==="main");
  if(!run.length)return {day:direct,excluded:nonPlayingStatuses.has(x.status),rawDay:direct};
- const positiveDays=[...new Set(run.map(v=>Number(v.sessionDay||0)).filter(n=>n>0))].sort((a,b)=>a-b);
- const useStoredDays=positiveDays.length>1;
- const dateKeys=[...new Set(run.map(v=>String(v.start||"").slice(0,10)).filter(Boolean))].sort();
- const groupKey=v=>{
-   const raw=Math.max(1,Number(v.sessionDay||0)||1);
-   if(useStoredDays)return `d:${raw}`;
-   const ds=String(v.start||"").slice(0,10);
-   return `date:${ds||raw}`;
- };
+
+ // 明示された卓日番号が存在する場合は、その番号を基準にする。
+ // 例：卓日2で登録した予定は、前に中止・リスケされた卓日が無ければ2日目のまま。
+ const rawDays=[...new Set(run.map(v=>Math.max(1,Number(v.sessionDay||0)||1)))]
+   .sort((a,b)=>a-b);
+ const hasExplicitNumbering=rawDays.length>1 || direct>1;
+
+ if(hasExplicitNumbering){
+   const excludedDays=new Set();
+   for(const dayNo of rawDays){
+     const items=run.filter(v=>Math.max(1,Number(v.sessionDay||0)||1)===dayNo);
+     if(items.length&&items.every(v=>nonPlayingStatuses.has(v.status)))excludedDays.add(dayNo);
+   }
+   const excluded=nonPlayingStatuses.has(x.status);
+   if(excluded)return {day:direct,excluded:true,rawDay:direct};
+
+   const shift=[...excludedDays].filter(n=>n<direct).length;
+   const effective=Math.max(1,direct-shift);
+
+   // 完了済みは保存済みの番号を確定値として扱う。
+   if(x.status==="done")return {day:direct,excluded:false,rawDay:direct};
+   return {day:effective,excluded:false,rawDay:direct};
+ }
+
+ // 旧データ互換：すべて卓日1で保存されていた場合だけ、開催日順から日数を推定する。
  const groups=new Map();
- run.forEach(v=>{const k=groupKey(v);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(v)});
- const ordered=[...groups.entries()].sort((a,b)=>{
-   const amin=Math.min(...a[1].map(v=>{const ds=String(v.start||"").slice(0,10);return ds?new Date(ds+"T00:00").getTime():Number.MAX_SAFE_INTEGER}));
-   const bmin=Math.min(...b[1].map(v=>{const ds=String(v.start||"").slice(0,10);return ds?new Date(ds+"T00:00").getTime():Number.MAX_SAFE_INTEGER}));
-   if(amin!==bmin)return amin-bmin;
-   const ad=Math.min(...a[1].map(v=>Math.max(1,Number(v.sessionDay||0)||1))),bd=Math.min(...b[1].map(v=>Math.max(1,Number(v.sessionDay||0)||1)));
-   return ad-bd;
+ run.forEach(v=>{
+   const ds=String(v.start||"").slice(0,10);
+   const k=`date:${ds||"unknown"}`;
+   if(!groups.has(k))groups.set(k,[]);
+   groups.get(k).push(v);
  });
- let seq=0;const mapped=new Map();
- ordered.forEach(([k,items])=>{const excluded=items.every(v=>nonPlayingStatuses.has(v.status));if(!excluded)seq++;mapped.set(k,{day:excluded?0:seq,excluded})});
- const info=mapped.get(groupKey(x))||{day:direct,excluded:nonPlayingStatuses.has(x.status)};
- // 完了済みは、その時点で確定した卓日番号を固定する。
+ const ordered=[...groups.entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+ let seq=0;
+ const mapped=new Map();
+ ordered.forEach(([k,items])=>{
+   const excluded=items.every(v=>nonPlayingStatuses.has(v.status));
+   if(!excluded)seq++;
+   mapped.set(k,{day:excluded?0:seq,excluded});
+ });
+ const ds=String(x.start||"").slice(0,10);
+ const info=mapped.get(`date:${ds||"unknown"}`)||{day:direct,excluded:nonPlayingStatuses.has(x.status)};
  if(x.status==="done")return {day:direct,excluded:false,rawDay:direct};
  return {day:info.day||direct,excluded:info.excluded,rawDay:direct};
 }
@@ -218,14 +241,14 @@ function updateTypeUI(){
  $("eventStatePreview").textContent=blocked?"× 卓以外の予定あり":statusLabel[$("eventStatus").value]||"□ 予定";
 }
 function resetForm(dateStr="",type="trpg"){
- ["eventId","eventTitle","eventSystem","eventPc","eventPeople","eventStartTime","eventEndTime"].forEach(id=>$(id).value="");fillEventPcSelect();fillScenarioSelect();clearBulkDays();
+ ["eventId","eventTitle","eventSystem","eventPc","eventPeople","eventMemo","eventStartTime","eventEndTime"].forEach(id=>$(id).value="");fillEventPcSelect();fillScenarioSelect();clearBulkDays();
  $("eventType").value=type;$("eventStatus").value="planned";$("eventSessionKind").value="main";updateRoleOptions("");$("eventDay").value="1";delete $("eventDay").dataset.originalSessionDay;delete $("eventDay").dataset.loadedEffectiveDay;$("eventTimeBand").value="";$("eventDate").value=dateStr||"";$("dateMode").value="single";$("rangeEndDate").value="";clearMultiDates();updateDateModeUI();$("eventHeading").textContent=type==="blocked"?"卓以外の予定を登録":"卓予定を登録";$("deleteEvent").hidden=true;updateTypeUI();
 }
-function editEvent(id){const list=events(),x=list.find(v=>v.id===id);if(!x)return;clearBulkDays();const info=runDayInfo(x,list),sessionDay=info.specialKind?Math.max(1,Number(x.sessionDay||1)):(info.excluded?info.rawDay:info.day);$("eventId").value=x.id;$("eventType").value=x.type==="blocked"?"blocked":"trpg";$("eventTitle").value=x.type==="blocked"?(x.title==="予定あり"?"":x.title):(x.title||"");fillScenarioSelect(x.scenarioId||"");const start=String(x.start||""),end=String(x.end||"");$("eventDate").value=start.slice(0,10);$("dateMode").value="single";$("rangeEndDate").value="";clearMultiDates();updateDateModeUI();$("eventSessionKind").value=x.sessionKind||"main";$("eventDay").value=sessionDay;$("eventDay").dataset.originalSessionDay=String(info.rawDay);$("eventDay").dataset.loadedEffectiveDay=String(sessionDay);$("eventTimeBand").value=x.timeBand||"";$("eventStartTime").value=(x.timeSpecified!==false&&start.includes("T"))?start.slice(11,16):"";$("eventEndTime").value=end.includes("T")?end.slice(11,16):"";$("eventStatus").value=x.status==="blocked"?"planned":x.status||"planned";$("eventSystem").value=x.system||"";updateRoleOptions(x.role||"");$("eventPc").value=x.pcName||"";fillEventPcSelect(x.pcId||"");$("eventPeople").value=(x.participants||[]).join(", ");$("eventHeading").textContent=x.type==="blocked"?"卓以外の予定を編集":"卓予定を編集";$("deleteEvent").hidden=false;updateTypeUI();if(x.type!=="blocked")$("eventDay").value=sessionDay;showEditor();$("eventPanel").scrollIntoView({behavior:"smooth",block:"start"})}
+function editEvent(id){const list=events(),x=list.find(v=>v.id===id);if(!x)return;clearBulkDays();const info=runDayInfo(x,list),sessionDay=info.specialKind?Math.max(1,Number(x.sessionDay||1)):(info.excluded?info.rawDay:info.day);$("eventId").value=x.id;$("eventType").value=x.type==="blocked"?"blocked":"trpg";$("eventTitle").value=x.type==="blocked"?(x.title==="予定あり"?"":x.title):(x.title||"");fillScenarioSelect(x.scenarioId||"");const start=String(x.start||""),end=String(x.end||"");$("eventDate").value=start.slice(0,10);$("dateMode").value="single";$("rangeEndDate").value="";clearMultiDates();updateDateModeUI();$("eventSessionKind").value=x.sessionKind||"main";$("eventDay").value=sessionDay;$("eventDay").dataset.originalSessionDay=String(info.rawDay);$("eventDay").dataset.loadedEffectiveDay=String(sessionDay);$("eventTimeBand").value=x.timeBand||"";$("eventStartTime").value=(x.timeSpecified!==false&&start.includes("T"))?start.slice(11,16):"";$("eventEndTime").value=end.includes("T")?end.slice(11,16):"";$("eventStatus").value=x.status==="blocked"?"planned":x.status||"planned";$("eventSystem").value=x.system||"";updateRoleOptions(x.role||"");$("eventPc").value=x.pcName||"";fillEventPcSelect(x.pcId||"");$("eventPeople").value=(x.participants||[]).join(", ");$("eventMemo").value=x.calendarMemo||"";$("eventHeading").textContent=x.type==="blocked"?"卓以外の予定を編集":"卓予定を編集";$("deleteEvent").hidden=false;updateTypeUI();if(x.type!=="blocked")$("eventDay").value=sessionDay;showEditor();$("eventPanel").scrollIntoView({behavior:"smooth",block:"start"})}
 function renderCalendar(){
  const y=current.getFullYear(),m=current.getMonth();$("monthLabel").textContent=`${y}年${m+1}月`;$("weekdayHead").innerHTML=["日","月","火","水","木","金","土"].map(x=>`<div class="calendar-head">${x}</div>`).join("");
  const first=new Date(y,m,1),start=new Date(y,m,1-first.getDay()),ev=events(),today=new Date();let html="";
- for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;const dayEvents=ev.filter(x=>String(x.start||"").slice(0,10)===ds).sort((a,b)=>{const ta=(a.timeSpecified!==false&&String(a.start||"").includes("T"))?String(a.start).slice(11,16):"";const tb=(b.timeSpecified!==false&&String(b.start||"").includes("T"))?String(b.start).slice(11,16):"";if(ta&&tb)return ta.localeCompare(tb);if(ta)return -1;if(tb)return 1;return (timeBandOrder[a.timeBand||""]??9)-(timeBandOrder[b.timeBand||""]??9)});html+=`<div class="calendar-day ${d.getMonth()!==m?"out":""} ${d.toDateString()===today.toDateString()?"today":""}" data-date="${ds}"><div class="daynum">${d.getDate()}</div>${dayEvents.map(x=>{const blocked=x.type==="blocked"||x.status==="blocked";const hasTime=!blocked&&x.timeSpecified!==false&&String(x.start||"").includes("T");const tm=hasTime?String(x.start||"").slice(11,16):"";const sc=!blocked&&x.scenarioId?scenarios().find(v=>v.id===x.scenarioId):null;const title=blocked?(x.title&&x.title!=="予定あり"?x.title:"予定あり"):((sc&&sc.shortTitle)||x.title||"卓");const label=blocked?"× 卓以外の予定あり":(statusLabel[x.status]||"□ 予定");const line1=blocked?title:(tm?`${tm}：${title}`:title);const dayInfo=blocked?null:runDayInfo(x,ev);const day=blocked?0:(dayInfo?.day||0);const band=blocked?"":(timeBandLabel[x.timeBand||""]||"");const kind=(x.sessionKind||"main");const meta=blocked?"":(kind!=="main"?`${sessionKindLabel[kind]||kind}${band?`・${band}`:""}`:(dayInfo?.excluded?(band||""):`${day}日目${band?`・${band}`:""}`));return `<button type="button" class="event-chip ${blocked?"blocked":x.status}" data-id="${x.id}"><span class="event-chip-title">${esc(line1)}</span>${meta?`<span class="small session-meta">${esc(meta)}</span>`:""}<span class="small status-badge">${esc(label)}</span></button>`}).join("")}</div>`}
+ for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;const dayEvents=ev.filter(x=>String(x.start||"").slice(0,10)===ds).sort((a,b)=>{const ta=(a.timeSpecified!==false&&String(a.start||"").includes("T"))?String(a.start).slice(11,16):"";const tb=(b.timeSpecified!==false&&String(b.start||"").includes("T"))?String(b.start).slice(11,16):"";if(ta&&tb)return ta.localeCompare(tb);if(ta)return -1;if(tb)return 1;return (timeBandOrder[a.timeBand||""]??9)-(timeBandOrder[b.timeBand||""]??9)});html+=`<div class="calendar-day ${d.getMonth()!==m?"out":""} ${d.toDateString()===today.toDateString()?"today":""}" data-date="${ds}"><div class="daynum">${d.getDate()}</div>${dayEvents.map(x=>{const blocked=x.type==="blocked"||x.status==="blocked";const hasTime=!blocked&&x.timeSpecified!==false&&String(x.start||"").includes("T");const tm=hasTime?String(x.start||"").slice(11,16):"";const sc=!blocked&&x.scenarioId?scenarios().find(v=>v.id===x.scenarioId):null;const title=blocked?(x.title&&x.title!=="予定あり"?x.title:"予定あり"):((sc&&sc.shortTitle)||x.title||"卓");const label=blocked?"× 卓以外の予定あり":(statusLabel[x.status]||"□ 予定");const line1=blocked?title:(tm?`${tm}：${title}`:title);const dayInfo=blocked?null:runDayInfo(x,ev);const day=blocked?0:(dayInfo?.day||0);const band=blocked?"":(timeBandLabel[x.timeBand||""]||"");const kind=(x.sessionKind||"main");const meta=blocked?"":(kind!=="main"?`${sessionKindLabel[kind]||kind}${band?`・${band}`:""}`:(dayInfo?.excluded?(band||""):`${day}日目${band?`・${band}`:""}`));const memo=blocked?"":String(x.calendarMemo||"").trim();return `<button type="button" class="event-chip ${blocked?"blocked":x.status}" data-id="${x.id}"><span class="event-chip-title">${esc(line1)}</span>${meta?`<span class="small session-meta">${esc(meta)}</span>`:""}${memo?`<span class="small muted event-memo">${esc(memo)}</span>`:""}<span class="small status-badge">${esc(label)}</span></button>`}).join("")}</div>`}
  $("calendar").innerHTML=html;
  document.querySelectorAll(".calendar-day").forEach(x=>{x.onclick=(ev)=>{if(ev.target.closest(".event-chip"))return;resetForm(x.dataset.date);showEditor();$("eventPanel").scrollIntoView({behavior:"smooth"})}});
  document.querySelectorAll(".event-chip").forEach(x=>x.onclick=e=>{e.stopPropagation();editEvent(x.dataset.id)})
@@ -252,7 +275,7 @@ function buildTrpgEvent(id,date,startTime,endTime,sessionDay,timeBand,sessionKin
    // 完了へ変更した時だけ、現在画面に見えている実際の「○日目」を確定値として保存する。
    if(!manuallyChanged&&$("eventStatus").value!=="done")dayValue=original;
  }
- return TRPG39.normalizeEvent({...(old||{}),id,type:"trpg",title,scenarioId,scenarioTitle:title,start,end,timeSpecified:!!startTime,timeBand:timeBand||"",sessionKind:kind,sessionDay:dayValue,status:$("eventStatus").value,role:$("eventRole").value,system:$("eventSystem").value.trim(),facilitatorLabel:cfg.label,facilitatorless:cfg.less,pcName:$("eventPc").value.trim(),pcId:ensureEventPc(),participants:$("eventPeople").value.split(",").map(x=>x.trim()).filter(Boolean),runId:old?.runId||runId,runLabel:old?.runLabel||""});
+ return TRPG39.normalizeEvent({...(old||{}),id,type:"trpg",title,scenarioId,scenarioTitle:title,start,end,timeSpecified:!!startTime,timeBand:timeBand||"",sessionKind:kind,sessionDay:dayValue,status:$("eventStatus").value,role:$("eventRole").value,system:$("eventSystem").value.trim(),facilitatorLabel:cfg.label,facilitatorless:cfg.less,pcName:$("eventPc").value.trim(),pcId:ensureEventPc(),participants:$("eventPeople").value.split(",").map(x=>x.trim()).filter(Boolean),calendarMemo:$("eventMemo").value.trim(),runId:old?.runId||runId,runLabel:old?.runLabel||""});
 }
 function buildBlockedEvent(id,date,old=null){const ds=String(date||"").slice(0,10);const a=new Date(ds+"T00:00:00"),b=new Date(a);b.setDate(b.getDate()+1);const local=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T00:00`;return TRPG39.normalizeEvent({...(old||{}),id,type:"blocked",title:$("eventTitle").value.trim()||"予定あり",scenarioId:"",scenarioTitle:"",start:local(a),end:local(b),timeSpecified:false,timeBand:"",sessionDay:0,status:"blocked",role:"",system:"",pcName:"",pcId:"",participants:[],linkedAlbumId:""})}
 $("saveEvent").onclick=()=>{

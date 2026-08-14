@@ -35,7 +35,7 @@
 <script src="../assets/js/optional-features.js?v=0292" defer></script>
 </head>
 <body>
-<header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
+<header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../profile/index.html">PROFILE</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
 <button type="button" data-theme-choice="system">端末</button>
 <span>·</span>
 <button type="button" data-theme-choice="dark">ダーク</button>
@@ -105,6 +105,23 @@
        <p class="small">共有されているのは空き状況だけです。予定の内容は表示されません。</p>
        <div class="share-cal">${days.map(d=>`<div class="share-day"><div class="num">${esc(d.date)}</div><div class="${d.state==="free"?"free":"busy"}">${d.state==="free"?"○ 空き":"予定あり"}</div></div>`).join("")}</div>`;
 
+   } else if(legacyPayload.kind==="profile"){
+     const x=legacyPayload.profile||legacyPayload;
+     const section=(label,value)=>value?`<div class="share-report-block"><strong>${esc(label)}</strong><div style="white-space:pre-wrap">${esc(value)}</div></div>`:"";
+     const chips=(label,items)=>Array.isArray(items)&&items.length?`<div class="share-report-block"><strong>${esc(label)}</strong><div class="share-meta">${items.map(v=>`<span class="badge">${esc(v)}</span>`).join("")}</div></div>`:"";
+     box.innerHTML=`<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+       ${x.iconUrl?`<img src="${esc(x.iconUrl)}" alt="" style="width:112px;height:112px;object-fit:cover;border-radius:50%;border:1px solid var(--line)">`:""}
+       <div style="min-width:0;flex:1"><h2 style="margin-top:0">${esc(x.displayName||"PROFILE")}</h2>
+       ${x.socialName?`<div class="small muted">${esc(x.socialName)}</div>`:""}
+       ${x.intro?`<p style="white-space:pre-wrap">${esc(x.intro)}</p>`:""}</div>
+     </div>
+     ${chips("よく遊ぶシステム",x.systems)}
+     ${chips("遊び方・役割",x.roles)}
+     ${section("好きな傾向",x.likes)}
+     ${section("苦手・避けたい傾向",x.dislikes)}
+     ${section("遊べる時間帯",x.availability)}
+     ${section("ひとこと",x.note)}
+     ${x.links&&x.links.length?`<div class="share-report-block"><strong>リンク</strong>${x.links.map(l=>l.url?`<div><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label||l.url)}</a></div>`:"").join("")}</div>`:""}`;
    } else if(legacyPayload.kind==="scenario-list" || legacyPayload.kind==="scenarios" || Array.isArray(legacyPayload.scenarios) || Array.isArray(legacyPayload.items)){
      const items=Array.isArray(legacyPayload.scenarios)?legacyPayload.scenarios:(Array.isArray(legacyPayload.items)?legacyPayload.items:[]);
      const title=legacyPayload.title||legacyPayload.label||"SCENARIO";

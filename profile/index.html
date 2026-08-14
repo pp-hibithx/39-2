@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PROFILE｜SAKU+MERU</title>
+<meta name="description" content="SAKU+MERUの自己紹介ページ">
+<script>
+(()=>{try{const k="trpg39_theme",v=localStorage.getItem(k)||"system",m=(v==="light"||v==="dark")?v:(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"),r=document.documentElement;r.setAttribute("data-theme",m);r.setAttribute("data-theme-mode",v);r.classList.remove("theme-light","theme-dark");r.classList.add(m==="light"?"theme-light":"theme-dark");r.style.colorScheme=m;}catch(e){}})();
+</script>
+<link rel="stylesheet" href="../assets/css/style-v0296.css">
+<script defer src="../assets/js/theme-v0296.js"></script>
+<style>
+.profile-wrap{max-width:900px;margin:auto;padding:24px 20px}
+.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.profile-grid .full{grid-column:1/-1}
+.profile-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.profile-preview{margin-top:18px;border:1px solid var(--line);border-radius:12px;padding:18px;background:var(--panel)}
+.profile-head{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.profile-icon{width:96px;height:96px;border-radius:50%;object-fit:cover;border:1px solid var(--line)}
+.profile-chips{display:flex;gap:6px;flex-wrap:wrap}
+.profile-checks{display:flex;gap:8px;flex-wrap:wrap}
+.profile-checks label{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:5px 8px}
+.profile-checks input{width:auto}
+.profile-links{display:grid;gap:7px}
+.profile-link-row{display:grid;grid-template-columns:160px 1fr auto;gap:7px}
+@media(max-width:700px){.profile-grid{grid-template-columns:1fr}.profile-grid .full{grid-column:auto}.profile-link-row{grid-template-columns:1fr}}
+</style>
+<script src="../assets/js/beta-gate.js?v=02316"></script>
+</head>
+<body>
+<header class="site-header"><div class="wrap">
+<h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
+<div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div>
+<nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="index.html" aria-current="page">PROFILE</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav>
+</div></header>
+<main class="profile-wrap">
+<div class="hero"><h2>PROFILE</h2><p>卓の自己紹介をまとめて、必要な内容だけ共有できます。</p></div>
+<section class="panel">
+<div class="profile-grid">
+<div><label>表示名</label><input id="displayName" placeholder="例：プレイヤー名"></div>
+<div><label>SNS表示名</label><input id="socialName" placeholder="例：🌺 / 名前"></div>
+<div class="full"><label>アイコン画像URL</label><input id="iconUrl" type="url" placeholder="https://..."></div>
+<div class="full"><label>自己紹介</label><textarea id="intro" rows="4" placeholder="TRPG歴、普段の遊び方など"></textarea></div>
+<div class="full"><label>よく遊ぶシステム <span class="small muted">（カンマ区切り）</span></label><input id="systems" placeholder="CoC6版, エモクロア, マダミス"></div>
+<div class="full"><label>遊び方・役割 <span class="small muted">（カンマ区切り）</span></label><input id="roles" placeholder="PL, KP, DL, GM"></div>
+<div class="full"><label>好きな傾向</label><textarea id="likes" rows="3"></textarea></div>
+<div class="full"><label>苦手・避けたい傾向</label><textarea id="dislikes" rows="3"></textarea></div>
+<div class="full"><label>遊べる時間帯</label><textarea id="availability" rows="2" placeholder="例：平日21時〜 / 土日昼夜"></textarea></div>
+<div class="full"><label>ひとこと</label><textarea id="note" rows="2"></textarea></div>
+<div class="full"><label>リンク</label><div id="links" class="profile-links"></div><button id="addLink" type="button" class="text-action">＋ リンクを追加</button></div>
+</div>
+
+<h3>共有する項目</h3>
+<div id="shareFields" class="profile-checks">
+<label><input type="checkbox" value="socialName" checked>SNS表示名</label>
+<label><input type="checkbox" value="iconUrl" checked>アイコン</label>
+<label><input type="checkbox" value="intro" checked>自己紹介</label>
+<label><input type="checkbox" value="systems" checked>システム</label>
+<label><input type="checkbox" value="roles" checked>役割</label>
+<label><input type="checkbox" value="likes" checked>好きな傾向</label>
+<label><input type="checkbox" value="dislikes">苦手・避けたい傾向</label>
+<label><input type="checkbox" value="availability" checked>時間帯</label>
+<label><input type="checkbox" value="note" checked>ひとこと</label>
+<label><input type="checkbox" value="links" checked>リンク</label>
+</div>
+<div class="small muted" style="margin-top:8px">チェックした項目だけ共有ページに含まれます。PROFILEの保存データ自体はこのブラウザ内に保存されます。</div>
+
+<div class="profile-actions">
+<button id="saveProfile" type="button">保存</button>
+<button id="shareProfile" type="button">共有URLを作成・更新</button>
+<span id="savedNote" class="small muted"></span>
+</div>
+</section>
+<section class="profile-preview" id="preview"></section>
+</main>
+<footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
+<script src="../assets/js/main.js?v=0292"></script>
+<script src="../assets/js/supabase-config.js?v=0292"></script>
+<script src="../assets/js/supabase-share.js?v=0292"></script>
+<script>
+(()=>{"use strict";
+const KEY="39x2_profile_v1",SHARE_KEY="39x2_fixed_profile_share_id_v1",$=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const split=s=>String(s||"").split(/[,、]/).map(v=>v.trim()).filter(Boolean);
+function addLink(label="",url=""){const row=document.createElement("div");row.className="profile-link-row";row.innerHTML=`<input class="link-label" placeholder="表示名" value="${esc(label)}"><input class="link-url" type="url" placeholder="https://..." value="${esc(url)}"><button type="button" class="danger">削除</button>`;row.querySelector("button").onclick=()=>row.remove();$("links").appendChild(row)}
+function collect(){
+ return {
+  displayName:$("displayName").value.trim(),socialName:$("socialName").value.trim(),iconUrl:$("iconUrl").value.trim(),intro:$("intro").value.trim(),
+  systems:split($("systems").value),roles:split($("roles").value),likes:$("likes").value.trim(),dislikes:$("dislikes").value.trim(),
+  availability:$("availability").value.trim(),note:$("note").value.trim(),
+  links:[...document.querySelectorAll(".profile-link-row")].map(r=>({label:r.querySelector(".link-label").value.trim(),url:r.querySelector(".link-url").value.trim()})).filter(x=>x.label||x.url),
+  shareFields:[...document.querySelectorAll("#shareFields input:checked")].map(x=>x.value)
+ };
+}
+function save(show=true){const x=collect();localStorage.setItem(KEY,JSON.stringify(x));if(show)$("savedNote").textContent="✓ 保存しました";renderPreview(x);return x}
+function load(){let x={};try{x=JSON.parse(localStorage.getItem(KEY)||"{}")}catch{};["displayName","socialName","iconUrl","intro","likes","dislikes","availability","note"].forEach(k=>$(k).value=x[k]||"");$("systems").value=(x.systems||[]).join(", ");$("roles").value=(x.roles||[]).join(", ");$("links").innerHTML="";(x.links||[]).forEach(l=>addLink(l.label,l.url));if(!(x.links||[]).length)addLink();const fields=new Set(x.shareFields||["socialName","iconUrl","intro","systems","roles","likes","availability","note","links"]);document.querySelectorAll("#shareFields input").forEach(c=>c.checked=fields.has(c.value));renderPreview(x)}
+function renderPreview(x=collect()){const chips=a=>(a||[]).map(v=>`<span class="badge">${esc(v)}</span>`).join("");$("preview").innerHTML=`<div class="profile-head">${x.iconUrl?`<img class="profile-icon" src="${esc(x.iconUrl)}" alt="">`:""}<div><h2 style="margin:0">${esc(x.displayName||"名前未設定")}</h2>${x.socialName?`<div class="small muted">${esc(x.socialName)}</div>`:""}${x.intro?`<p style="white-space:pre-wrap">${esc(x.intro)}</p>`:""}</div></div>${x.systems?.length?`<h3>よく遊ぶシステム</h3><div class="profile-chips">${chips(x.systems)}</div>`:""}${x.roles?.length?`<h3>遊び方・役割</h3><div class="profile-chips">${chips(x.roles)}</div>`:""}${x.likes?`<h3>好きな傾向</h3><p style="white-space:pre-wrap">${esc(x.likes)}</p>`:""}${x.dislikes?`<h3>苦手・避けたい傾向</h3><p style="white-space:pre-wrap">${esc(x.dislikes)}</p>`:""}${x.availability?`<h3>遊べる時間帯</h3><p style="white-space:pre-wrap">${esc(x.availability)}</p>`:""}${x.note?`<h3>ひとこと</h3><p style="white-space:pre-wrap">${esc(x.note)}</p>`:""}`}
+function publicProfile(x){
+ const fields=new Set(x.shareFields||[]),p={displayName:x.displayName||""};
+ ["socialName","iconUrl","intro","systems","roles","likes","dislikes","availability","note","links"].forEach(k=>{if(fields.has(k))p[k]=x[k]});
+ return p;
+}
+async function shareProfile(){
+ const x=save(false),payload={kind:"profile",version:1,updatedAt:new Date().toISOString(),profile:publicProfile(x)};
+ try{
+   if(!(window.TRPG39Cloud&&TRPG39Cloud.configured()))throw new Error("Supabase設定がありません");
+   let id=localStorage.getItem(SHARE_KEY)||"";
+   if(id&&TRPG39Cloud.updateSharedPage)await TRPG39Cloud.updateSharedPage(id,payload);
+   else{id=await TRPG39Cloud.createSharedPage(payload);localStorage.setItem(SHARE_KEY,id)}
+   const url=new URL("../share/index.html",location.href);url.searchParams.set("id",id);
+   if(navigator.clipboard&&window.isSecureContext)try{await navigator.clipboard.writeText(url.href)}catch{}
+   prompt("PROFILE共有URLです。更新しても同じURLを使えます。",url.href);
+ }catch(e){console.error(e);alert("共有URLを作成できませんでした: "+(e.message||e))}
+}
+$("addLink").onclick=()=>addLink();$("saveProfile").onclick=()=>save(true);$("shareProfile").onclick=shareProfile;
+document.querySelectorAll("input,textarea").forEach(el=>el.addEventListener("input",()=>renderPreview()));
+load();
+})();
+</script>
+</body>
+</html>

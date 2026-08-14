@@ -54,6 +54,7 @@
       sessionDay: Number(input.sessionDay || 0),
       sessionKind: ["prelude","main","reserve","aftertalk"].includes(input.sessionKind) ? input.sessionKind : "main",
       calendarMemo: input.calendarMemo || "",
+      calendarColor: input.calendarColor || "",
       timeBand: input.timeBand || "",
       timeSpecified: input.timeSpecified !== undefined ? !!input.timeSpecified : /T\d{2}:\d{2}/.test(String(input.start || "")),
       createdAt: input.createdAt || nowISO(),

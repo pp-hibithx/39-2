@@ -24,8 +24,8 @@
 .calendar-day{min-height:108px;border:1px solid var(--line);border-radius:9px;padding:7px;background:var(--panel)}
 .calendar-day.out{opacity:.35}.calendar-day.today{outline:1px solid var(--accent)}
 .daynum{font-size:.8rem;color:var(--muted);margin-bottom:5px}
-.event-chip{display:block;border:1px solid var(--line);border-radius:7px;padding:5px 6px;margin:4px 0;font-size:.78rem;background:rgba(255,255,255,.025);cursor:pointer}
-.event-chip.planned{border-width:2px}.event-chip.done{border-color:#557c68;opacity:.62;background:rgba(85,124,104,.10)}.event-chip.done .status-badge:before{content:"✓ ";font-weight:700}.event-chip.planned .status-badge:before{content:"● ";font-size:.75em}.calendar-legend{display:flex;gap:10px;flex-wrap:wrap;margin:7px 0 10px;font-size:.78rem}.calendar-legend span{display:inline-flex;gap:5px;align-items:center}.calendar-legend .mark{width:10px;height:10px;border:2px solid var(--line);border-radius:3px}.calendar-legend .planned-mark{border-color:var(--accent)}.calendar-legend .done-mark{border-color:#557c68;opacity:.62}.event-chip.cancelled{opacity:.5;text-decoration:line-through}.event-chip.tentative{border-style:dashed}.event-chip.rescheduling{border-color:#b28a4a}.event-chip.postponed{opacity:.65}.event-chip.blocked{border-color:#a86b6b;background:rgba(168,107,107,.10)!important}.status-badge{white-space:nowrap}.bulk-days{grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px;margin-top:2px}.bulk-row{display:grid;grid-template-columns:auto 1fr 1fr auto;gap:7px;align-items:end;margin:6px 0}.bulk-row .day-label{padding-bottom:8px;font-size:12px;color:var(--muted)}@media(max-width:760px){.bulk-row{grid-template-columns:1fr}.bulk-row .day-label{padding-bottom:0}}
+.event-chip{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:7px;padding:5px 6px;margin:4px 0;font-size:.78rem;background:rgba(255,255,255,.025);cursor:pointer}.event-chip-title{display:block;line-height:1.35;overflow-wrap:anywhere}.status-badge{display:block;margin-top:2px;line-height:1.25}
+.event-chip.planned{border-width:2px}.event-chip.done{border-color:#557c68;opacity:.62;background:rgba(85,124,104,.10)}.calendar-legend{display:flex;gap:10px;flex-wrap:wrap;margin:7px 0 10px;font-size:.78rem}.calendar-legend span{display:inline-flex;gap:5px;align-items:center}.calendar-legend .mark{width:10px;height:10px;border:2px solid var(--line);border-radius:3px}.calendar-legend .planned-mark{border-color:var(--accent)}.calendar-legend .done-mark{border-color:#557c68;opacity:.62}.event-chip.cancelled{opacity:.5;text-decoration:line-through}.event-chip.tentative{border-style:dashed}.event-chip.rescheduling{border-color:#b28a4a}.event-chip.postponed{opacity:.65}.event-chip.blocked{border-color:#a86b6b;background:rgba(168,107,107,.10)!important}.status-badge{white-space:nowrap}.bulk-days{grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px;margin-top:2px}.bulk-row{display:grid;grid-template-columns:auto 1fr 1fr auto;gap:7px;align-items:end;margin:6px 0}.bulk-row .day-label{padding-bottom:8px;font-size:12px;color:var(--muted)}@media(max-width:760px){.bulk-row{grid-template-columns:1fr}.bulk-row .day-label{padding-bottom:0}}
 .event-form{display:grid;grid-template-columns:1fr 1fr;gap:8px}.event-form .full{grid-column:1/-1}.event-editor[hidden]{display:none}.event-editor-actions{font-size:11px}.event-editor-actions button{padding:3px 5px;font-size:11px}.event-editor-actions button+button::before{content:""}
 @media(max-width:760px){.calendar-grid{gap:3px}.calendar-day{min-height:82px;padding:5px}.event-form{grid-template-columns:1fr}}
 </style>
@@ -57,7 +57,7 @@
   </div>
   <div class="calendar-top-actions"><button id="newEventBtn" type="button">＋ 予定を追加</button><button id="shareAvailability" type="button" class="text-action">空き日を共有</button></div>
 </div>
-<div class="calendar-legend"><span><i class="mark planned-mark"></i>予定</span><span><i class="mark done-mark"></i>✓ 完了（薄く表示）</span><span>△ 仮押さえ</span><span>× 卓以外の予定</span></div>
+<div class="calendar-legend"><span>□ 予定</span><span>✓ 完了（薄く表示）</span><span>△ 仮押さえ</span><span>× 卓以外の予定あり</span></div>
 <div class="calendar-grid" id="weekdayHead"></div>
 <div class="calendar-grid" id="calendar"></div>
 </section>
@@ -100,7 +100,7 @@
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let current=new Date(); current.setDate(1);
-const statusLabel={tentative:"仮押さえ",planned:"予定",confirmed:"予定",done:"完了",rescheduling:"リスケ中",cancelled:"中止",postponed:"延期",blocked:"× 予定あり"};
+const statusLabel={tentative:"△ 仮押さえ",planned:"□ 予定",confirmed:"□ 予定",done:"✓ 完了",rescheduling:"↻ リスケ中",cancelled:"× 中止",postponed:"→ 延期",blocked:"× 卓以外の予定あり"};
 const pad=n=>String(n).padStart(2,"0");
 function scenarios(){return TRPG39.loadScenarios()}
 function events(){return TRPG39.loadEvents()}
@@ -123,7 +123,7 @@ function updateTypeUI(){
  const blocked=$("eventType").value==="blocked";document.querySelectorAll(".trpg-field").forEach(x=>x.hidden=blocked);$("eventStatus").disabled=blocked;
  $("startLabel").textContent=blocked?"日付（時間は無視されます）":"1日目 開始";$("endLabel").parentElement.hidden=blocked;
  $("titleHint").textContent=blocked?"空欄なら「予定あり」と表示します":"直接入力したシナリオ名はSCENARIOにも自動登録されます";
- $("eventStatePreview").textContent=blocked?"× 予定あり":statusLabel[$("eventStatus").value]||"予定";
+ $("eventStatePreview").textContent=blocked?"× 卓以外の予定あり":statusLabel[$("eventStatus").value]||"□ 予定";
 }
 function resetForm(dateStr="",type="trpg"){
  ["eventId","eventTitle","eventEnd","eventSystem","eventPc","eventPeople"].forEach(id=>$(id).value="");fillEventPcSelect();fillScenarioSelect();clearBulkDays();
@@ -134,7 +134,7 @@ function editEvent(id){const x=events().find(v=>v.id===id);if(!x)return;clearBul
 function renderCalendar(){
  const y=current.getFullYear(),m=current.getMonth();$("monthLabel").textContent=`${y}年${m+1}月`;$("weekdayHead").innerHTML=["日","月","火","水","木","金","土"].map(x=>`<div class="calendar-head">${x}</div>`).join("");
  const first=new Date(y,m,1),start=new Date(y,m,1-first.getDay()),ev=events(),today=new Date();let html="";
- for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;const dayEvents=ev.filter(x=>String(x.start||"").slice(0,10)===ds).sort((a,b)=>String(a.start||"").localeCompare(String(b.start||"")));html+=`<div class="calendar-day ${d.getMonth()!==m?"out":""} ${d.toDateString()===today.toDateString()?"today":""}" data-date="${ds}"><div class="daynum">${d.getDate()}</div>${dayEvents.map(x=>{const blocked=x.type==="blocked"||x.status==="blocked";const tm=blocked?"":String(x.start||"").slice(11,16);const label=blocked?"× 予定あり":(statusLabel[x.status]||"予定");return `<button type="button" class="event-chip ${blocked?"blocked":x.status}" data-id="${x.id}">${tm?`<strong>${esc(tm)}</strong> `:""}${esc(blocked?(x.title&&x.title!=="予定あり"?x.title:"予定あり"):(x.title||"卓"))} <span class="small status-badge">${esc(label)}</span></button>`}).join("")}</div>`}
+ for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;const dayEvents=ev.filter(x=>String(x.start||"").slice(0,10)===ds).sort((a,b)=>String(a.start||"").localeCompare(String(b.start||"")));html+=`<div class="calendar-day ${d.getMonth()!==m?"out":""} ${d.toDateString()===today.toDateString()?"today":""}" data-date="${ds}"><div class="daynum">${d.getDate()}</div>${dayEvents.map(x=>{const blocked=x.type==="blocked"||x.status==="blocked";const tm=blocked?"終日":String(x.start||"").slice(11,16);const title=blocked?(x.title&&x.title!=="予定あり"?x.title:"予定あり"):(x.title||"卓");const label=blocked?"× 卓以外の予定あり":(statusLabel[x.status]||"□ 予定");return `<button type="button" class="event-chip ${blocked?"blocked":x.status}" data-id="${x.id}"><span class="event-chip-title">${esc(tm)}：${esc(title)}</span><span class="small status-badge">${esc(label)}</span></button>`}).join("")}</div>`}
  $("calendar").innerHTML=html;
  document.querySelectorAll(".calendar-day").forEach(x=>{
    x.onclick=(ev)=>{

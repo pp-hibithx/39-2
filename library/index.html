@@ -149,7 +149,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   <div class="lib-toolbar">
     <div><label>検索</label><input id="search" type="search" placeholder="シナリオ・PC・友達"></div>
     <div><label>役割</label><select id="filter"><option value="">すべて</option><option>PL</option><option>KP</option><option>DL</option><option>GM</option><option>SKP</option><option>その他</option></select></div>
-    <div></div>
+    <div><label>表示</label><select id="archiveFilter"><option value="active">通常</option><option value="archived">アーカイブ</option><option value="all">すべて</option></select></div>
   </div>
   <div id="list" class="lib-list"></div>
 </section>
@@ -424,6 +424,9 @@ function edit(id){
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
+function setRunArchived(runId,archived){
+ data=data.map(x=>x.runId===runId?TRPG39.normalizeAlbum({...x,archived:!!archived}):x);persist();render();
+}
 function del(id){
  const x=data.find(v=>v.id===id);if(!x)return;
  const linked=!!x.eventId;
@@ -621,6 +624,8 @@ function render(){
  const term=q("search").value.trim().toLowerCase(),role=q("filter").value,params=new URLSearchParams(location.search);
  const player=params.get("player")||"",pc=params.get("pc")||"";
  let xs=data.filter(x=>(!role||x.role===role)&&(!player||(x.participants||[]).some(n=>n===player))&&(!pc||(x.pcName||"")===pc)&&(!term||[x.title,x.system,x.pcName,(x.participants||[]).join(" ")].join(" ").toLowerCase().includes(term)));
+ const archiveMode=q("archiveFilter")?.value||"active";
+ xs=xs.filter(x=>archiveMode==="all"||(archiveMode==="archived"?!!x.archived:!x.archived));
  const groups=groupData(xs);
  q("summary").textContent=(player?`${player}との同卓：`:pc?`${pc}の参加記録：`:"")+`シナリオ ${groups.length}件 ／ 開催記録 ${xs.length}件`;
  q("list").innerHTML=groups.length?groups.map(g=>`<details class="lib-group" ${(params.get("scenario")===g.scenarioId||player||pc)?"open":""}>
@@ -640,7 +645,7 @@ function render(){
          <div class="lib-run-summary"><strong>${esc(r.label)}</strong><span class="small muted">　${r.items.length}日${dateRange?` ／ ${esc(dateRange)}`:""}</span>
            ${runImages.length?`<span class="lib-run-thumbs">${runImages.slice(0,3).map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}${runImages.length>3?`<span class="lib-run-more">＋${runImages.length-3}</span>`:""}</span>`:""}
          </div>
-         <button type="button" data-add-run="${esc(r.id)}" data-run-label="${esc(r.label)}" data-run-scenario="${esc(g.scenarioId)}">＋ この陣に日程</button>
+         <div class="row" style="gap:6px"><button type="button" data-add-run="${esc(r.id)}" data-run-label="${esc(r.label)}" data-run-scenario="${esc(g.scenarioId)}">＋ この陣に日程</button><button type="button" data-archive-run="${esc(r.id)}" data-archived="${r.items.every(x=>x.archived)?"1":"0"}">${r.items.every(x=>x.archived)?"アーカイブから戻す":"アーカイブ"}</button></div>
        </summary>
        ${r.items.map((x,i)=>`<article class="lib-child" id="record-${esc(x.id)}">
          <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}${x.start&&String(x.start).slice(11,16)?` ${esc(String(x.start).slice(11,16))}`:""}<br><span class="badge">${esc(statusLabel[x.status]||"完了")}</span></div>
@@ -660,6 +665,7 @@ function render(){
    const id=b.dataset.addScenario;addForScenario(id);if(!id)q("title").value=b.dataset.addTitle||"";
  });
  document.querySelectorAll("[data-add-run]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();addForRun(b.dataset.runScenario,b.dataset.addRun,b.dataset.runLabel)});
+ document.querySelectorAll("[data-archive-run]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();setRunArchived(b.dataset.archiveRun,b.dataset.archived!=="1")});
  document.querySelectorAll("[data-share]").forEach(b=>b.onclick=()=>shareAlbum(b.dataset.share));
  document.querySelectorAll("[data-post-x]").forEach(b=>b.onclick=()=>postAlbumToX(b.dataset.postX));
  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));
@@ -676,7 +682,7 @@ q("save").onclick=save;
 q("cancel").onclick=()=>{reset();hideEditor()};
 q("image").oninput=updateImagePreview;
 q("openLibraryEditor").onclick=()=>{reset();showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"})};q("xPreviewText").oninput=updateXPreviewCount;q("xPreviewCancel").onclick=()=>q("xPreviewDialog").close();q("xPreviewPost").onclick=confirmPostAlbumToX;
-q("search").oninput=render;q("filter").onchange=render;q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
+q("search").oninput=render;q("filter").onchange=render;q("archiveFilter").onchange=render;q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
 reset();hideEditor();render();{const p=new URLSearchParams(location.search),sid=p.get("scenario")||"";if(p.get("new")==="1"){addForScenario(sid)}}
 })();
 </script>

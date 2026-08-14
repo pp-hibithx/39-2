@@ -113,7 +113,7 @@ function updateRoleOptions(selected=""){const sc=scenarios().find(v=>v.id===$("s
 function events(){return TRPG39.loadEvents()}
 function saveEvents(v){TRPG39.saveEvents(v)}
 function fillScenarioSelect(selected=""){
- const xs=scenarios();$("scenarioSelect").innerHTML='<option value="">直接入力</option>'+xs.map(x=>`<option value="${esc(x.id)}">${esc(x.title)}</option>`).join("");
+ const xs=scenarios().filter(x=>!x.archived);$("scenarioSelect").innerHTML='<option value="">直接入力</option>'+xs.map(x=>`<option value="${esc(x.id)}">${esc(x.title)}</option>`).join("");
  $("scenarioSelect").value=selected||"";
 }
 function fillEventPcSelect(selectedId=""){

@@ -39,6 +39,10 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 .friend-view-tools{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:10px}
 .friend-view-tools select{width:auto;min-width:150px}
 .friend-owner-list{margin-top:6px;font-size:12px;color:var(--muted)}
+.friend-tag-groups{display:grid;gap:4px;margin-top:7px}
+.friend-tag-row{font-size:11px;color:var(--muted);line-height:1.5}
+.friend-tag-row .badge{margin-left:3px}
+
 .friend-person-group{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--panel)}
 .friend-person-group h3{margin:0 0 8px;font-size:1rem}
 .friend-person-items{display:grid;gap:7px}
@@ -281,6 +285,16 @@ function groupedFriendScenarios(){
 
  return [...map.values()];
 }
+function ownerTagRows(group){
+ const rows=[];
+ for(const src of group.sources){
+   const tags=Array.isArray(src.item?.tags)?src.item.tags.filter(Boolean):[];
+   if(!tags.length)continue;
+   const owner=src.owner||"友人";
+   rows.push(`<div class="friend-tag-row"><b>${esc(owner)}：</b>${tags.map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>`);
+ }
+ return rows.length?`<div class="friend-tag-groups">${rows.join("")}</div>`:"";
+}
 function renderFriendResults(){
  const mode=q("friendViewMode")?.value||"scenario";
  const groups=groupedFriendScenarios().filter(g=>friendMatches({...g.item,_friend:g.owners.join(" ")}));
@@ -296,11 +310,11 @@ function renderFriendResults(){
    }
   }
   const rows=[...people.entries()].sort((a,b)=>a[0].localeCompare(b[0],"ja"));
-  q("friendResults").innerHTML=rows.length?rows.map(([owner,gs])=>`<section class="friend-person-group"><h3>${esc(owner)}</h3><div class="friend-person-items">${gs.sort((a,b)=>String(a.item.title||"").localeCompare(String(b.item.title||""),"ja")).map(g=>{const x=g.item;return `<div class="friend-person-item">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="friend-person-thumb">🌺</div>`}<div><b>${esc(x.title)}</b>${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}</div></div>`}).join("")}</div></section>`).join(""):(friendSources.length?'<div class="small muted">条件に合う所持シナリオはありません。</div>':"");
+  q("friendResults").innerHTML=rows.length?rows.map(([owner,gs])=>`<section class="friend-person-group"><h3>${esc(owner)}</h3><div class="friend-person-items">${gs.sort((a,b)=>String(a.item.title||"").localeCompare(String(b.item.title||""),"ja")).map(g=>{const x=g.item;const ownSrc=g.sources.find(s=>s.owner===owner);const tags=Array.isArray(ownSrc?.item?.tags)?ownSrc.item.tags.filter(Boolean):[];return `<div class="friend-person-item">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="friend-person-thumb">🌺</div>`}<div><b>${esc(x.title)}</b>${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}${tags.length?`<div class="friend-tag-row">${tags.map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>`:""}</div></div>`}).join("")}</div></section>`).join(""):(friendSources.length?'<div class="small muted">条件に合う所持シナリオはありません。</div>':"");
   return;
  }
 
- q("friendResults").innerHTML=groups.length?groups.sort((a,b)=>String(a.item.title||"").localeCompare(String(b.item.title||""),"ja")).map(g=>{const x=g.item;g.owners.sort((a,b)=>a==="自分"?-1:b==="自分"?1:a.localeCompare(b,"ja"));const friendSource=g.sources.find(s=>s.source==="friend");return `<article class="friend-card">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<b>${esc(x.title)}</b>${x.publicationStatus&&x.publicationStatus!=="public"?` <span class="badge">${esc(publicationLabels[x.publicationStatus]||x.publicationStatus)}</span>`:""}${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}<div class="friend-owner-list">所持：${g.owners.map(esc).join("、")}</div><div class="friend-actions">${x.url?`<a class="button" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布ページ</a>`:""}${friendSource&&!g.owners.includes("自分")?`<button type="button" data-friend-import="${esc(friendSource.item._key)}">自分に追加</button>`:""}</div></article>`}).join(""):(friendSources.length?'<div class="small muted">条件に合う所持シナリオはありません。</div>':"");
+ q("friendResults").innerHTML=groups.length?groups.sort((a,b)=>String(a.item.title||"").localeCompare(String(b.item.title||""),"ja")).map(g=>{const x=g.item;g.owners.sort((a,b)=>a==="自分"?-1:b==="自分"?1:a.localeCompare(b,"ja"));const friendSource=g.sources.find(s=>s.source==="friend");return `<article class="friend-card">${x.thumbnailUrl?`<img src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:""}<b>${esc(x.title)}</b>${x.publicationStatus&&x.publicationStatus!=="public"?` <span class="badge">${esc(publicationLabels[x.publicationStatus]||x.publicationStatus)}</span>`:""}${x.system?`<div class="small">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}<div class="friend-owner-list">所持：${g.owners.map(esc).join("、")}</div>${ownerTagRows(g)}<div class="friend-actions">${x.url?`<a class="button" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布ページ</a>`:""}${friendSource&&!g.owners.includes("自分")?`<button type="button" data-friend-import="${esc(friendSource.item._key)}">自分に追加</button>`:""}</div></article>`}).join(""):(friendSources.length?'<div class="small muted">条件に合う所持シナリオはありません。</div>':"");
  document.querySelectorAll("[data-friend-import]").forEach(b=>b.onclick=()=>importFriendScenario(b.dataset.friendImport));
 }
 function importFriendScenario(key){

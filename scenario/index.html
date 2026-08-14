@@ -117,7 +117,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <div class="sc-row"><div><label>公開状況</label><select id="publicationStatus"><option value="public">公開中</option><option value="private">非公開</option><option value="ended">頒布終了</option><option value="unknown">URL不明</option></select></div><div><label>情報の出典</label><select id="sourceType"><option value="">未設定</option><option>BOOTH</option><option>pixiv</option><option>TALTO</option><option>公式ページ</option><option>手入力</option><option>その他</option></select></div></div>
 <div class="sc-row"><div><label>参加人数</label><div class="sc-row"><input id="playersMin" type="number" min="1" step="1" placeholder="最少"><input id="playersMax" type="number" min="1" step="1" placeholder="最大"></div></div><div><label>プレイ時間（時間）</label><div class="sc-row"><input id="hoursMin" type="number" min="0.5" step="0.5" placeholder="最短"><input id="hoursMax" type="number" min="0.5" step="0.5" placeholder="最長"></div></div></div>
 <label>配布・販売ページ</label>
-<div class="sc-inline"><input id="url" type="url" placeholder="https://booth.pm/ja/items/..."><button id="fetchThumb" type="button">サムネを取得</button></div>
+<div class="sc-inline"><input id="url" type="url" placeholder="https://booth.pm/ja/items/..."><button id="fetchThumb" type="button">ページ情報を取得</button></div>
 <div id="thumbStatus" class="small muted"></div>
 <label>サムネイル画像URL <span class="small muted">（自動取得できない時は手動指定）</span></label><input id="thumbnailUrl" type="url" placeholder="https://...">
 <div id="thumbPreview" class="sc-preview" hidden><img id="thumbPreviewImg" alt=""><div class="sc-preview-meta"><b id="thumbPreviewTitle"></b><div class="small muted">保存すると一覧に表示されます。</div></div></div>
@@ -456,18 +456,49 @@ function updateThumbPreview(title=""){
 async function fetchThumbnail(){
  const url=q("url").value.trim();
  if(!url)return alert("配布・掲載ページのURLを入力してください。");
- q("fetchThumb").disabled=true;q("thumbStatus").textContent="サムネイルを取得中…";
+ q("fetchThumb").disabled=true;
+ q("fetchThumb").textContent="取得中…";
+ q("thumbStatus").textContent="ページ情報を取得中…";
  try{
-   if(!window.TRPG39OG)throw new Error("サムネイル取得機能を読み込めませんでした。");
+   if(!window.TRPG39OG)throw new Error("ページ情報取得機能を読み込めませんでした。");
    const meta=await TRPG39OG.fetch(url);
-   if(!meta.image)throw new Error("このページから画像を見つけられませんでした。手動で画像URLを指定してください。");
-   q("thumbnailUrl").value=meta.image;
-   if(!q("title").value.trim() && meta.title) q("title").value=meta.title;
-   updateThumbPreview(meta.title||"");
-   q("thumbStatus").textContent="✓ サムネイルを取得しました。";
+
+   const applied=[];
+
+   if(meta.image){
+     q("thumbnailUrl").value=meta.image;
+     updateThumbPreview(meta.title||"");
+     applied.push("サムネイル");
+   }
+
+   if(!q("title").value.trim() && meta.title){
+     q("title").value=meta.title;
+     applied.push("タイトル");
+   }
+
+   // 既に自分で入力した概要は上書きしない。
+   if(!q("summaryText").value.trim() && meta.description){
+     q("summaryText").value=meta.description;
+     applied.push("概要");
+   }
+
+   if(!q("sourceType").value && meta.sourceType){
+     q("sourceType").value=meta.sourceType;
+     applied.push("出典");
+   }
+
+   if(!applied.length){
+     throw new Error("このページから自動入力できる情報を見つけられませんでした。");
+   }
+
+   q("thumbStatus").textContent=`✓ ${applied.join("・")}を取得しました。`;
  }catch(e){
-   console.error(e);q("thumbStatus").textContent="⚠ "+e.message;
- }finally{q("fetchThumb").disabled=false}
+   console.error(e);
+   q("thumbStatus").textContent="⚠ "+e.message;
+ }finally{
+   q("fetchThumb").disabled=false;
+   q("fetchThumb").textContent="ページ情報を取得";
+ }
 }
 const publicationLabels={public:"公開中",private:"非公開",ended:"頒布終了",unknown:"URL不明"};
 const pubBadge=x=>`<span class="badge">${esc(publicationLabels[x.publicationStatus||"public"]||"公開中")}</span>`;

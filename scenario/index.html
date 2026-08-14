@@ -522,6 +522,11 @@ function render(){
  renderFriendResults();
 }
 q("system").addEventListener("input",updateFacilitatorUI);q("facilitatorPresence").onchange=updateFacilitatorUI;q("facilitatorTermMode").onchange=updateFacilitatorUI;q("facilitatorTermCustom").addEventListener("input",updateFacilitatorUI);
+q("detailDialog").addEventListener("click",e=>{
+  // dialog要素そのもの（=カード外の背景）をクリックした時だけ閉じる。
+  // 詳細カード内のクリックでは閉じない。
+  if(e.target===q("detailDialog"))q("detailDialog").close();
+});
 q("shareScenarioList").onclick=shareScenarioList;q("openForm").onclick=openForm;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;q("playersFilter").oninput=render;q("hoursFilter").oninput=render;q("tagFilter").onchange=render;q("archiveFilter").onchange=render;q("sort").onchange=render;q("friendViewMode").onchange=renderFriendResults;q("friendAdd").onclick=addFriendSource;renderFriendSources();render();loadFriendSources();
 })();
 </script>

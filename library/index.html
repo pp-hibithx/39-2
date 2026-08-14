@@ -148,7 +148,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   </div>
   <div class="lib-toolbar">
     <div><label>検索</label><input id="search" type="search" placeholder="シナリオ・PC・友達"></div>
-    <div><label>役割</label><select id="filter"><option value="">すべて</option><option>PL</option><option>KP</option><option>DL</option><option>GM</option><option>SKP</option><option>その他</option></select></div>
+    <div><label>役割</label><select id="filter"><option value="">すべて</option><option>PL</option><option>KP</option><option>DL</option><option>GM</option><option>SKP</option><option>見学</option><option>その他</option></select></div>
     <div><label>表示</label><select id="archiveFilter"><option value="active">通常</option><option value="archived">アーカイブ</option><option value="all">すべて</option></select></div>
   </div>
   <div id="list" class="lib-list"></div>
@@ -180,7 +180,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   <div class="lib-form-section">
     <h3>自分</h3>
     <div class="lib-form-grid">
-      <div><label>自分の役割</label><select id="role"><option>PL</option><option>KP</option><option>SKP</option><option>その他</option></select></div>
+      <div><label>自分の役割</label><select id="role"><option>PL</option><option>KP</option><option>SKP</option><option>見学</option><option>その他</option></select></div>
       <div><label>自分のHO <span class="small muted">（PL時・任意）</span></label><input id="selfHo" placeholder="HO1 / 探偵 など"></div>
       <div><label>自PC</label><select id="pcSelect"><option value="">直接入力</option></select><input id="pc" placeholder="自分のPC名"></div>
     </div>
@@ -222,7 +222,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02328">build v0.2.32.8</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.32.9</div></main>
 
 <dialog id="xPreviewDialog" class="x-preview"><h2>X卓報告プレビュー</h2><p class="small muted">投稿前に自由に編集できます。SNS表示名が設定されている人は短縮名で表示します。</p><textarea id="xPreviewText"></textarea><div class="x-preview-actions"><span id="xPreviewCount" class="small muted"></span><div class="row"><button id="xPreviewCancel" type="button">戻る</button><button id="xPreviewPost" type="button">X投稿画面へ</button></div></div></dialog>
 <footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
@@ -312,7 +312,7 @@ function fillScenarioSelect(){
 }
 function scenarioById(id){return scenarios.find(s=>s.id===id)}
 function facilitatorConfig(source={}){const scenario=scenarioById(source.scenarioId||q("scenarioSelect").value)||{};const system=source.system||q("system").value||scenario.system||"";const mode=source.facilitatorTermMode||q("facilitatorTermMode")?.value||scenario.facilitatorTermMode||"auto";const custom=source.facilitatorTermCustom||q("facilitatorTermCustom")?.value||scenario.facilitatorTermCustom||"";const label=source.facilitatorLabel||TRPG39.resolveFacilitatorLabel?.(system,{facilitatorTermMode:mode,facilitatorTermCustom:custom})||"GM";const less=source.facilitatorless!==undefined?!!source.facilitatorless:(source.facilitatorPresence||q("facilitatorPresence")?.value||scenario.facilitatorPresence||"present")==="less";return {label,less,mode,custom}}
-function roleOptions(selected="",label="GM"){const base=["PL",label,...(label==="KP"?["SKP"]:[]),"その他"];if(selected&&!base.includes(selected))base.splice(1,0,selected);return [...new Set(base)].map(v=>`<option ${v===selected?"selected":""}>${esc(v)}</option>`).join("")}
+function roleOptions(selected="",label="GM"){const base=["PL",label,...(label==="KP"?["SKP"]:[]),"見学","その他"];if(selected&&!base.includes(selected))base.splice(1,0,selected);return [...new Set(base)].map(v=>`<option ${v===selected?"selected":""}>${esc(v)}</option>`).join("")}
 function updateFacilitatorControls(fromScenario=false){const scenario=scenarioById(q("scenarioSelect").value)||{};if(fromScenario){q("facilitatorPresence").value=scenario.facilitatorPresence||"present";q("facilitatorTermMode").value=scenario.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=scenario.facilitatorTermCustom||""}const cfg=facilitatorConfig({});q("facilitatorTermCustom").hidden=q("facilitatorTermMode").value!=="custom";const old=q("role").value||"PL";q("role").innerHTML=roleOptions(old,cfg.label);if(cfg.less&&["KP","DL","GM"].includes(q("role").value))q("role").value="PL";[...q("participantRows").querySelectorAll(".partRole")].forEach(sel=>{const old=sel.value||"PL";sel.innerHTML=roleOptions(old,cfg.label)});return cfg}
 function addLinkRow(v={label:"",url:"",spoiler:false}){
  const wrap=document.createElement("div");wrap.className="card ext-row";
@@ -531,6 +531,7 @@ function buildXReportText(x){
  const skps=groups.get("SKP")||[];if(skps.length){const values=skps.map(r=>`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`).filter(Boolean);if(values.length)lines.push(`SKP：${values.join("、")}`)}
  const pls=groups.get("PL")||[];
  if(pls.length){pls.forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(r.ho?`${r.ho}：${who}`:`PL：${who}`)})}
+ (groups.get("見学")||[]).forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(`見学：${who}`)});
  (groups.get("その他")||[]).forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(`${r.ho?`${r.ho}：`:""}${who}`)});
  (groups.get("_excluded")||[]).forEach(r=>{if(r.plName)lines.push(r.plName)});
  if(rows.some(r=>r.plName&&!r._excludedSummary))lines.push("※敬称略");
@@ -615,6 +616,7 @@ function participantHtml(x){
    const role=String(r.role||"PL"),name=r.playerId&&TRPG39.playersEnabled?.()?`<a class="participant-link" href="../players/index.html?focus=${encodeURIComponent(r.playerId)}">${esc(r.plName)}</a>`:esc(r.plName),pc=r.pcName?` / ${esc(r.pcName)}`:"";
    const cfg=facilitatorConfig(x);if(["KP","DL","GM"].includes(role))return `<div>${esc(cfg.label)}：${name}${pc}</div>`;
    if(role==="SKP")return `<div>SKP：${name}${pc}</div>`;
+   if(role==="見学")return `<div>見学：${name}${pc}</div>`;
    if(role==="PL")return `<div>${r.ho?`<strong>${esc(r.ho)}</strong>　`:"PL："}${name}${pc}${r.relation?` <span class="small muted">（自PCとの関係：${esc(r.relation)}）</span>`:""}</div>`;
    return `<div>${r.ho?`${esc(r.ho)}　`:""}${name}${pc}</div>`;
  }).join("")+ (excludedCount?`<div class="muted">ほか${excludedCount}名</div>`:"");

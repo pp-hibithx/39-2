@@ -221,9 +221,9 @@ function scenarioIdentityKey(x){
 }
 function isOwnedScenario(x,source="friend"){
  if(source==="mine")return !!(x.flags&&x.flags.owned);
- if(typeof x.owned==="boolean")return x.owned;
- const labels=Array.isArray(x.labels)?x.labels:[];
- return labels.includes("所持") || !("labels" in x);
+ // 友人の共有シナリオ一覧に含まれる作品は、その友人のシナリオとして集計する。
+ // 旧共有URLや状態ラベル差で友人名が欠落するのを防ぐ。
+ return true;
 }
 function groupedFriendScenarios(){
  const map=new Map();

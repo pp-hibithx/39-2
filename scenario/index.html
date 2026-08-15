@@ -293,10 +293,14 @@ function saveDraft(){
  const pack={id,savedAt:idx>=0?(rows[idx].savedAt||now):now,updatedAt:now,data:dataNow};
  if(idx>=0)rows[idx]=pack;else rows.push(pack);
  persistDrafts(rows);
- q("draftId").value=id;
- q("draftStatus").textContent="✓ 登録待ちに保存しました";
+
+ // 登録待ちへ退避したら、すぐ次のシナリオを入力できるよう新規フォームへ戻す。
  renderDrafts();
  q("draftPanel").open=true;
+ reset();
+ openForm();
+ q("draftStatus").textContent="✓ 登録待ちに保存しました。次のシナリオを入力できます。";
+ q("url").focus();
 }
 
 function deleteDraft(id){

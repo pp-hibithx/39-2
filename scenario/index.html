@@ -646,6 +646,42 @@ function updateThumbPreview(title=""){
  q("thumbPreviewImg").src=u||"";
  q("thumbPreviewTitle").textContent=title||q("title").value.trim()||"サムネイル";
 }
+
+function cleanScenarioTitle(rawTitle, circleName=""){
+ let s=String(rawTitle||"").trim();
+ if(!s)return "";
+ s=s.replace(/\s*-\s*BOOTH\s*$/i,"").trim();
+ if(circleName){
+   const er=String(circleName).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+   s=s.replace(new RegExp("\\s*-\\s*"+er+"\\s*$","i"),"").trim();
+ }
+ s=s.split(/\s*[／/]\s*(?=(?:中文版|中国語版|繁體中文版|简体中文版|「|『))/i)[0].trim();
+
+ const attr=/(?:CoC|クトゥルフ|TRPG|シナリオ|秘匿|刑事|探偵|PL|KP|人数|固定|限定|PDF|無料|有料|SPLL|6版|7版|6th|7th|本編)/i;
+ while(/^【[^】]+】/.test(s)){
+   const m=s.match(/^【([^】]+)】\s*/);
+   if(!m||!attr.test(m[1]))break;
+   s=s.slice(m[0].length).trim();
+ }
+ while(/【[^】]+】\s*$/.test(s)){
+   const m=s.match(/\s*【([^】]+)】\s*$/);
+   if(!m||!attr.test(m[1]))break;
+   s=s.slice(0,m.index).trim();
+ }
+
+ s=s.replace(/^(?:CoC|COC|クトゥルフ神話TRPG)(?:\s*(?:6版|7版|6th|7th))?\s*(?:シナリオ)?[\s　:：\-–—]*/i,"").trim();
+ s=s.replace(/^TRPG\s*シナリオ[\s　:：\-–—]*/i,"").trim();
+
+ const fq=s.match(/^[「『]([^」』]+)[」』]\s*(?=(?:\([^)]*(?:CoC|TRPG|6th|7th|6版|7版)[^)]*\)|[／/]|$))/i);
+ if(fq)s=fq[1].trim();
+
+ const wq=s.match(/^[「『](.+)[」』]$/);
+ if(wq)s=wq[1].trim();
+
+ s=s.replace(/\s*[（(]\s*(?:旧版|新版|改訂版|第?\d+版)\s*[）)]\s*$/i,"").trim();
+ return s;
+}
+
 async function fetchThumbnail(){
  const url=q("url").value.trim();
  if(!url)return alert("配布・掲載ページのURLを入力してください。");
@@ -663,7 +699,8 @@ async function fetchThumbnail(){
      applied.push("サムネイル");
    }
    if(!q("title").value.trim() && meta.title){
-     q("title").value=meta.title;
+     const cleanedTitle=cleanScenarioTitle(meta.title,meta.author||q("author").value||"");
+     q("title").value=cleanedTitle||meta.title;
      applied.push("タイトル");
    }
    if(!q("author").value.trim() && meta.author){

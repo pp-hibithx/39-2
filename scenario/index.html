@@ -655,6 +655,8 @@ function cleanScenarioTitle(rawTitle, circleName=""){
    const er=String(circleName).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
    s=s.replace(new RegExp("\\s*-\\s*"+er+"\\s*$","i"),"").trim();
  }
+ const systemSlash=s.match(/^(?:新)?クトゥルフ神話TRPG\s*[／/]\s*(.+)$/i);
+ if(systemSlash)s=systemSlash[1].trim();
  s=s.split(/\s*[／/]\s*(?=(?:中文版|中国語版|繁體中文版|简体中文版|「|『))/i)[0].trim();
 
  const attr=/(?:CoC|クトゥルフ|TRPG|シナリオ|秘匿|刑事|探偵|PL|KP|人数|固定|限定|PDF|無料|有料|SPLL|6版|7版|6th|7th|本編)/i;
@@ -669,11 +671,17 @@ function cleanScenarioTitle(rawTitle, circleName=""){
    s=s.slice(0,m.index).trim();
  }
 
- s=s.replace(/^(?:CoC|COC|クトゥルフ神話TRPG)(?:\s*(?:6版|7版|6th|7th))?\s*(?:シナリオ)?[\s　:：\-–—]*/i,"").trim();
+ s=s.replace(/^(?:CoC|COC)\s*(?:6版|7版|6th|7th)?\s*(?:シナリオ)?[\s　:：\-–—]*/i,"").trim();
+ s=s.replace(/^(?:新)?クトゥルフ神話TRPG\s*(?:6版|7版|6th|7th)?\s*(?:シナリオ)?[\s　:：\-–—]*/i,"").trim();
  s=s.replace(/^TRPG\s*シナリオ[\s　:：\-–—]*/i,"").trim();
 
  const fq=s.match(/^[「『]([^」』]+)[」』]\s*(?=(?:\([^)]*(?:CoC|TRPG|6th|7th|6版|7版)[^)]*\)|[／/]|$))/i);
  if(fq)s=fq[1].trim();
+
+ s=s.replace(/\s*(?:【\s*)?SPLL\s*:\s*E?\d+(?:\s*】)?\s*$/i,"").trim();
+
+ const squareTitle=s.match(/^【([^】]+)】$/);
+ if(squareTitle)s=squareTitle[1].trim();
 
  const wq=s.match(/^[「『](.+)[」』]$/);
  if(wq)s=wq[1].trim();

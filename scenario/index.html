@@ -157,7 +157,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <div id="thumbStatus" class="small muted"></div>
 <label>サムネイル画像URL <span class="small muted">（自動取得できない時は手動指定）</span></label><input id="thumbnailUrl" type="url" placeholder="https://...">
 <div id="thumbPreview" class="sc-preview" hidden><img id="thumbPreviewImg" alt=""><div class="sc-preview-meta"><b id="thumbPreviewTitle"></b><div class="small muted">保存すると一覧に表示されます。</div></div></div>
-<label>シナリオ概要</label><textarea id="summaryText" rows="4" placeholder="公開されている概要や、自分で残しておきたい説明"></textarea>
+<label>シナリオ概要 <span class="small muted">（任意／詳細は配布・掲載ページを参照）</span></label><textarea id="summaryText" rows="4" placeholder="自分用に短く残したい場合だけ入力"></textarea>
 <label>HO・基本情報</label><textarea id="handoutInfo" rows="3" placeholder="HO1、秘匿HOの有無、推奨技能など。自分の管理用"></textarea>
 <label>タグ <span class="small muted">（カンマ区切り／過去タグをクリックで追加）</span></label>
 <input id="tags" placeholder="例：秘匿4PL, 現代日本, ホラー">
@@ -648,11 +648,10 @@ async function fetchThumbnail(){
  if(!url)return alert("配布・掲載ページのURLを入力してください。");
  q("fetchThumb").disabled=true;
  q("fetchThumb").textContent="取得中…";
- q("thumbStatus").textContent="ページ情報を取得中…";
+ q("thumbStatus").textContent="シナリオ基本情報を取得中…";
  try{
    if(!window.TRPG39OG)throw new Error("ページ情報取得機能を読み込めませんでした。");
    const meta=await TRPG39OG.fetch(url);
-
    const applied=[];
 
    if(meta.image){
@@ -660,28 +659,43 @@ async function fetchThumbnail(){
      updateThumbPreview(meta.title||"");
      applied.push("サムネイル");
    }
-
    if(!q("title").value.trim() && meta.title){
      q("title").value=meta.title;
      applied.push("タイトル");
    }
-
-   // 既に自分で入力した概要は上書きしない。
-   if(!q("summaryText").value.trim() && meta.description){
-     q("summaryText").value=meta.description;
-     applied.push("概要");
+   if(!q("author").value.trim() && meta.author){
+     q("author").value=meta.author;
+     applied.push("作者・サークル");
    }
-
+   if(!q("system").value.trim() && meta.system){
+     q("system").value=meta.system;
+     updateFacilitatorUI();
+     applied.push("システム");
+   }
+   if(!q("playersMin").value && meta.playersMin){
+     q("playersMin").value=meta.playersMin;
+     applied.push("人数");
+   }
+   if(!q("playersMax").value && meta.playersMax){
+     q("playersMax").value=meta.playersMax;
+     if(!applied.includes("人数"))applied.push("人数");
+   }
+   if(!q("hoursMin").value && meta.hoursMin){
+     q("hoursMin").value=meta.hoursMin;
+     applied.push("時間");
+   }
+   if(!q("hoursMax").value && meta.hoursMax){
+     q("hoursMax").value=meta.hoursMax;
+     if(!applied.includes("時間"))applied.push("時間");
+   }
    if(!q("sourceType").value && meta.sourceType){
      q("sourceType").value=meta.sourceType;
      applied.push("出典");
    }
 
-   if(!applied.length){
-     throw new Error("このページから自動入力できる情報を見つけられませんでした。");
-   }
+   if(!applied.length)throw new Error("このページから自動入力できる基本情報を見つけられませんでした。");
 
-   q("thumbStatus").textContent=`✓ ${applied.join("・")}を取得しました。`;
+   q("thumbStatus").textContent=`✓ ${applied.join("・")}を取得しました。概要は配布・掲載ページを参照してください。`;
  }catch(e){
    console.error(e);
    q("thumbStatus").textContent="⚠ "+e.message;

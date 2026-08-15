@@ -78,6 +78,11 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 .scenario-summary-fold>summary::before{content:"▶";display:inline-block;margin-right:7px;font-size:11px;transition:transform .15s}
 .scenario-summary-fold[open]>summary::before{transform:rotate(90deg)}
 .scenario-summary-body{margin-top:10px;line-height:1.75}
+
+/* 長文入力欄はタグ欄と同じ横幅で固定 */
+#scenarioForm label:has(#summaryText),
+#scenarioForm label:has(#privateMemo){grid-column:1 / -1;width:100%;max-width:none}
+#summaryText,#privateMemo{display:block;width:100%;max-width:none;box-sizing:border-box;resize:vertical}
 </style>
 <script src="../assets/js/supabase-config.js?v=0292"></script>
 <script src="../assets/js/supabase-share.js?v=0292"></script>

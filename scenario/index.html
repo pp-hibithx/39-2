@@ -62,6 +62,15 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 .friend-person-item{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px;align-items:center}
 .friend-person-item img{width:64px;aspect-ratio:16/10;object-fit:cover;border-radius:6px;margin:0}
 .friend-person-thumb{width:64px;aspect-ratio:16/10;border-radius:6px;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted)}
+.draft-list{display:grid;gap:8px;margin-top:8px}
+.draft-item{border:1px solid var(--line);border-radius:9px;padding:10px;background:var(--panel)}
+.draft-item-main{display:grid;gap:3px}
+.draft-item-title{font-weight:700;overflow-wrap:anywhere}
+.draft-item-url{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.draft-item-meta{font-size:11px;color:var(--muted)}
+.draft-item-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.draft-empty{font-size:12px;color:var(--muted)}
+
 
 .scenario-summary-fold{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
 .scenario-summary-fold>summary{cursor:pointer;font-weight:700;list-style:none;user-select:none}
@@ -102,6 +111,19 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <div class="sc-sort"><label>並び順</label><select id="sort"><option value="name">50音順</option><option value="new">登録が新しい順</option><option value="old">登録が古い順</option><option value="recentRun">最近回した順</option><option value="recentPlay">最近遊んだ順</option><option value="kpCount">回した回数順</option></select></div>
 </div><div class="sc-tools"><button id="shareScenarioList" type="button">共有</button><button id="openForm" type="button">＋ 追加</button></div></div><div id="summary" class="small" style="margin-top:8px"></div>
 <div id="list" class="sc-list"></div>
+
+<details class="sc-panel friend-panel" id="draftPanel">
+ <summary class="friend-panel-summary">
+   <div>
+     <b>登録待ち</b> <span id="draftCount" class="small muted"></span>
+     <div class="small">URLだけでも保存できます。あとで「入力を続ける」から登録を再開できます。</div>
+   </div>
+ </summary>
+ <div class="friend-panel-body">
+   <div id="draftList" class="draft-list"></div>
+ </div>
+</details>
+
 <details class="sc-panel friend-panel" id="friendPanel">
  <summary class="friend-panel-summary"><div><b>友人のシナリオ一覧</b> <span id="friendMatchCount" class="small muted"></span><div class="small">一度登録した共有URLはこのブラウザに保存されます。シナリオ表示では自分所持との重複を省き、友人表示では各人の所持一覧をそのまま表示します。</div></div></summary>
  <div class="friend-panel-body">
@@ -115,7 +137,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 </details>
 </section>
 <section id="scenarioForm" class="sc-panel sc-form">
-<h2 id="formHeading">シナリオを登録</h2><input id="editId" type="hidden">
+<h2 id="formHeading">シナリオを登録</h2><input id="editId" type="hidden"><input id="draftId" type="hidden">
 <div class="sc-row"><div><label>シナリオ名</label><input id="title"></div><div><label>略称 <span class="small muted">（CALENDARで優先表示）</span></label><input id="shortTitle" placeholder="例：うすりび、リゲコン"></div></div>
 <div class="sc-row"><div><label>システム</label><input id="system" placeholder="CoC6版 など"></div><div><label>作者・サークル</label><input id="author"></div></div>
 <div class="sc-row"><div><label>進行形式</label><select id="facilitatorPresence"><option value="present">進行役あり</option><option value="less">進行役レス</option></select></div><div><label>進行役の呼称</label><select id="facilitatorTermMode"><option value="auto">自動（システムから判定）</option><option value="KP">KP</option><option value="DL">DL</option><option value="GM">GM</option><option value="custom">任意</option></select><input id="facilitatorTermCustom" placeholder="例：MC、進行役" hidden></div></div>
@@ -167,6 +189,8 @@ function facilitatorLabelFor(x={}){return TRPG39.resolveFacilitatorLabel?TRPG39.
 function updateFacilitatorUI(){const custom=q("facilitatorTermMode").value==="custom";q("facilitatorTermCustom").hidden=!custom;const label=TRPG39.resolveFacilitatorLabel?TRPG39.resolveFacilitatorLabel(q("system").value,{facilitatorTermMode:q("facilitatorTermMode").value,facilitatorTermCustom:q("facilitatorTermCustom").value}):"GM";q("facilitatorPreview").textContent=q("facilitatorPresence").value==="less"?`表示：${label}レス`:`表示：${label}`}
 function linkifyText(value){const raw=String(value??"");const re=/https?:\/\/[^\s<>"\']+/gi;let out="",last=0;for(const m of raw.matchAll(re)){let url=m[0],trail="";while(url&&/[),.;!?、。）」』】〕〉》]$/.test(url)){trail=url.slice(-1)+trail;url=url.slice(0,-1)}out+=esc(raw.slice(last,m.index));out+=`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>${esc(trail)}`;last=m.index+m[0].length}return out+esc(raw.slice(last))}
 const SCENARIO_DRAFT_KEY="39x2_scenario_form_draft_v1";
+const SCENARIO_DRAFTS_KEY="39x2_scenario_form_drafts_v2";
+
 function formDraftData(){return{
  editId:q("editId").value||"",title:q("title").value||"",shortTitle:q("shortTitle").value||"",
  system:q("system").value||"",author:q("author").value||"",playersMin:q("playersMin").value||"",
@@ -177,21 +201,125 @@ function formDraftData(){return{
  facilitatorTermMode:q("facilitatorTermMode").value||"auto",facilitatorTermCustom:q("facilitatorTermCustom").value||"",
  flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked]))
 }}
-function saveDraft(){try{localStorage.setItem(SCENARIO_DRAFT_KEY,JSON.stringify({savedAt:new Date().toISOString(),data:formDraftData()}));q("draftStatus").textContent="✓ 一時保存しました";}catch(e){console.error(e);alert("一時保存に失敗しました。")}}
-function clearDraft(){try{localStorage.removeItem(SCENARIO_DRAFT_KEY)}catch{};if(q("draftStatus"))q("draftStatus").textContent=""}
-function restoreDraft(){
- let pack=null;try{pack=JSON.parse(localStorage.getItem(SCENARIO_DRAFT_KEY)||"null")}catch{}
- if(!pack?.data)return;const d=pack.data;
- ["editId","title","shortTitle","system","author","playersMin","playersMax","hoursMin","hoursMax","url","thumbnailUrl","publicationStatus","sourceType","summaryText","handoutInfo","tags","privateMemo","facilitatorPresence","facilitatorTermMode","facilitatorTermCustom"].forEach(id=>{if(q(id)&&d[id]!==undefined)q(id).value=d[id]});
- document.querySelectorAll(".flag").forEach(c=>c.checked=!!d.flags?.[c.value]);
- q("formHeading").textContent=d.editId?"シナリオを編集（一時保存から復元）":"シナリオを登録（一時保存から復元）";
- q("cancel").hidden=!d.editId;q("scenarioForm").classList.add("open");updateFacilitatorUI();updateThumbPreview();
- q("draftStatus").textContent=`一時保存を復元しました${pack.savedAt?`（${new Date(pack.savedAt).toLocaleString("ja-JP")}）`:""}`;
+
+function loadDrafts(){
+ try{
+   const v=JSON.parse(localStorage.getItem(SCENARIO_DRAFTS_KEY)||"[]");
+   return Array.isArray(v)?v:[];
+ }catch{return []}
 }
-function reset(){q("editId").value="";["title","shortTitle","system","author","url","thumbnailUrl","playersMin","playersMax","hoursMin","hoursMax","summaryText","handoutInfo","tags","privateMemo","facilitatorTermCustom"].forEach(x=>q(x).value="");document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("publicationStatus").value="public";q("sourceType").value="";q("facilitatorPresence").value="present";q("facilitatorTermMode").value="auto";q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true;q("thumbStatus").textContent="";updateFacilitatorUI();updateThumbPreview();q("scenarioForm").classList.remove("open")}
+function persistDrafts(rows){
+ localStorage.setItem(SCENARIO_DRAFTS_KEY,JSON.stringify(rows));
+}
+function draftLabel(d){
+ const x=d?.data||{};
+ return String(x.title||"").trim() || String(x.url||"").trim() || "名称未設定";
+}
+function draftState(d){
+ const x=d?.data||{};
+ if(x.title&&x.url&&x.summaryText)return "入力途中";
+ if(x.title||x.summaryText||x.thumbnailUrl)return "情報取得済み";
+ if(x.url)return "URLのみ";
+ return "入力途中";
+}
+function renderDrafts(){
+ const rows=loadDrafts().sort((a,b)=>String(b.updatedAt||b.savedAt||"").localeCompare(String(a.updatedAt||a.savedAt||"")));
+ q("draftCount").textContent=`${rows.length}件`;
+ q("draftList").innerHTML=rows.length?rows.map(d=>{
+   const x=d.data||{},when=d.updatedAt||d.savedAt||"";
+   return `<article class="draft-item">
+     <div class="draft-item-main">
+       <div class="draft-item-title">${esc(draftLabel(d))}</div>
+       ${x.url?`<div class="draft-item-url">${esc(x.url)}</div>`:""}
+       <div class="draft-item-meta">${esc(draftState(d))}${when?` ／ ${esc(new Date(when).toLocaleString("ja-JP"))}`:""}</div>
+     </div>
+     <div class="draft-item-actions">
+       <button type="button" data-draft-open="${esc(d.id)}">入力を続ける</button>
+       <button type="button" class="danger" data-draft-del="${esc(d.id)}">削除</button>
+     </div>
+   </article>`;
+ }).join(""):'<div class="draft-empty">登録待ちはありません。</div>';
+
+ document.querySelectorAll("[data-draft-open]").forEach(b=>b.onclick=()=>openDraft(b.dataset.draftOpen));
+ document.querySelectorAll("[data-draft-del]").forEach(b=>b.onclick=()=>deleteDraft(b.dataset.draftDel));
+}
+
+function saveDraft(){
+ const dataNow=formDraftData();
+ const hasSomething=Object.entries(dataNow).some(([k,v])=>{
+   if(k==="flags")return Object.values(v||{}).some(Boolean);
+   if(["publicationStatus","facilitatorPresence","facilitatorTermMode"].includes(k))return false;
+   return String(v||"").trim()!=="";
+ });
+ if(!hasSomething)return alert("一時保存する内容がありません。");
+
+ let rows=loadDrafts();
+ let id=q("draftId").value||TRPG39.uuid();
+ const now=new Date().toISOString();
+ const idx=rows.findIndex(d=>d.id===id);
+ const pack={id,savedAt:idx>=0?(rows[idx].savedAt||now):now,updatedAt:now,data:dataNow};
+ if(idx>=0)rows[idx]=pack;else rows.push(pack);
+ persistDrafts(rows);
+ q("draftId").value=id;
+ q("draftStatus").textContent="✓ 登録待ちに保存しました";
+ renderDrafts();
+ q("draftPanel").open=true;
+}
+
+function deleteDraft(id){
+ const rows=loadDrafts(),hit=rows.find(d=>d.id===id);
+ if(!hit)return;
+ if(!confirm(`「${draftLabel(hit)}」を登録待ちから削除しますか？`))return;
+ persistDrafts(rows.filter(d=>d.id!==id));
+ if(q("draftId").value===id)q("draftId").value="";
+ renderDrafts();
+}
+
+function removeActiveDraft(){
+ const id=q("draftId").value;
+ if(!id)return;
+ persistDrafts(loadDrafts().filter(d=>d.id!==id));
+ q("draftId").value="";
+ renderDrafts();
+}
+
+function openDraft(id){
+ const pack=loadDrafts().find(d=>d.id===id);
+ if(!pack?.data)return;
+ reset();
+ const d=pack.data;
+ q("draftId").value=pack.id;
+ ["editId","title","shortTitle","system","author","playersMin","playersMax","hoursMin","hoursMax","url","thumbnailUrl","publicationStatus","sourceType","summaryText","handoutInfo","tags","privateMemo","facilitatorPresence","facilitatorTermMode","facilitatorTermCustom"].forEach(k=>{
+   if(q(k)&&d[k]!==undefined)q(k).value=d[k];
+ });
+ document.querySelectorAll(".flag").forEach(c=>c.checked=!!d.flags?.[c.value]);
+ q("formHeading").textContent=d.editId?"シナリオを編集（登録待ち）":"シナリオを登録（登録待ち）";
+ q("cancel").hidden=!d.editId;
+ q("scenarioForm").classList.add("open");
+ updateFacilitatorUI();updateThumbPreview();
+ q("draftStatus").textContent="登録待ちから復元しました";
+ q("scenarioForm").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function migrateLegacyDraft(){
+ try{
+   const old=JSON.parse(localStorage.getItem(SCENARIO_DRAFT_KEY)||"null");
+   if(!old?.data)return;
+   const rows=loadDrafts();
+   rows.push({
+     id:TRPG39.uuid(),
+     savedAt:old.savedAt||new Date().toISOString(),
+     updatedAt:old.savedAt||new Date().toISOString(),
+     data:old.data
+   });
+   persistDrafts(rows);
+   localStorage.removeItem(SCENARIO_DRAFT_KEY);
+ }catch{}
+}
+function reset(){q("editId").value="";q("draftId").value="";["title","shortTitle","system","author","url","thumbnailUrl","playersMin","playersMax","hoursMin","hoursMax","summaryText","handoutInfo","tags","privateMemo","facilitatorTermCustom"].forEach(x=>q(x).value="");document.querySelectorAll(".flag").forEach(x=>x.checked=false);q("publicationStatus").value="public";q("sourceType").value="";q("facilitatorPresence").value="present";q("facilitatorTermMode").value="auto";q("formHeading").textContent="シナリオを登録";q("cancel").hidden=true;q("thumbStatus").textContent="";q("draftStatus").textContent="";updateFacilitatorUI();updateThumbPreview();q("scenarioForm").classList.remove("open")}
 function openForm(){q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
-function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");let id=q("editId").value||TRPG39.uuid(),i=data.findIndex(x=>x.id===id),old=i>=0?data[i]:null,now=new Date().toISOString();let item={...(old||{}),id,title,shortTitle:q("shortTitle").value.trim(),system:q("system").value.trim(),author:q("author").value.trim(),playersMin:Number(q("playersMin").value)||null,playersMax:Number(q("playersMax").value)||null,hoursMin:Number(q("hoursMin").value)||null,hoursMax:Number(q("hoursMax").value)||null,url:q("url").value.trim(),thumbnailUrl:q("thumbnailUrl").value.trim(),publicationStatus:q("publicationStatus").value||"public",sourceType:q("sourceType").value||"",summaryText:q("summaryText").value.trim(),handoutInfo:q("handoutInfo").value.trim(),tags:q("tags").value.split(/[,、]/).map(v=>v.trim()).filter(Boolean),privateMemo:q("privateMemo").value.trim(),archived:!!old?.archived,facilitatorPresence:q("facilitatorPresence").value||"present",facilitatorTermMode:q("facilitatorTermMode").value||"auto",facilitatorTermCustom:q("facilitatorTermCustom").value.trim(),lastChecked:new Date().toISOString().slice(0,10),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),createdAt:old?.createdAt||now,updatedAt:now};if(i>=0)data[i]=item;else data.unshift(item);persist();clearDraft();reset();render()}
-function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("editId").value=x.id;q("title").value=x.title||"";q("shortTitle").value=x.shortTitle||"";q("system").value=x.system||"";q("author").value=x.author||"";q("playersMin").value=x.playersMin??"";q("playersMax").value=x.playersMax??"";q("hoursMin").value=x.hoursMin??"";q("hoursMax").value=x.hoursMax??"";q("url").value=x.url||"";q("thumbnailUrl").value=x.thumbnailUrl||"";q("publicationStatus").value=x.publicationStatus||"public";q("sourceType").value=x.sourceType||"";q("summaryText").value=x.summaryText||"";q("handoutInfo").value=x.handoutInfo||"";q("tags").value=(x.tags||[]).join(", ");q("privateMemo").value=x.privateMemo||"";q("facilitatorPresence").value=x.facilitatorPresence||"present";q("facilitatorTermMode").value=x.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=x.facilitatorTermCustom||"";updateFacilitatorUI();updateThumbPreview(x.ogTitle||x.title||"");document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
+function save(){let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");let id=q("editId").value||TRPG39.uuid(),i=data.findIndex(x=>x.id===id),old=i>=0?data[i]:null,now=new Date().toISOString();let item={...(old||{}),id,title,shortTitle:q("shortTitle").value.trim(),system:q("system").value.trim(),author:q("author").value.trim(),playersMin:Number(q("playersMin").value)||null,playersMax:Number(q("playersMax").value)||null,hoursMin:Number(q("hoursMin").value)||null,hoursMax:Number(q("hoursMax").value)||null,url:q("url").value.trim(),thumbnailUrl:q("thumbnailUrl").value.trim(),publicationStatus:q("publicationStatus").value||"public",sourceType:q("sourceType").value||"",summaryText:q("summaryText").value.trim(),handoutInfo:q("handoutInfo").value.trim(),tags:q("tags").value.split(/[,、]/).map(v=>v.trim()).filter(Boolean),privateMemo:q("privateMemo").value.trim(),archived:!!old?.archived,facilitatorPresence:q("facilitatorPresence").value||"present",facilitatorTermMode:q("facilitatorTermMode").value||"auto",facilitatorTermCustom:q("facilitatorTermCustom").value.trim(),lastChecked:new Date().toISOString().slice(0,10),flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked])),createdAt:old?.createdAt||now,updatedAt:now};if(i>=0)data[i]=item;else data.unshift(item);persist();removeActiveDraft();reset();render()}
+function edit(id){let x=data.find(v=>v.id===id);if(!x)return;q("draftId").value="";q("draftStatus").textContent="";q("editId").value=x.id;q("title").value=x.title||"";q("shortTitle").value=x.shortTitle||"";q("system").value=x.system||"";q("author").value=x.author||"";q("playersMin").value=x.playersMin??"";q("playersMax").value=x.playersMax??"";q("hoursMin").value=x.hoursMin??"";q("hoursMax").value=x.hoursMax??"";q("url").value=x.url||"";q("thumbnailUrl").value=x.thumbnailUrl||"";q("publicationStatus").value=x.publicationStatus||"public";q("sourceType").value=x.sourceType||"";q("summaryText").value=x.summaryText||"";q("handoutInfo").value=x.handoutInfo||"";q("tags").value=(x.tags||[]).join(", ");q("privateMemo").value=x.privateMemo||"";q("facilitatorPresence").value=x.facilitatorPresence||"present";q("facilitatorTermMode").value=x.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=x.facilitatorTermCustom||"";updateFacilitatorUI();updateThumbPreview(x.ogTitle||x.title||"");document.querySelectorAll(".flag").forEach(c=>c.checked=!!(x.flags&&x.flags[c.value]));q("formHeading").textContent="シナリオを編集";q("cancel").hidden=false;q("scenarioForm").classList.add("open");scrollTo({top:q("scenarioForm").offsetTop-18,behavior:"smooth"})}
 function toggleArchive(id){const x=data.find(v=>v.id===id);if(!x)return;x.archived=!x.archived;x.updatedAt=new Date().toISOString();persist();render();if(q("detailDialog")?.open)q("detailDialog").close()}
 function del(id){if(confirm("このシナリオを完全に削除しますか？\n過去のLIBRARY記録は削除されません。")){data=data.filter(x=>x.id!==id);persist();render()}}
 function schedule(id){
@@ -586,7 +714,7 @@ q("detailDialog").addEventListener("click",e=>{
   // 詳細カード内のクリックでは閉じない。
   if(e.target===q("detailDialog"))q("detailDialog").close();
 });
-q("shareScenarioList").onclick=shareScenarioList;q("openForm").onclick=openForm;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("saveDraft").onclick=saveDraft;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;q("playersFilter").oninput=render;q("hoursFilter").oninput=render;q("tagFilter").onchange=render;q("archiveFilter").onchange=render;q("sort").onchange=render;q("friendViewMode").onchange=renderFriendResults;q("friendAdd").onclick=addFriendSource;renderFriendSources();render();loadFriendSources();restoreDraft();
+q("shareScenarioList").onclick=shareScenarioList;q("openForm").onclick=openForm;q("fetchThumb").onclick=fetchThumbnail;q("thumbnailUrl").oninput=()=>updateThumbPreview();q("save").onclick=save;q("saveDraft").onclick=saveDraft;q("cancel").onclick=reset;q("search").oninput=render;q("filter").onchange=render;q("playersFilter").oninput=render;q("hoursFilter").oninput=render;q("tagFilter").onchange=render;q("archiveFilter").onchange=render;q("sort").onchange=render;q("friendViewMode").onchange=renderFriendResults;q("friendAdd").onclick=addFriendSource;migrateLegacyDraft();renderDrafts();renderFriendSources();render();loadFriendSources();
 })();
 </script>
 </body></html>

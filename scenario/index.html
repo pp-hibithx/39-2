@@ -322,7 +322,7 @@ function openDraft(id){
  reset();
  const d=pack.data;
  q("draftId").value=pack.id;
- ["editId","title","shortTitle","system","author","playersMin","playersMax","hoursMin","hoursMax","url","thumbnailUrl","publicationStatus","sourceType","summaryText","handoutInfo","tags","privateMemo","facilitatorPresence","facilitatorTermMode","facilitatorTermCustom"].forEach(k=>{
+ ["editId","title","shortTitle","system","author","playersMin","playersMax","hoursMin","hoursMax","url","thumbnailUrl","publicationStatus","sourceType","summaryText","tags","privateMemo","facilitatorPresence","facilitatorTermMode","facilitatorTermCustom"].forEach(k=>{
    if(q(k)&&d[k]!==undefined)q(k).value=d[k];
  });
  document.querySelectorAll(".flag").forEach(c=>c.checked=!!d.flags?.[c.value]);

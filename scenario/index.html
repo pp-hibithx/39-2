@@ -229,7 +229,7 @@ function formDraftData(){return{
  system:q("system").value||"",author:q("author").value||"",playersMin:q("playersMin").value||"",
  playersMax:q("playersMax").value||"",hoursMin:q("hoursMin").value||"",hoursMax:q("hoursMax").value||"",
  url:q("url").value||"",thumbnailUrl:q("thumbnailUrl").value||"",publicationStatus:q("publicationStatus").value||"public",
- sourceType:q("sourceType").value||"",summaryText:q("summaryText").value||"",handoutInfo:q("handoutInfo").value||"",
+ sourceType:q("sourceType").value||"",summaryText:q("summaryText").value||"",
  tags:q("tags").value||"",privateMemo:q("privateMemo").value||"",facilitatorPresence:q("facilitatorPresence").value||"present",
  facilitatorTermMode:q("facilitatorTermMode").value||"auto",facilitatorTermCustom:q("facilitatorTermCustom").value||"",
  flags:Object.fromEntries([...document.querySelectorAll(".flag")].map(x=>[x.value,x.checked]))

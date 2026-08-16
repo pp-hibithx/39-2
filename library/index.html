@@ -67,6 +67,13 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .checkline{display:flex;align-items:center;gap:7px;margin-top:8px}.checkline input[type="checkbox"]{width:auto;flex:0 0 auto;margin:0}
 textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;margin:6px 0 3px}
 
+.library-view-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.library-view-tab{width:auto}.library-view-tab.active{font-weight:700;box-shadow:inset 0 0 0 1px var(--accent)}
+.library-directory-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.library-dir-card{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:14px}
+.library-dir-thumb{width:72px;height:72px;object-fit:cover;border-radius:10px;float:left;margin-right:12px}
+.library-dir-title{font-weight:700}.library-dir-meta{font-size:12px;color:var(--muted);margin-top:5px}
+.library-dir-history{clear:both;padding-top:12px}.library-dir-history .history-row{padding:6px 0;border-top:1px solid var(--line)}
 .lib-list.library-grid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
@@ -203,7 +210,12 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
     <div><h2>TRPG ALBUM</h2><div id="summary" class="small"></div></div>
     <button id="openLibraryEditor" type="button">＋ 記録を追加</button>
   </div>
-  <div class="lib-toolbar">
+  <div class="library-view-tabs" role="tablist">
+<button type="button" class="library-view-tab active" data-library-view="scenario">シナリオ</button>
+<button type="button" class="library-view-tab" data-library-view="pc">PC</button>
+<button type="button" class="library-view-tab" data-library-view="player">同卓者</button>
+</div>
+<div class="lib-toolbar">
     <div><label>検索</label><input id="search" type="search" placeholder="シナリオ・PC・友達"></div>
     <div><label>役割</label><select id="filter"><option value="">すべて</option><option>PL</option><option>KP</option><option>DL</option><option>GM</option><option>SKP</option><option>見学</option><option>その他</option></select></div>
     <div><label>表示</label><select id="archiveFilter"><option value="active">通常</option><option value="archived">アーカイブ</option><option value="all">すべて</option></select></div>
@@ -307,6 +319,8 @@ TRPG39.syncAllEventsToAlbum?.();
 let scenarios=TRPG39.loadScenarios();
 let data=TRPG39.loadAlbum();
 let focusedScenarioKey="";
+let libraryView=new URLSearchParams(location.search).get("view")||"scenario";
+let pcs=TRPG39.loadPCs(),players=TRPG39.loadPlayers();
 {let changed=false;data=data.map(x=>{if(!x.spoilerBody&&x.spoiler){changed=true;return TRPG39.normalizeAlbum({...x,spoilerBody:x.spoiler,spoiler:""})}return x});if(changed)TRPG39.saveAlbum(data);}
 
 function migrateScenarioLinks(){
@@ -831,7 +845,35 @@ function focusedGroupHtml(g){
    </div>
  </details>`;
 }
+
+function pcStats(name){
+ const key=String(name||"").trim(),xs=data.filter(x=>String(x.pcName||"").trim()===key),m=new Map(),dates=[];
+ xs.forEach(x=>{if(x.date)dates.push(x.date);const k=x.scenarioId||x.title;if(!m.has(k))m.set(k,{title:x.title||"名称未設定",scenarioId:x.scenarioId||"",first:x.date||""});});
+ dates.sort();return {count:m.size,first:dates[0]||"",scenarios:[...m.values()]};
+}
+function playerStats(name){
+ const key=String(name||"").trim(),m=new Map(),dates=[];
+ data.forEach(x=>{const rows=Array.isArray(x.participantRows)&&x.participantRows.length?x.participantRows:(x.participants||[]).map(n=>({plName:n}));if(!rows.some(r=>String(r.plName||"").trim()===key))return;if(x.date)dates.push(x.date);const k=x.scenarioId||x.title;if(!m.has(k))m.set(k,{title:x.title||"名称未設定",scenarioId:x.scenarioId||"",first:x.date||""});});
+ dates.sort();return {count:m.size,first:dates[0]||"",last:dates.at(-1)||"",scenarios:[...m.values()]};
+}
+function renderPcView(){
+ const term=q("search").value.trim().toLowerCase(),rows=pcs.map(x=>({x,st:pcStats(x.name)})).filter(({x})=>!term||[x.name,x.reading,x.system,x.job].filter(Boolean).join(" ").toLowerCase().includes(term)).sort((a,b)=>String(a.x.name).localeCompare(String(b.x.name),"ja"));
+ q("summary").textContent=`PC ${rows.length}人`;q("list").classList.remove("library-grid");
+ q("list").innerHTML=`<div class="library-directory-grid">${rows.length?rows.map(({x,st})=>`<article class="library-dir-card">${x.image?`<img class="library-dir-thumb" src="${esc(x.image)}" alt="">`:""}<div class="library-dir-title">${esc(x.name)}</div><div class="library-dir-meta">${esc(x.system||"")}${x.job?` ／ ${esc(x.job)}`:""}</div><div class="library-dir-meta">参加 ${st.count}シナリオ${st.first?` ／ 初卓 ${esc(st.first)}`:""}</div><div class="library-dir-history">${st.scenarios.length?st.scenarios.map(s=>`<div class="history-row"><a class="link" href="?view=scenario${s.scenarioId?`&scenario=${encodeURIComponent(s.scenarioId)}`:""}&pc=${encodeURIComponent(x.name)}">${esc(s.title)}</a></div>`).join(""):'<div class="small muted">参加記録はまだありません。</div>'}</div><div class="lib-parent-actions"><a class="link" href="../pcs/index.html?focus=${encodeURIComponent(x.id)}">PC情報を編集</a></div></article>`).join(""):'<div class="empty">該当するPCがありません。</div>'}</div>`;
+}
+function renderPlayerView(){
+ const term=q("search").value.trim().toLowerCase(),rows=players.map(x=>({x,st:playerStats(x.name)})).filter(({x})=>!term||[x.name,x.publicName,x.socialName].filter(Boolean).join(" ").toLowerCase().includes(term)).sort((a,b)=>String(a.x.name).localeCompare(String(b.x.name),"ja"));
+ q("summary").textContent=`同卓者 ${rows.length}人`;q("list").classList.remove("library-grid");
+ q("list").innerHTML=`<div class="library-directory-grid">${rows.length?rows.map(({x,st})=>`<article class="library-dir-card"><div class="library-dir-title">${esc(x.name)}</div><div class="library-dir-meta">公開名：${esc(x.publicName||x.name)}</div><div class="library-dir-meta">同卓 ${st.count}シナリオ${st.first?` ／ 初同卓 ${esc(st.first)}`:""}${st.last?` ／ 最終 ${esc(st.last)}`:""}</div><div class="library-dir-history">${st.scenarios.length?st.scenarios.map(s=>`<div class="history-row"><a class="link" href="?view=scenario${s.scenarioId?`&scenario=${encodeURIComponent(s.scenarioId)}`:""}&player=${encodeURIComponent(x.name)}">${esc(s.title)}</a></div>`).join(""):'<div class="small muted">同卓記録はまだありません。</div>'}</div><div class="lib-parent-actions"><a class="link" href="../players/index.html?focus=${encodeURIComponent(x.id)}">同卓者情報を編集</a></div></article>`).join(""):'<div class="empty">該当する同卓者がいません。</div>'}</div>`;
+}
+function syncLibraryView(){
+ document.querySelectorAll("[data-library-view]").forEach(b=>b.classList.toggle("active",b.dataset.libraryView===libraryView));
+ const scenario=libraryView==="scenario";q("filter").style.display=scenario?"":"none";q("archiveFilter").style.display=scenario?"":"none";q("search").placeholder=scenario?"検索":"名前で検索";
+}
 function render(){
+ syncLibraryView();
+ if(libraryView==="pc"){renderPcView();return}
+ if(libraryView==="player"){renderPlayerView();return}
  const term=q("search").value.trim().toLowerCase(),role=q("filter").value,params=new URLSearchParams(location.search);
  const player=params.get("player")||"",pc=params.get("pc")||"";
  let xs=data.filter(x=>(!role||x.role===role)&&(!player||(x.participants||[]).some(n=>n===player))&&(!pc||(x.pcName||"")===pc)&&(!term||[x.title,x.system,x.pcName,(x.participants||[]).join(" ")].join(" ").toLowerCase().includes(term)));
@@ -896,7 +938,8 @@ q("save").onclick=save;
 q("cancel").onclick=()=>{reset();hideEditor()};
 q("image").oninput=updateImagePreview;
 q("openLibraryEditor").onclick=()=>{reset();showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"})};q("xPreviewText").oninput=updateXPreviewCount;q("xPreviewCancel").onclick=()=>q("xPreviewDialog").close();q("xPreviewPost").onclick=confirmPostAlbumToX;
-q("search").oninput=()=>{focusedScenarioKey="";render()};q("filter").onchange=()=>{focusedScenarioKey="";render()};q("archiveFilter").onchange=()=>{focusedScenarioKey="";render()};q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
+q("search").oninput=()=>{focusedScenarioKey="";render()};q("filter").onchange=()=>{focusedScenarioKey="";render()};q("archiveFilter").onchange=()=>{focusedScenarioKey="";render()};
+document.querySelectorAll("[data-library-view]").forEach(b=>b.onclick=()=>{libraryView=b.dataset.libraryView||"scenario";focusedScenarioKey="";const u=new URL(location.href);u.searchParams.set("view",libraryView);u.searchParams.delete("scenario");u.searchParams.delete("pc");u.searchParams.delete("player");history.replaceState(null,"",u);render()});q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
 reset();hideEditor();render();{const p=new URLSearchParams(location.search),sid=p.get("scenario")||"";if(p.get("new")==="1"){addForScenario(sid)}}
 })();
 </script>

@@ -102,6 +102,28 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-spoiler{margin-top:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .lib-spoiler summary{cursor:pointer;padding:9px 11px;font-weight:700;user-select:none}
 .lib-spoiler .spoiler-body{padding:10px 12px;border-top:1px solid var(--line);line-height:1.8}
+
+<style>
+.scenario-picker{position:relative}
+.scenario-picker input{width:100%}
+.scenario-picker-results{
+  position:absolute;left:0;right:0;top:100%;z-index:20;
+  max-height:280px;overflow:auto;margin-top:4px;
+  border:1px solid var(--line);border-radius:9px;background:var(--panel);
+  box-shadow:0 10px 28px rgba(0,0,0,.28);display:none;
+}
+.scenario-picker-results.open{display:block}
+.scenario-picker-item{
+  display:block;width:100%;text-align:left;padding:9px 10px;border:0;
+  border-bottom:1px solid var(--line);background:transparent;color:inherit;
+}
+.scenario-picker-item:last-child{border-bottom:0}
+.scenario-picker-item:hover,.scenario-picker-item.active{background:rgba(255,255,255,.06)}
+.scenario-picker-title{font-weight:700;line-height:1.35}
+.scenario-picker-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.scenario-picker-empty{padding:10px;font-size:12px;color:var(--muted)}
+#scenarioSelect{display:none}
+</style>
 </style>
 <script src="../assets/js/optional-features.js?v=0292" defer></script>
 <style>
@@ -161,7 +183,11 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   <div class="lib-form-section">
     <h3>卓の基本情報</h3>
     <label>シナリオ</label>
-    <select id="scenarioSelect"><option value="">直接入力</option></select>
+    <div class="scenario-picker">
+      <input id="scenarioSearch" type="search" autocomplete="off" placeholder="シナリオ名・システム・サークル名で検索">
+      <div id="scenarioSearchResults" class="scenario-picker-results"></div>
+    </div>
+    <select id="scenarioSelect" aria-hidden="true" tabindex="-1"><option value="">直接入力</option></select>
     <label>シナリオ名</label><input id="title">
     <div class="lib-form-grid">
       <div><label>陣名（任意）</label><input id="runLabel" placeholder="例：1陣目／土曜組"></div>
@@ -304,11 +330,58 @@ function fillPCSelect(selectedId=""){
  q("pcSelect").innerHTML='<option value="">直接入力</option>'+pcs.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ja")).map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
  q("pcSelect").value=selectedId||"";
 }
-function fillScenarioSelect(){
+function fillScenarioSelect(selectedId=""){
   scenarios=TRPG39.loadScenarios();
   q("scenarioSelect").innerHTML='<option value="">直接入力</option>'+scenarios
-    .slice().sort((a,b)=>String(a.title).localeCompare(String(b.title),"ja"))
+    .slice().filter(s=>!s.archived)
+    .sort((a,b)=>String(a.title).localeCompare(String(b.title),"ja"))
     .map(s=>`<option value="${esc(s.id)}">${esc(s.title)}</option>`).join("");
+  q("scenarioSelect").value=selectedId||"";
+  syncScenarioSearchLabel();
+}
+function scenarioSearchText(s){
+  return [s.title,s.shortTitle,s.system,s.author,(s.tags||[]).join(" ")]
+    .filter(Boolean).join(" ").normalize("NFKC").toLowerCase();
+}
+function syncScenarioSearchLabel(){
+  const s=scenarioById(q("scenarioSelect").value);
+  q("scenarioSearch").value=s?.title||"";
+}
+function chooseScenario(id){
+  q("scenarioSelect").value=id||"";
+  const s=scenarioById(id);
+  if(s){
+    q("scenarioSearch").value=s.title||"";
+    q("title").value=s.title||"";
+    q("system").value=s.system||"";
+    updateFacilitatorControls(true);
+  }else{
+    q("scenarioSearch").value="";
+  }
+  q("scenarioSearchResults").classList.remove("open");
+}
+function renderScenarioSearch(){
+  const box=q("scenarioSearchResults");
+  const term=q("scenarioSearch").value.trim().normalize("NFKC").toLowerCase();
+  const selected=q("scenarioSelect").value;
+  let rows=scenarios.filter(s=>!s.archived);
+  if(term) rows=rows.filter(s=>scenarioSearchText(s).includes(term));
+  rows=rows.slice().sort((a,b)=>{
+    const aSel=a.id===selected?-1:0,bSel=b.id===selected?-1:0;
+    if(aSel!==bSel)return aSel-bSel;
+    return String(a.title||"").localeCompare(String(b.title||""),"ja");
+  }).slice(0,30);
+
+  box.innerHTML=rows.length?rows.map(s=>{
+    const meta=[s.system,s.author].filter(Boolean).join(" ／ ");
+    return `<button type="button" class="scenario-picker-item" data-scenario-choice="${esc(s.id)}">
+      <div class="scenario-picker-title">${esc(s.title)}</div>
+      ${meta?`<div class="scenario-picker-meta">${esc(meta)}</div>`:""}
+    </button>`;
+  }).join(""):'<div class="scenario-picker-empty">一致するシナリオがありません。直接入力できます。</div>';
+
+  box.classList.add("open");
+  box.querySelectorAll("[data-scenario-choice]").forEach(b=>b.onclick=()=>chooseScenario(b.dataset.scenarioChoice));
 }
 function scenarioById(id){return scenarios.find(s=>s.id===id)}
 function facilitatorConfig(source={}){const scenario=scenarioById(source.scenarioId||q("scenarioSelect").value)||{};const system=source.system||q("system").value||scenario.system||"";const mode=source.facilitatorTermMode||q("facilitatorTermMode")?.value||scenario.facilitatorTermMode||"auto";const custom=source.facilitatorTermCustom||q("facilitatorTermCustom")?.value||scenario.facilitatorTermCustom||"";const label=source.facilitatorLabel||TRPG39.resolveFacilitatorLabel?.(system,{facilitatorTermMode:mode,facilitatorTermCustom:custom})||"GM";const less=source.facilitatorless!==undefined?!!source.facilitatorless:(source.facilitatorPresence||q("facilitatorPresence")?.value||scenario.facilitatorPresence||"present")==="less";return {label,less,mode,custom}}
@@ -356,7 +429,7 @@ function reset(prefillScenarioId=""){
  ["title","date","start","end","system","selfHo","pc","image","comment","spoilerBody","runId","runLabel"].forEach(x=>q(x).value="");
  q("status").value="done";q("facilitatorPresence").value="present";q("facilitatorTermMode").value="auto";q("facilitatorTermCustom").value="";q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
  q("externalLinks").innerHTML="";addLinkRow();setParticipantRows();updateImagePreview();fillScenarioSelect();fillPCSelect();
- q("scenarioSelect").value=prefillScenarioId||"";
+ q("scenarioSelect").value=prefillScenarioId||"";syncScenarioSearchLabel();
  if(prefillScenarioId){
    const s=scenarioById(prefillScenarioId);
    if(s){q("title").value=s.title||"";q("system").value=s.system||"";updateFacilitatorControls(true)}
@@ -420,7 +493,7 @@ function save(){
 }
 function edit(id){
  let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";q("title").value=x.title||"";q("date").value=x.date||"";q("start").value=(x.start||((x.date||"")+"T21:00")).slice(0,16);q("end").value=(x.end||"").slice(0,16);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setParticipantRows(rowsFromRecord(x));q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
+ q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";q("date").value=x.date||"";q("start").value=(x.start||((x.date||"")+"T21:00")).slice(0,16);q("end").value=(x.end||"").slice(0,16);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setParticipantRows(rowsFromRecord(x));q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -673,11 +746,26 @@ function render(){
  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));
  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>del(b.dataset.del));
 }
-q("pcSelect").onchange=()=>{const id=q("pcSelect").value;if(!id)return;const pc=(TRPG39.loadPCs?TRPG39.loadPCs():[]).find(p=>p.id===id);if(pc)q("pc").value=pc.name||""};
-q("scenarioSelect").onchange=()=>{
+q("title").addEventListener("input",()=>{
  const s=scenarioById(q("scenarioSelect").value);
- if(s){q("title").value=s.title||"";q("system").value=s.system||"";updateFacilitatorControls(true)}
-};
+ if(s && q("title").value.trim()!==String(s.title||"").trim()){
+   q("scenarioSelect").value="";
+   q("scenarioSearch").value="";
+ }
+});
+q("pcSelect").onchange=()=>{const id=q("pcSelect").value;if(!id)return;const pc=(TRPG39.loadPCs?TRPG39.loadPCs():[]).find(p=>p.id===id);if(pc)q("pc").value=pc.name||""};
+q("scenarioSelect").onchange=()=>chooseScenario(q("scenarioSelect").value);
+q("scenarioSearch").addEventListener("input",()=>{
+  q("scenarioSelect").value="";
+  renderScenarioSearch();
+});
+q("scenarioSearch").addEventListener("focus",renderScenarioSearch);
+q("scenarioSearch").addEventListener("keydown",e=>{
+  if(e.key==="Escape")q("scenarioSearchResults").classList.remove("open");
+});
+document.addEventListener("click",e=>{
+  if(!e.target.closest(".scenario-picker"))q("scenarioSearchResults")?.classList.remove("open");
+});
 q("uploadImage").onclick=async()=>{try{q("uploadImage").disabled=true;q("uploadImage").textContent="アップロード中…";await uploadLibraryImage()}catch(e){console.error(e);alert(e.message||e)}finally{q("uploadImage").disabled=false;q("uploadImage").textContent="画像をアップロード"}};
 q("system").addEventListener("input",()=>updateFacilitatorControls(false));q("facilitatorPresence").onchange=()=>updateFacilitatorControls(false);q("facilitatorTermMode").onchange=()=>updateFacilitatorControls(false);q("facilitatorTermCustom").addEventListener("input",()=>updateFacilitatorControls(false));
 q("save").onclick=save;

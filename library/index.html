@@ -472,7 +472,7 @@ function save(){
    if(created){scenarioId=created.id;title=created.title;fillScenarioSelect();q("scenarioSelect").value=created.id;}
  }
  let id=q("editId").value||TRPG39.uuid(),old=data.find(x=>x.id===id);
- const runId=old?.runId||q("runId").value||TRPG39.uuid(),runLabel=q("runLabel").value.trim()||old?.runLabel||"";
+ const runId=old?.runId||q("runId").value||TRPG39.uuid(),runLabel=q("runLabel").value.trim()||old?.runLabel||nextRunLabelForScenario(scenarioId,title);
  const date=q("date").value;
  if(!date)return alert("日付を入力してください。");
  const start=combineLibraryDateTime(date,q("startTime").value);
@@ -546,16 +546,17 @@ function groupData(xs){
    const rm=new Map();
    for(const x of g.items){const rk=x.runId||"legacy";if(!rm.has(rk))rm.set(rk,{id:rk,label:x.runLabel||"",items:[]});const r=rm.get(rk);r.items.push(x);if(!r.label&&x.runLabel)r.label=x.runLabel}
    g.runs=[...rm.values()].sort((a,b)=>String(a.items[0]?.date||"9999").localeCompare(String(b.items[0]?.date||"9999")));
-   let kpNo=0;
    g.runs.forEach(r=>r.items.sort(bySessionStart));
    g.runs.sort((a,b)=>bySessionStart(a.items[0]||{},b.items[0]||{}));
+   // runLabelは作成時に固定。旧データのみ、表示時に暫定ラベルを付ける。
+   let legacyKpNo=0;
    g.runs.forEach(r=>{
      if(r.label)return;
      const roles=new Set(r.items.map(x=>String(x.role||"").toUpperCase()));
      const isPl=[...roles].some(v=>v==="PL");
      const isKp=[...roles].some(v=>v==="KP"||v==="DL"||v==="GM"||v==="KPGM"||v==="SKP");
      if(isPl&&!isKp)r.label="自陣";
-     else r.label=`${++kpNo}陣目`;
+     else r.label=`旧記録${++legacyKpNo}`;
    });
    const s=scenarioById(g.scenarioId);
    if(s){g.title=s.title||g.title;g.system=s.system||"";g.thumbnailUrl=s.thumbnailUrl||((g.items.find(x=>(x.imageUrls||[])[0])?.imageUrls||[])[0]||"")}
@@ -679,8 +680,30 @@ async function confirmPostAlbumToX(){
    if(popup){popup.opener=null;popup.location.replace(intent.href)}else location.href=intent.href;
  }catch(e){if(popup)popup.close();console.error(e);alert(e.message||e)}
 }
+function nextRunLabelForScenario(scenarioId,title=""){
+ const same=data.filter(x=>{
+   if(scenarioId)return x.scenarioId===scenarioId;
+   return !x.scenarioId && normTitle(x.title)===normTitle(title);
+ });
+ let maxNo=0;
+ same.forEach(x=>{
+   const m=String(x.runLabel||"").match(/^(\d+)陣目$/);
+   if(m)maxNo=Math.max(maxNo,Number(m[1])||0);
+ });
+ if(!maxNo){
+   // 旧データなどrunLabel未設定の陣数も考慮。
+   const ids=new Set(same.map(x=>x.runId).filter(Boolean));
+   maxNo=ids.size;
+ }
+ return `${maxNo+1}陣目`;
+}
 function addForScenario(id){
- reset(id);q("runId").value=TRPG39.uuid();showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
+ const s=scenarioById(id);
+ reset(id);
+ q("runId").value=TRPG39.uuid();
+ q("runLabel").value=nextRunLabelForScenario(id,s?.title||"");
+ showEditor();
+ q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
 function addForRun(scenarioId,runId,runLabel=""){
  reset(scenarioId);q("runId").value=runId;q("runLabel").value=runLabel||"";

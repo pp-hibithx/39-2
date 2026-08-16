@@ -640,6 +640,7 @@ async function shareScenarioList(){
    facilitatorTermMode:x.facilitatorTermMode||"auto",
    facilitatorTermCustom:x.facilitatorTermCustom||"",
    tags:Array.isArray(x.tags)?x.tags:[],
+   flags:{...(x.flags||{})},
    classifications:{
      owned:!!(x.flags&&x.flags.owned),
      wish:!!(x.flags&&x.flags.wish),
@@ -649,8 +650,14 @@ async function shareScenarioList(){
      kpDone:!!(x.flags&&x.flags.kpDone),
      kpPlanned:!!(x.flags&&x.flags.kpPlanned)
    },
-   // 旧SHAREとの互換用
+   // 共有互換用：各分類もトップレベルへ明示
    owned:!!(x.flags&&x.flags.owned),
+   wish:!!(x.flags&&x.flags.wish),
+   played:!!(x.flags&&x.flags.played),
+   watched:!!(x.flags&&x.flags.watched),
+   planned:!!(x.flags&&x.flags.planned),
+   kpDone:!!(x.flags&&x.flags.kpDone),
+   kpPlanned:!!(x.flags&&x.flags.kpPlanned),
    labels:Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>v)
  }));
  const payload={
@@ -672,7 +679,7 @@ async function shareScenarioList(){
      const url=(TRPG39 && typeof TRPG39.makeShortShareUrl==="function")
        ? TRPG39.makeShortShareUrl(shareId)
        : new URL("../share/index.html?id="+encodeURIComponent(shareId), location.href).href;
-     showShareUrl(url,`あなた専用のシナリオ棚URLです。${items.length}件を共有しました。\n同じURL内で「すべて・所持・気になる・通過済み・視聴済み」を切り替えられます。`);
+     showShareUrl(url,`あなた専用のシナリオ棚URLです。${items.length}件を共有しました。\n視聴済み ${items.filter(x=>x.watched).length}件 ／ 回した ${items.filter(x=>x.kpDone).length}件 ／ 回す予定 ${items.filter(x=>x.kpPlanned).length}件\n同じURL内で分類を切り替えられます。`);
      return;
    }
  }catch(e){

@@ -33,6 +33,10 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-run-thumbs{display:inline-flex;align-items:center;gap:4px;margin-left:6px}.lib-run-thumbs img{width:46px;height:34px;object-fit:cover;border-radius:5px;border:1px solid var(--line)}
 .lib-run-more{display:grid;place-items:center;min-width:34px;height:34px;padding:0 5px;border-radius:5px;background:rgba(255,255,255,.06);font-size:12px}
 .lib-dice{margin-top:8px;padding:7px 9px;border:1px solid var(--line);border-radius:7px}.lib-dice>summary{cursor:pointer;font-weight:600}.lib-dice-card{margin-top:7px;padding-top:7px;border-top:1px solid var(--line)}
+
+.library-play-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px;grid-column:1/-1}
+.library-play-tab{width:auto}
+.library-play-tab.active{font-weight:700;box-shadow:inset 0 0 0 1px var(--accent)}
 </style>
 
 <style>
@@ -350,6 +354,7 @@ let scenarios=TRPG39.loadScenarios();
 let data=TRPG39.loadAlbum();
 let focusedScenarioKey="";
 let focusedRunId="";
+let libraryPlayFilter="all";
 const RUN_COVER_POS_KEY="saku_meru_library_run_cover_position_v2";
 function loadRunCoverPositions(){
  try{
@@ -863,6 +868,29 @@ function libraryGridCard(g){
    </div>
  </article>`;
 }
+
+function libraryRunBucket(r){
+ const statuses=(r.items||[]).map(x=>String(x.status||"done"));
+ if(statuses.length&&statuses.every(s=>s==="cancelled"))return "cancelled";
+ if(statuses.some(s=>s==="done"))return "played";
+ return "upcoming";
+}
+function groupMatchesPlayFilter(g){
+ return libraryPlayFilter==="all"||(g.runs||[]).some(r=>libraryRunBucket(r)===libraryPlayFilter);
+}
+function filteredRunsForGroup(g){
+ return libraryPlayFilter==="all"?(g.runs||[]):(g.runs||[]).filter(r=>libraryRunBucket(r)===libraryPlayFilter);
+}
+function playFilterTabsHtml(){
+ return `<div class="library-play-tabs">
+ <button type="button" class="library-play-tab ${libraryPlayFilter==="all"?"active":""}" data-play-filter="all">すべて</button>
+ <button type="button" class="library-play-tab ${libraryPlayFilter==="upcoming"?"active":""}" data-play-filter="upcoming">これから遊ぶ</button>
+ <button type="button" class="library-play-tab ${libraryPlayFilter==="played"?"active":""}" data-play-filter="played">遊んだ</button>
+ </div>`;
+}
+function bindPlayFilterTabs(){
+ document.querySelectorAll("[data-play-filter]").forEach(b=>b.onclick=()=>{libraryPlayFilter=b.dataset.playFilter||"all";focusedRunId="";render()});
+}
 function runCardHtml(g,r){
  const images=[...new Set(r.items.flatMap(x=>x.imageUrls||[]).filter(Boolean))];
  const dates=r.items.map(x=>x.date).filter(Boolean).sort();
@@ -905,7 +933,7 @@ function focusedGroupHtml(g){
  <div class="lib-parent-actions">${g.scenarioId?`<a class="link" href="../scenario/index.html?focus=${encodeURIComponent(g.scenarioId)}">SCENARIOを見る</a>`:""}<button type="button" data-add-scenario="${esc(g.scenarioId)}" data-add-title="${esc(g.title)}">＋ 新しい陣</button></div>
  ${focusedRun
    ? runDetailHtml(g,focusedRun)
-   : `<div class="lib-run-grid">${(g.runs||[]).map(r=>runCardHtml(g,r)).join("")}</div>`
+   : `<div class="lib-run-grid">${filteredRunsForGroup(g).map(r=>runCardHtml(g,r)).join("")}</div>`
  }`;
 }
 function pcStats(name){
@@ -957,7 +985,7 @@ function render(){
  const focused=focusedScenarioKey?groups.find(g=>g.key===focusedScenarioKey):null;
  if(focused){
    q("list").classList.remove("library-grid");
-   q("list").innerHTML=focusedGroupHtml(focused);
+   q("list").innerHTML=playFilterTabsHtml()+focusedGroupHtml(focused);bindPlayFilterTabs();
    q("libraryBackToGrid").onclick=()=>{focusedScenarioKey="";focusedRunId="";render()};
    q("backToRuns")?.addEventListener("click",()=>{focusedRunId="";render()});
    document.querySelectorAll("[data-run-focus]").forEach(card=>{
@@ -967,7 +995,9 @@ function render(){
    bindCoverAdjustButtons();
  }else{
    q("list").classList.add("library-grid");
-   q("list").innerHTML=groups.length?groups.map(libraryGridCard).join(""):'<div class="empty">まだ記録がありません。</div>';
+   const visibleGroups=groups.filter(groupMatchesPlayFilter);
+   q("list").innerHTML=playFilterTabsHtml()+(visibleGroups.length?visibleGroups.map(libraryGridCard).join(""):'<div class="empty">該当する記録がありません。</div>');
+   bindPlayFilterTabs();
    document.querySelectorAll("[data-library-focus]").forEach(card=>{
      card.onclick=()=>{focusedScenarioKey=card.dataset.libraryFocus;render()};
      card.onkeydown=e=>{if(e.key==="Enter"){focusedScenarioKey=card.dataset.libraryFocus;render()}};

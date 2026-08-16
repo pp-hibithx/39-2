@@ -322,7 +322,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 </div><div class="wrap small muted" data-build-marker="02329">build v0.2.32.9</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
-<div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。</div>
+<div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
 <div id="coverPreview" class="lib-cover-preview"><img id="coverPreviewImage" alt=""></div>
 <div class="lib-cover-actions"><button type="button" id="coverReset">中央に戻す</button><button type="button" id="coverCancel">キャンセル</button><button type="button" id="coverSave">保存</button></div>
 </div></div>
@@ -350,11 +350,24 @@ let scenarios=TRPG39.loadScenarios();
 let data=TRPG39.loadAlbum();
 let focusedScenarioKey="";
 let focusedRunId="";
-const RUN_COVER_POS_KEY="saku_meru_library_run_cover_position_v1";
-function loadRunCoverPositions(){try{return JSON.parse(localStorage.getItem(RUN_COVER_POS_KEY)||"{}")||{}}catch{return {}}}
-function saveRunCoverPositions(v){try{localStorage.setItem(RUN_COVER_POS_KEY,JSON.stringify(v))}catch{}}
-let runCoverPositions=loadRunCoverPositions();
-const runCoverY=id=>{const n=Number(runCoverPositions[id]);return Number.isFinite(n)?Math.max(0,Math.min(100,n)):50};
+const RUN_COVER_POS_KEY="saku_meru_library_run_cover_position_v2";
+function loadRunCoverPositions(){
+ try{
+   const v=JSON.parse(localStorage.getItem(RUN_COVER_POS_KEY)||"{}");
+   return v&&typeof v==="object"?v:{};
+ }catch{return {}}
+}
+function saveRunCoverPosition(id,y){
+ if(!id)return;
+ const all=loadRunCoverPositions();
+ all[id]=Math.max(0,Math.min(100,Math.round(Number(y)||50)));
+ try{localStorage.setItem(RUN_COVER_POS_KEY,JSON.stringify(all))}catch{}
+}
+const runCoverY=id=>{
+ const all=loadRunCoverPositions();
+ const n=Number(all[id]);
+ return Number.isFinite(n)?Math.max(0,Math.min(100,n)):50;
+};
 let libraryView=new URLSearchParams(location.search).get("view")||"scenario";
 let pcs=TRPG39.loadPCs(),players=TRPG39.loadPlayers();
 {let changed=false;data=data.map(x=>{if(!x.spoilerBody&&x.spoiler){changed=true;return TRPG39.normalizeAlbum({...x,spoilerBody:x.spoiler,spoiler:""})}return x});if(changed)TRPG39.saveAlbum(data);}
@@ -1002,11 +1015,22 @@ q("search").oninput=()=>{focusedScenarioKey="";focusedRunId="";render()};q("filt
 document.querySelectorAll("[data-library-view]").forEach(b=>b.onclick=()=>{libraryView=b.dataset.libraryView||"scenario";focusedScenarioKey="";focusedRunId="";const u=new URL(location.href);u.searchParams.set("view",libraryView);u.searchParams.delete("scenario");u.searchParams.delete("pc");u.searchParams.delete("player");history.replaceState(null,"",u);render()});q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
 q("coverCancel").onclick=closeCoverEditor;
 q("coverReset").onclick=()=>{coverEditingY=50;updateCoverPreview()};
-q("coverSave").onclick=()=>{if(coverEditingRunId){runCoverPositions[coverEditingRunId]=Math.round(coverEditingY);saveRunCoverPositions(runCoverPositions)}closeCoverEditor();render()};
+q("coverSave").onclick=()=>{
+ if(coverEditingRunId)saveRunCoverPosition(coverEditingRunId,coverEditingY);
+ closeCoverEditor();
+ render();
+};
 q("coverEditor").addEventListener("click",e=>{if(e.target===q("coverEditor"))closeCoverEditor()});
 q("coverPreview").addEventListener("pointerdown",e=>{coverDragStartY=e.clientY;coverDragStartPos=coverEditingY;q("coverPreview").setPointerCapture(e.pointerId)});
 q("coverPreview").addEventListener("pointermove",e=>{if(!q("coverPreview").hasPointerCapture(e.pointerId))return;const h=Math.max(1,q("coverPreview").clientHeight);coverEditingY=Math.max(0,Math.min(100,coverDragStartPos+(e.clientY-coverDragStartY)/h*100));updateCoverPreview()});
-q("coverPreview").addEventListener("pointerup",e=>{try{q("coverPreview").releasePointerCapture(e.pointerId)}catch{}});
+q("coverPreview").addEventListener("pointerup",e=>{
+ try{q("coverPreview").releasePointerCapture(e.pointerId)}catch{}
+ // ドラッグを離した時点でも位置を退避。Saveで確定し、再描画後も同じ位置を使う。
+ if(coverEditingRunId)saveRunCoverPosition(coverEditingRunId,coverEditingY);
+});
+q("coverPreview").addEventListener("pointercancel",e=>{
+ try{q("coverPreview").releasePointerCapture(e.pointerId)}catch{}
+});
 reset();hideEditor();render();{const p=new URLSearchParams(location.search),sid=p.get("scenario")||"";if(p.get("new")==="1"){addForScenario(sid)}}
 })();
 </script>

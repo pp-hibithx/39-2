@@ -121,10 +121,15 @@
 
      const normalized=items.map((x,i)=>{
        const c={...(x.classifications||{})};
-       // 古い共有データも可能な範囲で分類復元。
+       const rawFlags=(x.flags&&typeof x.flags==="object")?x.flags:{};
        const labels=Array.isArray(x.labels)?x.labels:[];
-       if(x.owned)c.owned=true;
-       Object.entries(classLabels).forEach(([k,v])=>{if(labels.includes(v))c[k]=true});
+       Object.keys(classLabels).forEach(k=>{
+         if(rawFlags[k]===true)c[k]=true;
+         if(x[k]===true)c[k]=true;
+       });
+       Object.entries(classLabels).forEach(([k,v])=>{
+         if(labels.includes(v))c[k]=true;
+       });
        return {...x,_idx:i,_classifications:c};
      });
 

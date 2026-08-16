@@ -197,10 +197,10 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
       <div><label>進行役の呼称</label><select id="facilitatorTermMode"><option value="auto">自動</option><option value="KP">KP</option><option value="DL">DL</option><option value="GM">GM</option><option value="custom">任意</option></select><input id="facilitatorTermCustom" placeholder="任意の呼称" hidden></div>
     </div>
     <div class="lib-form-grid">
-      <div><label>開始</label><input id="start" type="datetime-local"></div>
-      <div><label>終了予定</label><input id="end" type="datetime-local"></div>
+      <div><label>日付</label><input id="date" type="date"></div>
+      <div><label>開始時刻 <span class="small muted">（任意）</span></label><input id="startTime" type="time"></div>
+      <div><label>終了時刻 <span class="small muted">（任意）</span></label><input id="endTime" type="time"></div>
     </div>
-    <input id="date" type="hidden">
   </div>
 
   <div class="lib-form-section">
@@ -426,7 +426,7 @@ function setParticipantRows(rows=[]){
 }
 function reset(prefillScenarioId=""){
  q("editId").value="";
- ["title","date","start","end","system","selfHo","pc","image","comment","spoilerBody","runId","runLabel"].forEach(x=>q(x).value="");
+ ["title","date","startTime","endTime","system","selfHo","pc","image","comment","spoilerBody","runId","runLabel"].forEach(x=>q(x).value="");
  q("status").value="done";q("facilitatorPresence").value="present";q("facilitatorTermMode").value="auto";q("facilitatorTermCustom").value="";q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
  q("externalLinks").innerHTML="";addLinkRow();setParticipantRows();updateImagePreview();fillScenarioSelect();fillPCSelect();
  q("scenarioSelect").value=prefillScenarioId||"";syncScenarioSearchLabel();
@@ -451,6 +451,17 @@ async function uploadLibraryImage(){
   if(!r.ok)throw new Error(body.error||("アップロードエラー "+r.status));
   q("image").value=body.publicUrl||""; updateImagePreview(); q("imageFile").value=""; return body.publicUrl;
 }
+function combineLibraryDateTime(date,time){
+ if(!date)return "";
+ return time?`${date}T${time}`:date;
+}
+function splitLibraryDateTime(value=""){
+ const s=String(value||"");
+ return {
+   date:s.slice(0,10),
+   time:s.includes("T")?s.slice(11,16):""
+ };
+}
 function save(){
  let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");
  let scenarioId=q("scenarioSelect").value;
@@ -462,7 +473,10 @@ function save(){
  }
  let id=q("editId").value||TRPG39.uuid(),old=data.find(x=>x.id===id);
  const runId=old?.runId||q("runId").value||TRPG39.uuid(),runLabel=q("runLabel").value.trim()||old?.runLabel||"";
- const start=q("start").value;
+ const date=q("date").value;
+ if(!date)return alert("日付を入力してください。");
+ const start=combineLibraryDateTime(date,q("startTime").value);
+ const end=combineLibraryDateTime(date,q("endTime").value);
  const rows=getParticipantRows().map(r=>{
    let playerId="";
    if(TRPG39.playersEnabled?.()&&r.plName){
@@ -475,7 +489,7 @@ function save(){
  const participantIds=rows.filter(r=>r.plName).map(r=>r.playerId||"");
  const ownPcName=q("pc").value.trim();
  const ownPcId=(()=>{const sid=q("pcSelect").value;if(sid)return sid;if(!ownPcName)return "";const pc=TRPG39.ensurePC?TRPG39.ensurePC(ownPcName,{system:q("system").value.trim()}):null;return pc?.id||""})();
- let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,runId,runLabel,date:String(start||"").slice(0,10),start,end:q("end").value,status:q("status").value,
+ let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,runId,runLabel,date,start,end,status:q("status").value,
    articleBody:old?.articleBody||"",
    spoilerBody:q("spoilerBody")?.value.trim()||"",spoiler:"",system:q("system").value.trim(),facilitatorLabel:facilitatorConfig({}).label,facilitatorless:q("facilitatorPresence").value==="less",role:q("role").value,selfHo:q("selfHo").value.trim(),pcName:ownPcName,pcId:ownPcId,
    participants,participantIds,participantRows:rows,
@@ -493,7 +507,7 @@ function save(){
 }
 function edit(id){
  let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";q("date").value=x.date||"";q("start").value=(x.start||((x.date||"")+"T21:00")).slice(0,16);q("end").value=(x.end||"").slice(0,16);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setParticipantRows(rowsFromRecord(x));q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
+ q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";const st=splitLibraryDateTime(x.start||x.date||""),en=splitLibraryDateTime(x.end||"");q("date").value=x.date||st.date||"";q("startTime").value=st.time||"";q("endTime").value=en.time||"";q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setParticipantRows(rowsFromRecord(x));q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }

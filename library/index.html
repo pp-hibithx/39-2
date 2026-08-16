@@ -1014,15 +1014,26 @@ function playerRoleRecords(player){
      else unknown.push(item);
    });
  });
- const uniq=arr=>{
-   const m=new Map();
+
+ const groupByRun=arr=>{
+   const map=new Map();
    arr.forEach(v=>{
-     const k=v.record.id+"|"+String(v.row.pcName||"")+"|"+String(v.row.ho||"")+"|"+String(v.row.role||"");
-     if(!m.has(k))m.set(k,v);
+     const x=v.record;
+     const key=x.runId?`run:${x.runId}`:`record:${x.id}`;
+     if(!map.has(key))map.set(key,{records:[],row:v.row});
+     const g=map.get(key);
+     g.records.push(x);
+     // HO / PCが入っている行を優先して代表情報にする
+     if((!g.row?.ho&&v.row?.ho)||(!g.row?.pcName&&v.row?.pcName))g.row=v.row;
    });
-   return [...m.values()].sort((a,b)=>String(b.record.date||"").localeCompare(String(a.record.date||"")));
+   return [...map.values()].map(g=>{
+     g.records.sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
+     g.record=g.records[0];
+     return g;
+   }).sort((a,b)=>String(b.records.at(-1)?.date||"").localeCompare(String(a.records.at(-1)?.date||"")));
  };
- return {kp:uniq(kp),pl:uniq(pl),unknown:uniq(unknown)};
+
+ return {kp:groupByRun(kp),pl:groupByRun(pl),unknown:groupByRun(unknown)};
 }
 function playerRegisteredPcs(player){
  const map=new Map();
@@ -1050,9 +1061,14 @@ function playerRegisteredPcs(player){
  return [...map.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
 }
 function playerHistoryCardHtml(v){
+ const records=Array.isArray(v.records)&&v.records.length?v.records:[v.record];
  const x=v.record,row=v.row,scenario=scenarioById(x.scenarioId||"")||{};
- const image=(x.imageUrls||[])[0]||scenario.thumbnailUrl||"";
- const meta=[x.date||"",row.ho?`HO：${row.ho}`:"",row.pcName?`PC：${row.pcName}`:""].filter(Boolean).join(" ／ ");
+ const image=records.flatMap(r=>r.imageUrls||[]).find(Boolean)||scenario.thumbnailUrl||"";
+ const dates=records.map(r=>r.date).filter(Boolean).sort();
+ // 複数日卓でも履歴カードには初日だけ表示。
+ // 代表スクショはこれまでどおり、全日程から最初に見つかったものを使用する。
+ const dateText=dates[0]||"";
+ const meta=[dateText,row.ho?`HO：${row.ho}`:"",row.pcName?`PC：${row.pcName}`:""].filter(Boolean).join(" ／ ");
  return `<article class="player-history-card">
    ${image?`<img class="player-history-thumb" src="${esc(image)}" alt="" loading="lazy">`:`<div class="player-history-placeholder">🌺</div>`}
    <div class="player-history-body">

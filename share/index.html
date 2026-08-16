@@ -34,6 +34,45 @@
 .share-scenario-count{font-size:12px;color:var(--muted)}
 .share-row[hidden]{display:none}
 .share-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+
+.share-scenario-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:14px;
+  margin-top:12px;
+}
+.share-scenario-card{
+  border:1px solid var(--line);
+  border-radius:12px;
+  overflow:hidden;
+  background:var(--panel);
+}
+.share-scenario-thumb{
+  width:100%;
+  aspect-ratio:16/10;
+  object-fit:cover;
+  display:block;
+  background:rgba(255,255,255,.025);
+}
+.share-scenario-placeholder{
+  width:100%;
+  aspect-ratio:16/10;
+  display:grid;
+  place-items:center;
+  font-size:34px;
+  background:rgba(255,255,255,.025);
+}
+.share-scenario-body{padding:12px}
+.share-scenario-title{font-size:1rem;font-weight:700;line-height:1.45;margin-bottom:6px}
+.share-scenario-author{font-size:12px;color:var(--muted);margin-top:6px}
+.share-scenario-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.share-scenario-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.share-room-preview{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+.share-room-preview summary{cursor:pointer;font-weight:600}
+.share-room-preview img{
+  margin-top:8px;width:100%;aspect-ratio:16/10;object-fit:cover;
+  border-radius:8px;border:1px solid var(--line)
+}
 </style>
 <style>
 .share-article{margin-top:10px;line-height:1.8}
@@ -147,7 +186,7 @@
      });
 
      box.innerHTML=`<h2>${esc(title)}</h2>
-       <p class="small">共有されたシナリオ棚です。分類を切り替えて見ることができます。${legacyPayload.shareFormat==="scenario-shelf-v5"?"":"（旧形式の共有データ）"}</p>
+       <p class="small">共有されたシナリオ棚です。分類を切り替えて見ることができます。${(legacyPayload.shareFormat==="scenario-shelf-v5"||items.some(x=>Array.isArray(x.statusKeys)))?"":"（旧形式の共有データ）"}</p>
        <div class="share-scenario-tools">
          <div class="share-scenario-tabs">
            <button type="button" class="share-scenario-tab active" data-share-scenario-filter="">すべて</button>
@@ -163,22 +202,25 @@
          <input id="shareScenarioSearch" class="share-scenario-search" type="search" placeholder="シナリオ名・システム・作者・タグで検索">
          <div id="shareScenarioCount" class="share-scenario-count"></div>
        </div>
-       <div id="shareScenarioList" class="share-list">${normalized.length?normalized.map(x=>`
-         <article class="share-row" data-share-item="${x._idx}">
-           <div style="display:flex;gap:10px;align-items:flex-start">
-             ${x.thumbnailUrl||x.image||x.imageUrl?`<img src="${esc(x.thumbnailUrl||x.image||x.imageUrl)}" alt="" style="width:120px;aspect-ratio:16/10;object-fit:cover;border-radius:7px;border:1px solid var(--line)">`:`<div style="width:120px;aspect-ratio:16/10;display:grid;place-items:center;border:1px solid var(--line);border-radius:7px;font-size:28px">🌺</div>`}
-             <div>
-               <h3 style="margin:0 0 5px">${esc(x.title||x.name||"名称未設定")}</h3>
-               <div class="share-meta">
-                 ${x.system?`<span class="badge">${esc(x.system)}</span>`:""}
-                 ${x.playersMin||x.playersMax?`<span class="badge">${esc((x.playersMin||x.playersMax||"")+"〜"+(x.playersMax||x.playersMin||"")+"人")}</span>`:""}
-                 ${x.hoursMin||x.hoursMax?`<span class="badge">${esc((x.hoursMin||x.hoursMax||"")+"〜"+(x.hoursMax||x.hoursMin||"")+"h")}</span>`:""}
-                 ${Object.entries(x._classifications).filter(([,v])=>v).map(([k])=>classLabels[k]?`<span class="badge">${esc(classLabels[k])}</span>`:"").join("")}
-               </div>
-               ${x.author?`<div class="small">${esc(x.author)}</div>`:""}${x.roomImageUrl?`<details style="margin-top:8px"><summary class="small">部屋を見る</summary><img src="${esc(x.roomImageUrl)}" alt="部屋画像" style="margin-top:6px;width:min(100%,520px);aspect-ratio:16/10;object-fit:cover;border-radius:8px;border:1px solid var(--line)"></details>`:""}
-               ${(x.tags||[]).length?`<div class="share-tags">${x.tags.map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>`:""}
-               ${x.url?`<div style="margin-top:6px"><a class="link" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布・掲載ページ</a></div>`:""}
+       <div id="shareScenarioList" class="share-scenario-grid">${normalized.length?normalized.map(x=>`
+         <article class="share-scenario-card" data-share-item="${x._idx}">
+           ${x.thumbnailUrl||x.image||x.imageUrl
+             ?`<img class="share-scenario-thumb" src="${esc(x.thumbnailUrl||x.image||x.imageUrl)}" alt="" loading="lazy">`
+             :`<div class="share-scenario-placeholder">🌺</div>`}
+           <div class="share-scenario-body">
+             <div class="share-scenario-title">${esc(x.title||x.name||"名称未設定")}</div>
+             <div class="share-scenario-badges">
+               ${x.system?`<span class="badge">${esc(x.system)}</span>`:""}
+               ${x.playersMin||x.playersMax?`<span class="badge">${esc((x.playersMin||x.playersMax||"")+"〜"+(x.playersMax||x.playersMin||"")+"人")}</span>`:""}
+               ${x.hoursMin||x.hoursMax?`<span class="badge">${esc((x.hoursMin||x.hoursMax||"")+"〜"+(x.hoursMax||x.hoursMin||"")+"h")}</span>`:""}
+               ${Object.entries(x._classifications).filter(([,v])=>v).map(([k])=>classLabels[k]?`<span class="badge">${esc(classLabels[k])}</span>`:"").join("")}
              </div>
+             ${x.author?`<div class="share-scenario-author">${esc(x.author)}</div>`:""}
+             ${(x.tags||[]).length?`<div class="share-tags">${x.tags.map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>`:""}
+             <div class="share-scenario-links">
+               ${x.url?`<a class="link" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布・掲載ページ</a>`:""}
+             </div>
+             ${x.roomImageUrl?`<details class="share-room-preview"><summary>部屋を見る</summary><img src="${esc(x.roomImageUrl)}" alt="部屋画像" loading="lazy"></details>`:""}
            </div>
          </article>`).join(""):`<p>共有されたシナリオはありません。</p>`}</div>`;
 

@@ -659,50 +659,54 @@ async function shareScenarioList(){
  // 共有URLは1人につき1本。
  // 現在画面で選んでいる「所持」「気になる」等や検索条件には影響されず、
  // 登録済みの全シナリオ＋各分類をまとめて共有する。
- const items=data.map(x=>({
-   title:x.title,
-   shortTitle:x.shortTitle||"",
-   system:x.system||"",
-   author:x.author||"",
-   url:x.url||"",
-   thumbnailUrl:x.thumbnailUrl||"",
-   playersMin:x.playersMin||null,
-   playersMax:x.playersMax||null,
-   hoursMin:x.hoursMin||null,
-   hoursMax:x.hoursMax||null,
-   publicationStatus:x.publicationStatus||"public",
-   sourceType:x.sourceType||"",
-   summaryText:"",
-   facilitatorPresence:x.facilitatorPresence||"present",
-   facilitatorTermMode:x.facilitatorTermMode||"auto",
-   facilitatorTermCustom:x.facilitatorTermCustom||"",
-   tags:Array.isArray(x.tags)?x.tags:[],
-   flags:{...(x.flags||{})},
-   classifications:{
-     owned:!!(x.flags&&x.flags.owned),
-     wish:!!(x.flags&&x.flags.wish),
-     played:!!(x.flags&&x.flags.played),
-     watched:!!(x.flags&&x.flags.watched),
-     planned:!!(x.flags&&x.flags.planned),
-     kpDone:!!(x.flags&&x.flags.kpDone),
-     kpPlanned:!!(x.flags&&x.flags.kpPlanned),
-     roomReady:!!(x.flags&&x.flags.roomReady)
-   },
-   // 共有互換用：各分類もトップレベルへ明示
-   owned:!!(x.flags&&x.flags.owned),
-   wish:!!(x.flags&&x.flags.wish),
-   played:!!(x.flags&&x.flags.played),
-   watched:!!(x.flags&&x.flags.watched),
-   planned:!!(x.flags&&x.flags.planned),
-   kpDone:!!(x.flags&&x.flags.kpDone),
-   kpPlanned:!!(x.flags&&x.flags.kpPlanned),
-   roomReady:!!(x.flags&&x.flags.roomReady),
-   roomImageUrl:(x.flags&&x.flags.roomReady&&x.roomImageVisibility==="share")?(x.roomImageUrl||""):"",
-   labels:Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>v)
- }));
+ const items=data.map(x=>{
+   const state={};
+   Object.keys(flags).forEach(k=>state[k]=!!(x.flags&&x.flags[k]));
+   const statusKeys=Object.keys(state).filter(k=>state[k]);
+   const statusLabels=statusKeys.map(k=>flags[k]).filter(Boolean);
+   return {
+     title:x.title,
+     shortTitle:x.shortTitle||"",
+     system:x.system||"",
+     author:x.author||"",
+     url:x.url||"",
+     thumbnailUrl:x.thumbnailUrl||"",
+     playersMin:x.playersMin||null,
+     playersMax:x.playersMax||null,
+     hoursMin:x.hoursMin||null,
+     hoursMax:x.hoursMax||null,
+     publicationStatus:x.publicationStatus||"public",
+     sourceType:x.sourceType||"",
+     summaryText:"",
+     facilitatorPresence:x.facilitatorPresence||"present",
+     facilitatorTermMode:x.facilitatorTermMode||"auto",
+     facilitatorTermCustom:x.facilitatorTermCustom||"",
+     tags:Array.isArray(x.tags)?x.tags:[],
+
+     // 共有分類の正本。カード表示と同じ x.flags から一度だけ生成する。
+     statusKeys,
+     statusLabels,
+
+     // 互換用
+     flags:{...state},
+     classifications:{...state},
+     owned:state.owned,
+     wish:state.wish,
+     played:state.played,
+     watched:state.watched,
+     planned:state.planned,
+     kpDone:state.kpDone,
+     kpPlanned:state.kpPlanned,
+     roomReady:state.roomReady,
+     labels:statusLabels,
+
+     roomImageUrl:(state.roomReady&&x.roomImageVisibility==="share")?(x.roomImageUrl||""):""
+   };
+ });
  const payload={
    kind:"scenario-list",
-   version:4,
+   version:5,
+   shareFormat:"scenario-shelf-v5",
    title:"シナリオ一覧",
    updatedAt:new Date().toISOString(),
    items
@@ -719,7 +723,9 @@ async function shareScenarioList(){
      const url=(TRPG39 && typeof TRPG39.makeShortShareUrl==="function")
        ? TRPG39.makeShortShareUrl(shareId)
        : new URL("../share/index.html?id="+encodeURIComponent(shareId), location.href).href;
-     showShareUrl(url,`あなた専用のシナリオ棚URLです。${items.length}件を共有しました。\n視聴済み ${items.filter(x=>x.watched).length}件 ／ 回した ${items.filter(x=>x.kpDone).length}件 ／ 回す予定 ${items.filter(x=>x.kpPlanned).length}件\n同じURL内で分類を切り替えられます。`);
+     showShareUrl(url,`あなた専用のシナリオ棚URLです。${items.length}件を共有しました。
+視聴済み ${items.filter(x=>x.statusKeys.includes("watched")).length}件 ／ 回した ${items.filter(x=>x.statusKeys.includes("kpDone")).length}件 ／ 回す予定 ${items.filter(x=>x.statusKeys.includes("kpPlanned")).length}件 ／ 部屋あり ${items.filter(x=>x.statusKeys.includes("roomReady")).length}件
+同じURL内で分類を切り替えられます。`);
      return;
    }
  }catch(e){

@@ -49,6 +49,13 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .player-history-title{font-weight:700;line-height:1.4}
 .player-history-meta{font-size:12px;color:var(--muted);margin-top:4px}
 .player-pc-card{border:1px solid var(--line);border-radius:11px;padding:10px;background:var(--panel)}
+
+.player-pc-history{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:10px}
+.player-pc-history-card{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.015)}
+.player-pc-history-card img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block}
+.player-pc-history-card .mini-body{padding:7px;font-size:11px;line-height:1.4}
+.player-role-unknown{opacity:.78}
+
 .player-pc-row{display:flex;gap:10px;align-items:flex-start}
 .player-pc-thumb{width:76px;height:76px;object-fit:cover;border-radius:9px;border:1px solid var(--line)}
 .player-external-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,.45fr) auto;gap:8px;align-items:end;padding:8px 0;border-top:1px solid var(--line)}
@@ -995,35 +1002,50 @@ function playerRecordRows(player,x){
  });
 }
 function playerRoleRecords(player){
- const kp=[],pl=[];
+ const kp=[],pl=[],unknown=[];
  data.forEach(x=>{
    const rows=playerRecordRows(player,x);
    rows.forEach(r=>{
-     const role=String(r.role||"PL").toUpperCase();
-     if(["KP","DL","GM","KPGM","SKP"].includes(role))kp.push({record:x,row:r});
-     else if(role==="PL")pl.push({record:x,row:r});
+     const rawRole=String(r.role||"").trim();
+     const role=rawRole.toUpperCase();
+     const item={record:x,row:r};
+     if(["KP","DL","GM","KPGM","SKP"].includes(role))kp.push(item);
+     else if(role==="PL")pl.push(item);
+     else unknown.push(item);
    });
  });
  const uniq=arr=>{
    const m=new Map();
-   arr.forEach(v=>{const k=v.record.id+"|"+String(v.row.pcName||"")+"|"+String(v.row.ho||"");if(!m.has(k))m.set(k,v)});
+   arr.forEach(v=>{
+     const k=v.record.id+"|"+String(v.row.pcName||"")+"|"+String(v.row.ho||"")+"|"+String(v.row.role||"");
+     if(!m.has(k))m.set(k,v);
+   });
    return [...m.values()].sort((a,b)=>String(b.record.date||"").localeCompare(String(a.record.date||"")));
  };
- return {kp:uniq(kp),pl:uniq(pl)};
+ return {kp:uniq(kp),pl:uniq(pl),unknown:uniq(unknown)};
 }
 function playerRegisteredPcs(player){
  const map=new Map();
  data.forEach(x=>{
-   playerRecordRows(player,x).forEach(r=>{
+   const rows=playerRecordRows(player,x);
+   rows.forEach(r=>{
      const name=String(r.pcName||"").trim();
      if(!name)return;
-     if(!map.has(name))map.set(name,{name,system:x.system||"",count:0,pc:null});
-     const item=map.get(name);item.count++;
+     if(!map.has(name))map.set(name,{name,system:x.system||"",count:0,pc:null,records:[]});
+     const item=map.get(name);
+     item.count++;
+     item.records.push({record:x,row:r});
    });
  });
  const allPcs=TRPG39.loadPCs?TRPG39.loadPCs():[];
  for(const item of map.values()){
    item.pc=allPcs.find(p=>String(p.name||"").trim()===item.name)||null;
+   const seen=new Set();
+   item.records=item.records.filter(v=>{
+     const k=v.record.id+"|"+item.name;
+     if(seen.has(k))return false;
+     seen.add(k);return true;
+   }).sort((a,b)=>String(b.record.date||"").localeCompare(String(a.record.date||"")));
  }
  return [...map.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
 }
@@ -1053,33 +1075,54 @@ function removeExternalPlayed(playerId,id){
  playerExternalPlayed[playerId]=externalPlayedFor(playerId).filter(x=>x.id!==id);
  savePlayerExternalPlayed(playerExternalPlayed);
 }
+
+function playerPcHistoryHtml(player,pcItem){
+ if(!pcItem.records.length)return '<div class="small muted">このPCの卓記録はまだありません。</div>';
+ return `<div class="player-pc-history">${pcItem.records.map(v=>{
+   const x=v.record,scenario=scenarioById(x.scenarioId||"")||{};
+   const image=(x.imageUrls||[])[0]||scenario.thumbnailUrl||"";
+   return `<div class="player-pc-history-card">
+     ${image?`<img src="${esc(image)}" alt="" loading="lazy">`:""}
+     <div class="mini-body"><strong>${esc(x.title||scenario.title||"名称未設定")}</strong>${x.date?`<div class="muted">${esc(x.date)}</div>`:""}${v.row.ho?`<div>HO：${esc(v.row.ho)}</div>`:""}${x.scenarioId?`<a class="link" href="?view=scenario&scenario=${encodeURIComponent(x.scenarioId)}">卓記録を見る</a>`:""}</div>
+   </div>`;
+ }).join("")}</div>`;
+}
 function renderPlayerDetail(player){
  const pcsForPlayer=playerRegisteredPcs(player),roles=playerRoleRecords(player),external=externalPlayedFor(player.id);
- q("summary").textContent=`${player.name}の記録`;
+ q("summary").textContent=`${player.name}視点の記録`;
  q("list").classList.remove("library-grid");
  q("list").innerHTML=`<div class="player-detail">
    <div><button id="backToPlayers" type="button">← 同卓者一覧へ</button></div>
 
    <section class="player-section">
-     <h3>登録PC</h3>
-     <div class="player-card-grid">${pcsForPlayer.length?pcsForPlayer.map(p=>`<div class="player-pc-card"><div class="player-pc-row">
-       ${p.pc?.image?`<img class="player-pc-thumb" src="${esc(p.pc.image)}" alt="">`:""}
-       <div><strong>${esc(p.name)}</strong><div class="small muted">${esc(p.system||p.pc?.system||"")}</div><div class="small muted">使用 ${p.count}卓</div>${p.pc?.id?`<a class="link" href="../pcs/index.html?focus=${encodeURIComponent(p.pc.id)}">PC情報を見る</a>`:""}</div>
-     </div></div>`).join(""):'<div class="small muted">登録PCはまだありません。</div>'}</div>
+     <h3>${esc(player.name)}の登録PC</h3>
+     <div class="player-card-grid">${pcsForPlayer.length?pcsForPlayer.map(p=>`<div class="player-pc-card">
+       <div class="player-pc-row">
+         ${p.pc?.image?`<img class="player-pc-thumb" src="${esc(p.pc.image)}" alt="">`:""}
+         <div><strong>${esc(p.name)}</strong><div class="small muted">${esc(p.system||p.pc?.system||"")}</div><div class="small muted">使用 ${p.count}卓</div>${p.pc?.id?`<a class="link" href="../pcs/index.html?focus=${encodeURIComponent(p.pc.id)}">PC情報を見る</a>`:""}</div>
+       </div>
+       ${playerPcHistoryHtml(player,p)}
+     </div>`).join(""):'<div class="small muted">登録PCはまだありません。</div>'}</div>
    </section>
 
    <section class="player-section">
-     <h3>KPした卓</h3>
-     <div class="player-card-grid">${roles.kp.length?roles.kp.map(playerHistoryCardHtml).join(""):'<div class="small muted">KP記録はまだありません。</div>'}</div>
+     <h3>${esc(player.name)}がKP / DLした卓</h3>
+     <div class="player-card-grid">${roles.kp.length?roles.kp.map(playerHistoryCardHtml).join(""):`<div class="small muted">${esc(player.name)}がKP / DLした記録はまだありません。</div>`}</div>
    </section>
 
    <section class="player-section">
-     <h3>PLで遊んだ卓</h3>
-     <div class="player-card-grid">${roles.pl.length?roles.pl.map(playerHistoryCardHtml).join(""):'<div class="small muted">PL記録はまだありません。</div>'}</div>
+     <h3>${esc(player.name)}がPLした卓</h3>
+     <div class="player-card-grid">${roles.pl.length?roles.pl.map(playerHistoryCardHtml).join(""):`<div class="small muted">${esc(player.name)}がPLした記録はまだありません。</div>`}</div>
    </section>
 
+   ${roles.unknown.length?`<section class="player-section player-role-unknown">
+     <h3>役割未登録の旧記録</h3>
+     <p class="small muted">役割情報が残っていない古い記録です。KP/PLへ勝手に混ぜず、別枠にしています。</p>
+     <div class="player-card-grid">${roles.unknown.map(playerHistoryCardHtml).join("")}</div>
+   </section>`:""}
+
    <section class="player-section">
-     <h3>別卓で通過済み</h3>
+     <h3>${esc(player.name)}の別卓で通過済み</h3>
      <p class="small muted">自分とは別の卓で通過済みと分かっているシナリオを、自分用に記録します。HO・メモは共有されません。</p>
      <div class="player-external-row">
        <div><label>シナリオ</label><select id="externalScenario"><option value="">選択してください</option>${scenarios.slice().sort((a,b)=>String(a.title||"").localeCompare(String(b.title||""),"ja")).map(s=>`<option value="${esc(s.id)}">${esc(s.title)}</option>`).join("")}</select></div>

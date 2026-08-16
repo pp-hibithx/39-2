@@ -120,21 +120,34 @@
      const classLabels={owned:"所持",wish:"気になる",played:"通過済み",watched:"視聴済み",planned:"通過予定",kpDone:"回した",kpPlanned:"回す予定",roomReady:"部屋あり"};
 
      const normalized=items.map((x,i)=>{
-       const c={...(x.classifications||{})};
+       const c={};
+
+       // v5: 共有元カードと同じ分類キーをそのまま利用。
+       const keys=Array.isArray(x.statusKeys)?x.statusKeys:[];
+       keys.forEach(k=>{if(k in classLabels)c[k]=true});
+
+       const explicitLabels=Array.isArray(x.statusLabels)?x.statusLabels:[];
+       Object.entries(classLabels).forEach(([k,v])=>{
+         if(explicitLabels.includes(v))c[k]=true;
+       });
+
+       // v4以前との互換
+       Object.assign(c,(x.classifications&&typeof x.classifications==="object")?x.classifications:{});
        const rawFlags=(x.flags&&typeof x.flags==="object")?x.flags:{};
-       const labels=Array.isArray(x.labels)?x.labels:[];
        Object.keys(classLabels).forEach(k=>{
          if(rawFlags[k]===true)c[k]=true;
          if(x[k]===true)c[k]=true;
        });
+       const labels=Array.isArray(x.labels)?x.labels:[];
        Object.entries(classLabels).forEach(([k,v])=>{
          if(labels.includes(v))c[k]=true;
        });
+
        return {...x,_idx:i,_classifications:c};
      });
 
      box.innerHTML=`<h2>${esc(title)}</h2>
-       <p class="small">共有されたシナリオ棚です。分類を切り替えて見ることができます。</p>
+       <p class="small">共有されたシナリオ棚です。分類を切り替えて見ることができます。${legacyPayload.shareFormat==="scenario-shelf-v5"?"":"（旧形式の共有データ）"}</p>
        <div class="share-scenario-tools">
          <div class="share-scenario-tabs">
            <button type="button" class="share-scenario-tab active" data-share-scenario-filter="">すべて</button>

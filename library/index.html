@@ -1044,26 +1044,39 @@ function playerRegisteredPcs(player){
      if(!name)return;
      if(!map.has(name))map.set(name,{name,system:x.system||"",count:0,pc:null,records:[]});
      const item=map.get(name);
-     item.count++;
      item.records.push({record:x,row:r});
    });
  });
+
  const allPcs=TRPG39.loadPCs?TRPG39.loadPCs():[];
  for(const item of map.values()){
    item.pc=allPcs.find(p=>String(p.name||"").trim()===item.name)||null;
-   const seen=new Set();
-   item.records=item.records.filter(v=>{
-     const k=v.record.id+"|"+item.name;
-     if(seen.has(k))return false;
-     seen.add(k);return true;
-   }).sort((a,b)=>String(b.record.date||"").localeCompare(String(a.record.date||"")));
+
+   // 同じ陣の2日目以降を別卓として数えない。
+   const runs=new Map();
+   item.records.forEach(v=>{
+     const x=v.record;
+     const key=x.runId?`run:${x.runId}`:`record:${x.id}`;
+     if(!runs.has(key))runs.set(key,{records:[],row:v.row});
+     const g=runs.get(key);
+     g.records.push(x);
+     if((!g.row?.ho&&v.row?.ho)||(!g.row?.pcName&&v.row?.pcName))g.row=v.row;
+   });
+
+   item.runs=[...runs.values()].map(g=>{
+     g.records.sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
+     g.record=g.records[0];
+     return g;
+   }).sort((a,b)=>String(b.record?.date||"").localeCompare(String(a.record?.date||"")));
+
+   item.count=item.runs.length;
  }
  return [...map.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
 }
 function playerHistoryCardHtml(v){
  const records=Array.isArray(v.records)&&v.records.length?v.records:[v.record];
  const x=v.record,row=v.row,scenario=scenarioById(x.scenarioId||"")||{};
- const image=records.flatMap(r=>r.imageUrls||[]).find(Boolean)||scenario.thumbnailUrl||"";
+ const image=records.flatMap(r=>r.imageUrls||[]).find(Boolean)||"";
  const dates=records.map(r=>r.date).filter(Boolean).sort();
  // 複数日卓でも履歴カードには初日だけ表示。
  // 代表スクショはこれまでどおり、全日程から最初に見つかったものを使用する。
@@ -1093,13 +1106,21 @@ function removeExternalPlayed(playerId,id){
 }
 
 function playerPcHistoryHtml(player,pcItem){
- if(!pcItem.records.length)return '<div class="small muted">このPCの卓記録はまだありません。</div>';
- return `<div class="player-pc-history">${pcItem.records.map(v=>{
+ const runs=Array.isArray(pcItem.runs)?pcItem.runs:[];
+ if(!runs.length)return '<div class="small muted">このPCの卓記録はまだありません。</div>';
+ return `<div class="player-pc-history">${runs.map(v=>{
+   const records=v.records||[v.record];
    const x=v.record,scenario=scenarioById(x.scenarioId||"")||{};
-   const image=(x.imageUrls||[])[0]||scenario.thumbnailUrl||"";
+   const image=records.flatMap(r=>r.imageUrls||[]).find(Boolean)||"";
+   const firstDate=records.map(r=>r.date).filter(Boolean).sort()[0]||"";
    return `<div class="player-pc-history-card">
-     ${image?`<img src="${esc(image)}" alt="" loading="lazy">`:""}
-     <div class="mini-body"><strong>${esc(x.title||scenario.title||"名称未設定")}</strong>${x.date?`<div class="muted">${esc(x.date)}</div>`:""}${v.row.ho?`<div>HO：${esc(v.row.ho)}</div>`:""}${x.scenarioId?`<a class="link" href="?view=scenario&scenario=${encodeURIComponent(x.scenarioId)}">卓記録を見る</a>`:""}</div>
+     ${image?`<img src="${esc(image)}" alt="" loading="lazy">`:`<div style="width:100%;aspect-ratio:16/10;display:grid;place-items:center;font-size:26px;background:rgba(255,255,255,.025)">🌺</div>`}
+     <div class="mini-body">
+       <strong>${esc(x.title||scenario.title||"名称未設定")}</strong>
+       ${firstDate?`<div class="muted">${esc(firstDate)}</div>`:""}
+       ${v.row?.ho?`<div>HO：${esc(v.row.ho)}</div>`:""}
+       ${x.scenarioId?`<a class="link" href="?view=scenario&scenario=${encodeURIComponent(x.scenarioId)}">卓記録を見る</a>`:""}
+     </div>
    </div>`;
  }).join("")}</div>`;
 }

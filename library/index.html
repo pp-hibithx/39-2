@@ -269,9 +269,9 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 <button type="button" class="library-view-tab" data-library-view="player">同卓者</button>
 </div>
 <div class="lib-toolbar">
-    <div><label>検索</label><input id="search" type="search" placeholder="シナリオ・PC・友達"></div>
-    <div><label>役割</label><select id="filter"><option value="">すべて</option><option>PL</option><option>KP</option><option>DL</option><option>GM</option><option>SKP</option><option>見学</option><option>その他</option></select></div>
-    <div><label>表示</label><select id="archiveFilter"><option value="active">通常</option><option value="archived">アーカイブ</option><option value="all">すべて</option></select></div>
+    <div id="librarySearchField"><label>検索</label><input id="search" type="search" placeholder="シナリオ・PC・友達"></div>
+    <div id="libraryRoleField"><label>役割</label><select id="filter"><option value="">すべて</option><option>PL</option><option>KP</option><option>DL</option><option>GM</option><option>SKP</option><option>見学</option><option>その他</option></select></div>
+    <div id="libraryDisplayField"><label>表示</label><select id="archiveFilter"><option value="active">通常</option><option value="archived">アーカイブ</option><option value="all">すべて</option></select></div>
   </div>
   <div id="list" class="lib-list"></div>
 </section>
@@ -414,7 +414,9 @@ function savePlayerExternalPlayed(v){
 let playerExternalPlayed=loadPlayerExternalPlayed();
 let focusedPlayerId="";
 let playerListRoleFilter="all";
+let playerListSystemFilter="all";
 let playerDetailRoleFilter="all";
+let playerDetailSystemFilter="all";
 
 {let changed=false;data=data.map(x=>{if(!x.spoilerBody&&x.spoiler){changed=true;return TRPG39.normalizeAlbum({...x,spoilerBody:x.spoiler,spoiler:""})}return x});if(changed)TRPG39.saveAlbum(data);}
 
@@ -1116,7 +1118,7 @@ function playerHistoryCardHtml(v){
  // 複数日卓でも履歴カードには初日だけ表示。
  // 代表スクショはこれまでどおり、全日程から最初に見つかったものを使用する。
  const dateText=dates[0]||"";
- const meta=[dateText,v.role?`役割：${playerRoleLabel(v.role)}`:"",row.ho?`HO：${row.ho}`:"",row.pcName?`PC：${row.pcName}`:""].filter(Boolean).join(" ／ ");
+ const meta=[playerRecordSystem(v),dateText,v.role?`役割：${playerRoleLabel(v.role)}`:"",row.ho?`HO：${row.ho}`:"",row.pcName?`PC：${row.pcName}`:""].filter(Boolean).join(" ／ ");
  return `<article class="player-history-card">
    ${image?`<img class="player-history-thumb" src="${esc(image)}" alt="" loading="lazy">`:`<div class="player-history-placeholder">🌺</div>`}
    <div class="player-history-body">
@@ -1161,8 +1163,11 @@ function playerPcHistoryHtml(player,pcItem){
 }
 function renderPlayerDetail(player){
  const pcsForPlayer=playerRegisteredPcs(player),allHistory=playerAllRoleRecords(player),external=externalPlayedFor(player.id);
- const availableRoles=playerAvailableRoles(player);
- const history=playerDetailRoleFilter==="all"?allHistory:allHistory.filter(v=>v.role===playerDetailRoleFilter);
+ const availableRoles=playerAvailableRoles(player),availableSystems=playerAvailableSystems(player);
+ const history=allHistory.filter(v=>
+   (playerDetailRoleFilter==="all"||v.role===playerDetailRoleFilter) &&
+   (playerDetailSystemFilter==="all"||playerRecordSystem(v)===playerDetailSystemFilter)
+ );
 
  q("summary").textContent=`${player.name}視点の記録`;
  q("list").classList.remove("library-grid");
@@ -1183,10 +1188,16 @@ function renderPlayerDetail(player){
    <section class="player-section">
      <div style="display:flex;gap:12px;align-items:end;justify-content:space-between;flex-wrap:wrap">
        <div><h3 style="margin-bottom:4px">${esc(player.name)}の卓記録</h3><div class="small muted">${history.length}卓</div></div>
-       <div style="min-width:180px"><label>役割</label><select id="playerDetailRole">
-         <option value="all">すべて</option>
-         ${availableRoles.map(r=>`<option value="${esc(r)}" ${playerDetailRoleFilter===r?"selected":""}>${esc(playerRoleLabel(r))}</option>`).join("")}
-       </select></div>
+       <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+         <div style="min-width:160px"><label>システム</label><select id="playerDetailSystem">
+           <option value="all">すべて</option>
+           ${availableSystems.map(s=>`<option value="${esc(s)}" ${playerDetailSystemFilter===s?"selected":""}>${esc(s)}</option>`).join("")}
+         </select></div>
+         <div style="min-width:150px"><label>役割</label><select id="playerDetailRole">
+           <option value="all">すべて</option>
+           ${availableRoles.map(r=>`<option value="${esc(r)}" ${playerDetailRoleFilter===r?"selected":""}>${esc(playerRoleLabel(r))}</option>`).join("")}
+         </select></div>
+       </div>
      </div>
      <div class="player-card-grid" style="margin-top:10px">${history.length?history.map(playerHistoryCardHtml).join(""):'<div class="small muted">該当する卓記録はありません。</div>'}</div>
    </section>
@@ -1208,8 +1219,9 @@ function renderPlayerDetail(player){
    </section>
  </div>`;
 
- q("backToPlayers").onclick=()=>{focusedPlayerId="";playerDetailRoleFilter="all";render()};
+ q("backToPlayers").onclick=()=>{focusedPlayerId="";playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()};
  q("playerDetailRole").onchange=()=>{playerDetailRoleFilter=q("playerDetailRole").value;renderPlayerDetail(player)};
+ q("playerDetailSystem").onchange=()=>{playerDetailSystemFilter=q("playerDetailSystem").value;renderPlayerDetail(player)};
  q("addExternalPlayed").onclick=()=>{
    const sid=q("externalScenario").value;
    if(!sid)return alert("シナリオを選んでください。");
@@ -1217,6 +1229,20 @@ function renderPlayerDetail(player){
    renderPlayerDetail(player);
  };
  document.querySelectorAll("[data-remove-external]").forEach(b=>b.onclick=()=>{removeExternalPlayed(player.id,b.dataset.removeExternal);renderPlayerDetail(player)});
+}
+
+function playerRecordSystem(v){
+ const x=v.record||{};
+ const scenario=scenarioById(x.scenarioId||"")||{};
+ return String(x.system||scenario.system||"").trim()||"未設定";
+}
+function playerAvailableSystems(player){
+ return [...new Set(playerAllRoleRecords(player).map(playerRecordSystem).filter(Boolean))]
+   .sort((a,b)=>String(a).localeCompare(String(b),"ja"));
+}
+function playerHasSystem(player,system){
+ if(system==="all")return true;
+ return playerAvailableSystems(player).includes(system);
 }
 function renderPlayerView(){
  if(focusedPlayerId){
@@ -1226,28 +1252,46 @@ function renderPlayerView(){
  }
  const term=q("search").value.trim().toLowerCase();
  const roleSet=[...new Set(players.flatMap(p=>playerAvailableRoles(p)))].sort((a,b)=>playerRoleLabel(a).localeCompare(playerRoleLabel(b),"ja"));
- let rows=players.map(x=>({x,st:playerStats(x.name),roles:playerAvailableRoles(x)}))
+ const systemSet=[...new Set(players.flatMap(p=>playerAvailableSystems(p)))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
+
+ let rows=players.map(x=>({x,st:playerStats(x.name),roles:playerAvailableRoles(x),systems:playerAvailableSystems(x)}))
    .filter(({x})=>!term||[x.name,x.publicName,x.socialName].filter(Boolean).join(" ").toLowerCase().includes(term));
  if(playerListRoleFilter!=="all")rows=rows.filter(v=>v.roles.includes(playerListRoleFilter));
+ if(playerListSystemFilter!=="all")rows=rows.filter(v=>v.systems.includes(playerListSystemFilter));
  rows.sort((a,b)=>String(a.x.name).localeCompare(String(b.x.name),"ja"));
 
  q("summary").textContent=`同卓者 ${rows.length}人`;
  q("list").classList.remove("library-grid");
- q("list").innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><div style="min-width:190px"><label>役割</label><select id="playerListRole">
-   <option value="all">すべて</option>
-   ${roleSet.map(r=>`<option value="${esc(r)}" ${playerListRoleFilter===r?"selected":""}>${esc(playerRoleLabel(r))}</option>`).join("")}
- </select></div></div>
- <div class="library-directory-grid">${rows.length?rows.map(({x,st})=>`<article class="library-dir-card" data-player-focus="${esc(x.id)}" tabindex="0"><div class="library-dir-title">${esc(x.name)}</div><div class="library-dir-meta">公開名：${esc(x.publicName||x.name)}</div><div class="library-dir-meta">同卓 ${st.count}シナリオ${st.first?` ／ 初同卓 ${esc(st.first)}`:""}${st.last?` ／ 最終 ${esc(st.last)}`:""}</div></article>`).join(""):'<div class="empty">該当する同卓者がいません。</div>'}</div>`;
+ q("list").innerHTML=`<div style="display:flex;justify-content:flex-end;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:10px">
+   <div style="min-width:180px"><label>システム</label><select id="playerListSystem">
+     <option value="all">すべて</option>
+     ${systemSet.map(s=>`<option value="${esc(s)}" ${playerListSystemFilter===s?"selected":""}>${esc(s)}</option>`).join("")}
+   </select></div>
+   <div style="min-width:160px"><label>役割</label><select id="playerListRole">
+     <option value="all">すべて</option>
+     ${roleSet.map(r=>`<option value="${esc(r)}" ${playerListRoleFilter===r?"selected":""}>${esc(playerRoleLabel(r))}</option>`).join("")}
+   </select></div>
+ </div>
+ <div class="library-directory-grid">${rows.length?rows.map(({x,st,systems})=>`<article class="library-dir-card" data-player-focus="${esc(x.id)}" tabindex="0">
+   <div class="library-dir-title">${esc(x.name)}</div>
+   <div class="library-dir-meta">公開名：${esc(x.publicName||x.name)}</div>
+   ${systems.length?`<div class="library-dir-meta">${systems.map(s=>`<span class="badge">${esc(s)}</span>`).join(" ")}</div>`:""}
+   <div class="library-dir-meta">同卓 ${st.count}シナリオ${st.first?` ／ 初同卓 ${esc(st.first)}`:""}${st.last?` ／ 最終 ${esc(st.last)}`:""}</div>
+ </article>`).join(""):'<div class="empty">該当する同卓者がいません。</div>'}</div>`;
 
+ q("playerListSystem").onchange=()=>{playerListSystemFilter=q("playerListSystem").value;renderPlayerView()};
  q("playerListRole").onchange=()=>{playerListRoleFilter=q("playerListRole").value;renderPlayerView()};
  document.querySelectorAll("[data-player-focus]").forEach(card=>{
-   card.onclick=()=>{focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";render()};
-   card.onkeydown=e=>{if(e.key==="Enter"){focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";render()}};
+   card.onclick=()=>{focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()};
+   card.onkeydown=e=>{if(e.key==="Enter"){focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()}};
  });
 }
 function syncLibraryView(){
  document.querySelectorAll("[data-library-view]").forEach(b=>b.classList.toggle("active",b.dataset.libraryView===libraryView));
- const scenario=libraryView==="scenario";q("filter").style.display=scenario?"":"none";q("archiveFilter").style.display=scenario?"":"none";q("search").placeholder=scenario?"検索":"名前で検索";
+ const scenario=libraryView==="scenario";
+ q("libraryRoleField").style.display=scenario?"":"none";
+ q("libraryDisplayField").style.display=scenario?"":"none";
+ q("search").placeholder=scenario?"検索":"名前で検索";
 }
 let coverEditingRunId="",coverEditingY=50,coverDragStartY=0,coverDragStartPos=50;
 function updateCoverPreview(){q("coverPreviewImage").style.objectPosition=`50% ${coverEditingY}%`}
@@ -1331,7 +1375,7 @@ q("cancel").onclick=()=>{reset();hideEditor()};
 q("image").oninput=updateImagePreview;
 q("openLibraryEditor").onclick=()=>{reset();showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"})};q("xPreviewText").oninput=updateXPreviewCount;q("xPreviewCancel").onclick=()=>q("xPreviewDialog").close();q("xPreviewPost").onclick=confirmPostAlbumToX;
 q("search").oninput=()=>{focusedScenarioKey="";focusedRunId="";focusedPlayerId="";render()};q("filter").onchange=()=>{focusedScenarioKey="";focusedRunId="";render()};q("archiveFilter").onchange=()=>{focusedScenarioKey="";focusedRunId="";render()};
-document.querySelectorAll("[data-library-view]").forEach(b=>b.onclick=()=>{libraryView=b.dataset.libraryView||"scenario";focusedScenarioKey="";focusedPlayerId="";focusedRunId="";const u=new URL(location.href);u.searchParams.set("view",libraryView);u.searchParams.delete("scenario");u.searchParams.delete("pc");u.searchParams.delete("player");history.replaceState(null,"",u);render()});q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
+document.querySelectorAll("[data-library-view]").forEach(b=>b.onclick=()=>{libraryView=b.dataset.libraryView||"scenario";focusedScenarioKey="";focusedPlayerId="";playerListRoleFilter="all";playerListSystemFilter="all";playerDetailRoleFilter="all";playerDetailSystemFilter="all";focusedRunId="";const u=new URL(location.href);u.searchParams.set("view",libraryView);u.searchParams.delete("scenario");u.searchParams.delete("pc");u.searchParams.delete("player");history.replaceState(null,"",u);render()});q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
 q("coverCancel").onclick=closeCoverEditor;
 q("coverReset").onclick=()=>{coverEditingY=50;updateCoverPreview()};
 q("coverSave").onclick=()=>{

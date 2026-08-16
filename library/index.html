@@ -413,8 +413,7 @@ function savePlayerExternalPlayed(v){
 }
 let playerExternalPlayed=loadPlayerExternalPlayed();
 let focusedPlayerId="";
-let playerListRoleFilter="all";
-let playerListSystemFilter="all";
+let playerListSort="name";
 let playerDetailRoleFilter="all";
 let playerDetailSystemFilter="all";
 
@@ -1250,26 +1249,28 @@ function renderPlayerView(){
    if(player){renderPlayerDetail(player);return}
    focusedPlayerId="";
  }
- const term=q("search").value.trim().toLowerCase();
- const roleSet=[...new Set(players.flatMap(p=>playerAvailableRoles(p)))].sort((a,b)=>playerRoleLabel(a).localeCompare(playerRoleLabel(b),"ja"));
- const systemSet=[...new Set(players.flatMap(p=>playerAvailableSystems(p)))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
 
- let rows=players.map(x=>({x,st:playerStats(x.name),roles:playerAvailableRoles(x),systems:playerAvailableSystems(x)}))
+ const term=q("search").value.trim().toLowerCase();
+ let rows=players.map(x=>({x,st:playerStats(x.name),systems:playerAvailableSystems(x)}))
    .filter(({x})=>!term||[x.name,x.publicName,x.socialName].filter(Boolean).join(" ").toLowerCase().includes(term));
- if(playerListRoleFilter!=="all")rows=rows.filter(v=>v.roles.includes(playerListRoleFilter));
- if(playerListSystemFilter!=="all")rows=rows.filter(v=>v.systems.includes(playerListSystemFilter));
- rows.sort((a,b)=>String(a.x.name).localeCompare(String(b.x.name),"ja"));
+
+ rows.sort((a,b)=>{
+   if(playerListSort==="count"){
+     return (b.st.count||0)-(a.st.count||0) || String(a.x.name||"").localeCompare(String(b.x.name||""),"ja");
+   }
+   if(playerListSort==="recent"){
+     return String(b.st.last||"").localeCompare(String(a.st.last||"")) || String(a.x.name||"").localeCompare(String(b.x.name||""),"ja");
+   }
+   return String(a.x.name||"").localeCompare(String(b.x.name||""),"ja");
+ });
 
  q("summary").textContent=`同卓者 ${rows.length}人`;
  q("list").classList.remove("library-grid");
- q("list").innerHTML=`<div style="display:flex;justify-content:flex-end;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:10px">
-   <div style="min-width:180px"><label>システム</label><select id="playerListSystem">
-     <option value="all">すべて</option>
-     ${systemSet.map(s=>`<option value="${esc(s)}" ${playerListSystemFilter===s?"selected":""}>${esc(s)}</option>`).join("")}
-   </select></div>
-   <div style="min-width:160px"><label>役割</label><select id="playerListRole">
-     <option value="all">すべて</option>
-     ${roleSet.map(r=>`<option value="${esc(r)}" ${playerListRoleFilter===r?"selected":""}>${esc(playerRoleLabel(r))}</option>`).join("")}
+ q("list").innerHTML=`<div style="display:flex;justify-content:flex-end;align-items:end;margin-bottom:10px">
+   <div style="min-width:190px"><label>並び順</label><select id="playerListSort">
+     <option value="name" ${playerListSort==="name"?"selected":""}>50音順</option>
+     <option value="count" ${playerListSort==="count"?"selected":""}>同卓回数順</option>
+     <option value="recent" ${playerListSort==="recent"?"selected":""}>最終同卓日順</option>
    </select></div>
  </div>
  <div class="library-directory-grid">${rows.length?rows.map(({x,st,systems})=>`<article class="library-dir-card" data-player-focus="${esc(x.id)}" tabindex="0">
@@ -1279,8 +1280,7 @@ function renderPlayerView(){
    <div class="library-dir-meta">同卓 ${st.count}シナリオ${st.first?` ／ 初同卓 ${esc(st.first)}`:""}${st.last?` ／ 最終 ${esc(st.last)}`:""}</div>
  </article>`).join(""):'<div class="empty">該当する同卓者がいません。</div>'}</div>`;
 
- q("playerListSystem").onchange=()=>{playerListSystemFilter=q("playerListSystem").value;renderPlayerView()};
- q("playerListRole").onchange=()=>{playerListRoleFilter=q("playerListRole").value;renderPlayerView()};
+ q("playerListSort").onchange=()=>{playerListSort=q("playerListSort").value;renderPlayerView()};
  document.querySelectorAll("[data-player-focus]").forEach(card=>{
    card.onclick=()=>{focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()};
    card.onkeydown=e=>{if(e.key==="Enter"){focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()}};
@@ -1375,7 +1375,7 @@ q("cancel").onclick=()=>{reset();hideEditor()};
 q("image").oninput=updateImagePreview;
 q("openLibraryEditor").onclick=()=>{reset();showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"})};q("xPreviewText").oninput=updateXPreviewCount;q("xPreviewCancel").onclick=()=>q("xPreviewDialog").close();q("xPreviewPost").onclick=confirmPostAlbumToX;
 q("search").oninput=()=>{focusedScenarioKey="";focusedRunId="";focusedPlayerId="";render()};q("filter").onchange=()=>{focusedScenarioKey="";focusedRunId="";render()};q("archiveFilter").onchange=()=>{focusedScenarioKey="";focusedRunId="";render()};
-document.querySelectorAll("[data-library-view]").forEach(b=>b.onclick=()=>{libraryView=b.dataset.libraryView||"scenario";focusedScenarioKey="";focusedPlayerId="";playerListRoleFilter="all";playerListSystemFilter="all";playerDetailRoleFilter="all";playerDetailSystemFilter="all";focusedRunId="";const u=new URL(location.href);u.searchParams.set("view",libraryView);u.searchParams.delete("scenario");u.searchParams.delete("pc");u.searchParams.delete("player");history.replaceState(null,"",u);render()});q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
+document.querySelectorAll("[data-library-view]").forEach(b=>b.onclick=()=>{libraryView=b.dataset.libraryView||"scenario";focusedScenarioKey="";focusedPlayerId="";playerListSort="name";playerListSort="name";playerDetailRoleFilter="all";playerDetailSystemFilter="all";focusedRunId="";const u=new URL(location.href);u.searchParams.set("view",libraryView);u.searchParams.delete("scenario");u.searchParams.delete("pc");u.searchParams.delete("player");history.replaceState(null,"",u);render()});q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
 q("coverCancel").onclick=closeCoverEditor;
 q("coverReset").onclick=()=>{coverEditingY=50;updateCoverPreview()};
 q("coverSave").onclick=()=>{

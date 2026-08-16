@@ -84,6 +84,15 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-run-card-title{font-weight:700;font-size:1rem}
 .lib-run-card-meta{font-size:12px;color:var(--muted);margin-top:4px}
 .lib-run-card-images{font-size:11px;color:var(--muted);margin-top:6px}
+.lib-run-card-thumb-wrap{position:relative}
+.lib-cover-adjust{position:absolute;right:8px;top:8px;width:auto;padding:5px 8px;font-size:11px;background:rgba(20,20,20,.72);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:7px;opacity:0;z-index:2}
+.lib-run-card:hover .lib-cover-adjust{opacity:1}
+.lib-cover-editor{position:fixed;inset:0;background:rgba(0,0,0,.66);z-index:1000;display:grid;place-items:center;padding:20px}
+.lib-cover-editor[hidden]{display:none}
+.lib-cover-panel{width:min(720px,96vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.lib-cover-preview{height:min(430px,55vh);overflow:hidden;border-radius:10px;border:1px solid var(--line);cursor:ns-resize;touch-action:none;background:#111}
+.lib-cover-preview img{width:100%;height:100%;object-fit:cover;display:block;user-select:none;pointer-events:none}
+.lib-cover-help{font-size:12px;color:var(--muted);margin:8px 0}.lib-cover-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.lib-cover-actions button{width:auto}
 .lib-run-detail-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:12px 0}
 .lib-run-detail-title{font-size:1.05rem;font-weight:700}
 .lib-run-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin:12px 0}
@@ -311,6 +320,12 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
 </div><div class="wrap small muted" data-build-marker="02329">build v0.2.32.9</div></main>
+<div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
+<strong>カード画像の位置を調整</strong>
+<div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。</div>
+<div id="coverPreview" class="lib-cover-preview"><img id="coverPreviewImage" alt=""></div>
+<div class="lib-cover-actions"><button type="button" id="coverReset">中央に戻す</button><button type="button" id="coverCancel">キャンセル</button><button type="button" id="coverSave">保存</button></div>
+</div></div>
 
 <dialog id="xPreviewDialog" class="x-preview"><h2>X卓報告プレビュー</h2><p class="small muted">投稿前に自由に編集できます。SNS表示名が設定されている人は短縮名で表示します。</p><textarea id="xPreviewText"></textarea><div class="x-preview-actions"><span id="xPreviewCount" class="small muted"></span><div class="row"><button id="xPreviewCancel" type="button">戻る</button><button id="xPreviewPost" type="button">X投稿画面へ</button></div></div></dialog>
 <footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
@@ -335,6 +350,11 @@ let scenarios=TRPG39.loadScenarios();
 let data=TRPG39.loadAlbum();
 let focusedScenarioKey="";
 let focusedRunId="";
+const RUN_COVER_POS_KEY="saku_meru_library_run_cover_position_v1";
+function loadRunCoverPositions(){try{return JSON.parse(localStorage.getItem(RUN_COVER_POS_KEY)||"{}")||{}}catch{return {}}}
+function saveRunCoverPositions(v){try{localStorage.setItem(RUN_COVER_POS_KEY,JSON.stringify(v))}catch{}}
+let runCoverPositions=loadRunCoverPositions();
+const runCoverY=id=>{const n=Number(runCoverPositions[id]);return Number.isFinite(n)?Math.max(0,Math.min(100,n)):50};
 let libraryView=new URLSearchParams(location.search).get("view")||"scenario";
 let pcs=TRPG39.loadPCs(),players=TRPG39.loadPlayers();
 {let changed=false;data=data.map(x=>{if(!x.spoilerBody&&x.spoiler){changed=true;return TRPG39.normalizeAlbum({...x,spoilerBody:x.spoiler,spoiler:""})}return x});if(changed)TRPG39.saveAlbum(data);}
@@ -835,7 +855,7 @@ function runCardHtml(g,r){
  const dates=r.items.map(x=>x.date).filter(Boolean).sort();
  const range=dates.length?(dates[0]+(dates.length>1&&dates.at(-1)!==dates[0]?`〜${dates.at(-1)}`:"")):"";
  return `<article class="lib-run-card" data-run-focus="${esc(r.id)}" tabindex="0">
-   <div class="lib-run-card-thumb-wrap">${images[0]?`<img class="lib-run-card-thumb" src="${esc(images[0])}" alt="" loading="lazy">`:`<div class="lib-run-card-placeholder">🌺</div>`}</div>
+   <div class="lib-run-card-thumb-wrap">${images[0]?`<img class="lib-run-card-thumb" src="${esc(images[0])}" alt="" loading="lazy" style="object-position:50% ${runCoverY(r.id)}%"><button type="button" class="lib-cover-adjust" data-cover-adjust="${esc(r.id)}" data-cover-image="${esc(images[0])}">位置を調整</button>`:`<div class="lib-run-card-placeholder">🌺</div>`}</div>
    <div class="lib-run-card-body">
      <div class="lib-run-card-title">${esc(r.label||"開催記録")}</div>
      <div class="lib-run-card-meta">${r.items.length}日${range?` ／ ${esc(range)}`:""}</div>
@@ -899,6 +919,11 @@ function syncLibraryView(){
  document.querySelectorAll("[data-library-view]").forEach(b=>b.classList.toggle("active",b.dataset.libraryView===libraryView));
  const scenario=libraryView==="scenario";q("filter").style.display=scenario?"":"none";q("archiveFilter").style.display=scenario?"":"none";q("search").placeholder=scenario?"検索":"名前で検索";
 }
+let coverEditingRunId="",coverEditingY=50,coverDragStartY=0,coverDragStartPos=50;
+function updateCoverPreview(){q("coverPreviewImage").style.objectPosition=`50% ${coverEditingY}%`}
+function openCoverEditor(runId,imageUrl){coverEditingRunId=runId;coverEditingY=runCoverY(runId);q("coverPreviewImage").src=imageUrl;updateCoverPreview();q("coverEditor").hidden=false}
+function closeCoverEditor(){q("coverEditor").hidden=true;coverEditingRunId=""}
+function bindCoverAdjustButtons(){document.querySelectorAll("[data-cover-adjust]").forEach(b=>{b.onclick=e=>{e.preventDefault();e.stopPropagation();openCoverEditor(b.dataset.coverAdjust,b.dataset.coverImage)}})}
 function render(){
  syncLibraryView();
  if(libraryView==="pc"){renderPcView();return}
@@ -926,6 +951,7 @@ function render(){
      card.onclick=()=>{focusedRunId=card.dataset.runFocus;render()};
      card.onkeydown=e=>{if(e.key==="Enter"){focusedRunId=card.dataset.runFocus;render()}};
    });
+   bindCoverAdjustButtons();
  }else{
    q("list").classList.add("library-grid");
    q("list").innerHTML=groups.length?groups.map(libraryGridCard).join(""):'<div class="empty">まだ記録がありません。</div>';
@@ -974,6 +1000,13 @@ q("image").oninput=updateImagePreview;
 q("openLibraryEditor").onclick=()=>{reset();showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"})};q("xPreviewText").oninput=updateXPreviewCount;q("xPreviewCancel").onclick=()=>q("xPreviewDialog").close();q("xPreviewPost").onclick=confirmPostAlbumToX;
 q("search").oninput=()=>{focusedScenarioKey="";focusedRunId="";render()};q("filter").onchange=()=>{focusedScenarioKey="";focusedRunId="";render()};q("archiveFilter").onchange=()=>{focusedScenarioKey="";focusedRunId="";render()};
 document.querySelectorAll("[data-library-view]").forEach(b=>b.onclick=()=>{libraryView=b.dataset.libraryView||"scenario";focusedScenarioKey="";focusedRunId="";const u=new URL(location.href);u.searchParams.set("view",libraryView);u.searchParams.delete("scenario");u.searchParams.delete("pc");u.searchParams.delete("player");history.replaceState(null,"",u);render()});q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
+q("coverCancel").onclick=closeCoverEditor;
+q("coverReset").onclick=()=>{coverEditingY=50;updateCoverPreview()};
+q("coverSave").onclick=()=>{if(coverEditingRunId){runCoverPositions[coverEditingRunId]=Math.round(coverEditingY);saveRunCoverPositions(runCoverPositions)}closeCoverEditor();render()};
+q("coverEditor").addEventListener("click",e=>{if(e.target===q("coverEditor"))closeCoverEditor()});
+q("coverPreview").addEventListener("pointerdown",e=>{coverDragStartY=e.clientY;coverDragStartPos=coverEditingY;q("coverPreview").setPointerCapture(e.pointerId)});
+q("coverPreview").addEventListener("pointermove",e=>{if(!q("coverPreview").hasPointerCapture(e.pointerId))return;const h=Math.max(1,q("coverPreview").clientHeight);coverEditingY=Math.max(0,Math.min(100,coverDragStartPos+(e.clientY-coverDragStartY)/h*100));updateCoverPreview()});
+q("coverPreview").addEventListener("pointerup",e=>{try{q("coverPreview").releasePointerCapture(e.pointerId)}catch{}});
 reset();hideEditor();render();{const p=new URLSearchParams(location.search),sid=p.get("scenario")||"";if(p.get("new")==="1"){addForScenario(sid)}}
 })();
 </script>

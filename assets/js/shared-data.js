@@ -45,16 +45,11 @@
       pcName: input.pcName || "",
       pcId: input.pcId || "",
       system: input.system || "",
-      facilitatorLabel: input.facilitatorLabel || "",
-      facilitatorless: !!input.facilitatorless,
       visibility: input.visibility || "private",
       linkedAlbumId: input.linkedAlbumId || "",
       runId: input.runId || "",
       runLabel: input.runLabel || "",
       sessionDay: Number(input.sessionDay || 0),
-      sessionKind: ["prelude","main","reserve","aftertalk"].includes(input.sessionKind) ? input.sessionKind : "main",
-      calendarMemo: input.calendarMemo || "",
-      calendarColor: input.calendarColor || "",
       timeBand: input.timeBand || "",
       timeSpecified: input.timeSpecified !== undefined ? !!input.timeSpecified : /T\d{2}:\d{2}/.test(String(input.start || "")),
       createdAt: input.createdAt || nowISO(),
@@ -76,9 +71,8 @@
       end: input.end || "",
       status: legacyStatus || (input.eventId ? "planned" : "done"),
       system: input.system || "",
-      facilitatorLabel: input.facilitatorLabel || "",
-      facilitatorless: !!input.facilitatorless,
       role: input.role || "PL",
+      selfHo: input.selfHo || "",
       pcName: input.pcName || "",
       pcId: input.pcId || "",
       participants: Array.isArray(input.participants) ? input.participants : [],
@@ -125,8 +119,6 @@
       end: e.end,
       status: e.status,
       system: e.system,
-      facilitatorLabel: e.facilitatorLabel || existing.facilitatorLabel || "",
-      facilitatorless: e.facilitatorless !== undefined ? e.facilitatorless : !!existing.facilitatorless,
       role: e.role || existing.role || "PL",
       pcName: e.pcName,
       pcId: e.pcId,
@@ -210,21 +202,6 @@
     return new URL("../share/?id=" + encodeURIComponent(id), location.href).href;
   }
 
-  function defaultFacilitatorLabel(system = "") {
-    const t = String(system || "").normalize("NFKC").toLowerCase();
-    if (/emoklore|エモクロア/.test(t)) return "DL";
-    if (/coc|クトゥルフ|call of cthulhu/.test(t)) return "KP";
-    if (/マダミス|マーダーミステリー|murder mystery/.test(t)) return "GM";
-    return "GM";
-  }
-
-  function resolveFacilitatorLabel(system = "", source = {}) {
-    const mode = String(source.facilitatorTermMode || "auto");
-    if (mode === "custom") return String(source.facilitatorTermCustom || "GM").trim() || "GM";
-    if (["KP","DL","GM"].includes(mode)) return mode;
-    return defaultFacilitatorLabel(system);
-  }
-
 window.TRPG39 = {
     KEYS,
     uuid,
@@ -244,9 +221,7 @@ window.TRPG39 = {
     syncAllEventsToAlbum,
     encodeShare,
     makeShareUrl,
-    makeShortShareUrl,
-    defaultFacilitatorLabel,
-    resolveFacilitatorLabel
+    makeShortShareUrl
   };
 })();
 ;(function(){

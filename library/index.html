@@ -37,6 +37,24 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .library-play-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px;grid-column:1/-1}
 .library-play-tab{width:auto}
 .library-play-tab.active{font-weight:700;box-shadow:inset 0 0 0 1px var(--accent)}
+
+.player-detail{display:grid;gap:18px}
+.player-section{border-top:1px solid var(--line);padding-top:14px}
+.player-section:first-child{border-top:0;padding-top:0}
+.player-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.player-history-card{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--panel)}
+.player-history-thumb{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;background:rgba(255,255,255,.025)}
+.player-history-placeholder{width:100%;aspect-ratio:16/10;display:grid;place-items:center;font-size:30px;background:rgba(255,255,255,.025)}
+.player-history-body{padding:10px}
+.player-history-title{font-weight:700;line-height:1.4}
+.player-history-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.player-pc-card{border:1px solid var(--line);border-radius:11px;padding:10px;background:var(--panel)}
+.player-pc-row{display:flex;gap:10px;align-items:flex-start}
+.player-pc-thumb{width:76px;height:76px;object-fit:cover;border-radius:9px;border:1px solid var(--line)}
+.player-external-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,.45fr) auto;gap:8px;align-items:end;padding:8px 0;border-top:1px solid var(--line)}
+.player-external-row:first-child{border-top:0}
+.player-external-list{margin-top:8px}
+@media(max-width:760px){.player-external-row{grid-template-columns:1fr}}
 </style>
 
 <style>
@@ -375,6 +393,20 @@ const runCoverY=id=>{
 };
 let libraryView=new URLSearchParams(location.search).get("view")||"scenario";
 let pcs=TRPG39.loadPCs(),players=TRPG39.loadPlayers();
+
+const PLAYER_EXTERNAL_PLAYED_KEY="saku_meru_player_external_played_v1";
+function loadPlayerExternalPlayed(){
+ try{
+   const v=JSON.parse(localStorage.getItem(PLAYER_EXTERNAL_PLAYED_KEY)||"{}");
+   return v&&typeof v==="object"?v:{};
+ }catch{return {}}
+}
+function savePlayerExternalPlayed(v){
+ localStorage.setItem(PLAYER_EXTERNAL_PLAYED_KEY,JSON.stringify(v));
+}
+let playerExternalPlayed=loadPlayerExternalPlayed();
+let focusedPlayerId="";
+
 {let changed=false;data=data.map(x=>{if(!x.spoilerBody&&x.spoiler){changed=true;return TRPG39.normalizeAlbum({...x,spoilerBody:x.spoiler,spoiler:""})}return x});if(changed)TRPG39.saveAlbum(data);}
 
 function migrateScenarioLinks(){
@@ -951,10 +983,140 @@ function renderPcView(){
  q("summary").textContent=`PC ${rows.length}人`;q("list").classList.remove("library-grid");
  q("list").innerHTML=`<div class="library-directory-grid">${rows.length?rows.map(({x,st})=>`<article class="library-dir-card">${x.image?`<img class="library-dir-thumb" src="${esc(x.image)}" alt="">`:""}<div class="library-dir-title">${esc(x.name)}</div><div class="library-dir-meta">${esc(x.system||"")}${x.job?` ／ ${esc(x.job)}`:""}</div><div class="library-dir-meta">参加 ${st.count}シナリオ${st.first?` ／ 初卓 ${esc(st.first)}`:""}</div><div class="library-dir-history">${st.scenarios.length?st.scenarios.map(s=>`<div class="history-row"><a class="link" href="?view=scenario${s.scenarioId?`&scenario=${encodeURIComponent(s.scenarioId)}`:""}&pc=${encodeURIComponent(x.name)}">${esc(s.title)}</a></div>`).join(""):'<div class="small muted">参加記録はまだありません。</div>'}</div><div class="lib-parent-actions"><a class="link" href="../pcs/index.html?focus=${encodeURIComponent(x.id)}">PC情報を編集</a></div></article>`).join(""):'<div class="empty">該当するPCがありません。</div>'}</div>`;
 }
+
+function playerById(id){return players.find(p=>p.id===id)}
+function playerRowsForRecord(x){
+ return Array.isArray(x.participantRows)&&x.participantRows.length?x.participantRows:(x.participants||[]).map(n=>({plName:n,role:"PL",pcName:"",ho:""}));
+}
+function playerRecordRows(player,x){
+ return playerRowsForRecord(x).filter(r=>{
+   if(r.playerId&&player.id)return r.playerId===player.id;
+   return String(r.plName||"").trim()===String(player.name||"").trim();
+ });
+}
+function playerRoleRecords(player){
+ const kp=[],pl=[];
+ data.forEach(x=>{
+   const rows=playerRecordRows(player,x);
+   rows.forEach(r=>{
+     const role=String(r.role||"PL").toUpperCase();
+     if(["KP","DL","GM","KPGM","SKP"].includes(role))kp.push({record:x,row:r});
+     else if(role==="PL")pl.push({record:x,row:r});
+   });
+ });
+ const uniq=arr=>{
+   const m=new Map();
+   arr.forEach(v=>{const k=v.record.id+"|"+String(v.row.pcName||"")+"|"+String(v.row.ho||"");if(!m.has(k))m.set(k,v)});
+   return [...m.values()].sort((a,b)=>String(b.record.date||"").localeCompare(String(a.record.date||"")));
+ };
+ return {kp:uniq(kp),pl:uniq(pl)};
+}
+function playerRegisteredPcs(player){
+ const map=new Map();
+ data.forEach(x=>{
+   playerRecordRows(player,x).forEach(r=>{
+     const name=String(r.pcName||"").trim();
+     if(!name)return;
+     if(!map.has(name))map.set(name,{name,system:x.system||"",count:0,pc:null});
+     const item=map.get(name);item.count++;
+   });
+ });
+ const allPcs=TRPG39.loadPCs?TRPG39.loadPCs():[];
+ for(const item of map.values()){
+   item.pc=allPcs.find(p=>String(p.name||"").trim()===item.name)||null;
+ }
+ return [...map.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
+}
+function playerHistoryCardHtml(v){
+ const x=v.record,row=v.row,scenario=scenarioById(x.scenarioId||"")||{};
+ const image=(x.imageUrls||[])[0]||scenario.thumbnailUrl||"";
+ const meta=[x.date||"",row.ho?`HO：${row.ho}`:"",row.pcName?`PC：${row.pcName}`:""].filter(Boolean).join(" ／ ");
+ return `<article class="player-history-card">
+   ${image?`<img class="player-history-thumb" src="${esc(image)}" alt="" loading="lazy">`:`<div class="player-history-placeholder">🌺</div>`}
+   <div class="player-history-body">
+     <div class="player-history-title">${esc(x.title||scenario.title||"名称未設定")}</div>
+     ${meta?`<div class="player-history-meta">${esc(meta)}</div>`:""}
+     ${x.scenarioId?`<div style="margin-top:7px"><a class="link" href="?view=scenario&scenario=${encodeURIComponent(x.scenarioId)}">卓記録を見る</a></div>`:""}
+   </div>
+ </article>`;
+}
+function externalPlayedFor(playerId){
+ return Array.isArray(playerExternalPlayed[playerId])?playerExternalPlayed[playerId]:[];
+}
+function addExternalPlayed(playerId,scenarioId="",ho="",memo=""){
+ const list=externalPlayedFor(playerId).slice();
+ list.push({id:TRPG39.uuid(),scenarioId,title:scenarioById(scenarioId)?.title||"",ho:String(ho||"").trim(),memo:String(memo||"").trim(),createdAt:new Date().toISOString()});
+ playerExternalPlayed[playerId]=list;
+ savePlayerExternalPlayed(playerExternalPlayed);
+}
+function removeExternalPlayed(playerId,id){
+ playerExternalPlayed[playerId]=externalPlayedFor(playerId).filter(x=>x.id!==id);
+ savePlayerExternalPlayed(playerExternalPlayed);
+}
+function renderPlayerDetail(player){
+ const pcsForPlayer=playerRegisteredPcs(player),roles=playerRoleRecords(player),external=externalPlayedFor(player.id);
+ q("summary").textContent=`${player.name}の記録`;
+ q("list").classList.remove("library-grid");
+ q("list").innerHTML=`<div class="player-detail">
+   <div><button id="backToPlayers" type="button">← 同卓者一覧へ</button></div>
+
+   <section class="player-section">
+     <h3>登録PC</h3>
+     <div class="player-card-grid">${pcsForPlayer.length?pcsForPlayer.map(p=>`<div class="player-pc-card"><div class="player-pc-row">
+       ${p.pc?.image?`<img class="player-pc-thumb" src="${esc(p.pc.image)}" alt="">`:""}
+       <div><strong>${esc(p.name)}</strong><div class="small muted">${esc(p.system||p.pc?.system||"")}</div><div class="small muted">使用 ${p.count}卓</div>${p.pc?.id?`<a class="link" href="../pcs/index.html?focus=${encodeURIComponent(p.pc.id)}">PC情報を見る</a>`:""}</div>
+     </div></div>`).join(""):'<div class="small muted">登録PCはまだありません。</div>'}</div>
+   </section>
+
+   <section class="player-section">
+     <h3>KPした卓</h3>
+     <div class="player-card-grid">${roles.kp.length?roles.kp.map(playerHistoryCardHtml).join(""):'<div class="small muted">KP記録はまだありません。</div>'}</div>
+   </section>
+
+   <section class="player-section">
+     <h3>PLで遊んだ卓</h3>
+     <div class="player-card-grid">${roles.pl.length?roles.pl.map(playerHistoryCardHtml).join(""):'<div class="small muted">PL記録はまだありません。</div>'}</div>
+   </section>
+
+   <section class="player-section">
+     <h3>別卓で通過済み</h3>
+     <p class="small muted">自分とは別の卓で通過済みと分かっているシナリオを、自分用に記録します。HO・メモは共有されません。</p>
+     <div class="player-external-row">
+       <div><label>シナリオ</label><select id="externalScenario"><option value="">選択してください</option>${scenarios.slice().sort((a,b)=>String(a.title||"").localeCompare(String(b.title||""),"ja")).map(s=>`<option value="${esc(s.id)}">${esc(s.title)}</option>`).join("")}</select></div>
+       <div><label>HO <span class="small muted">任意</span></label><input id="externalHo" placeholder="HO1 など"></div>
+       <div><label>メモ <span class="small muted">任意</span></label><input id="externalMemo" placeholder="いつ頃聞いた等"></div>
+       <button id="addExternalPlayed" type="button">追加</button>
+     </div>
+     <div class="player-external-list">${external.length?external.map(x=>`<div class="player-external-row">
+       <div><strong>${esc(x.title||scenarioById(x.scenarioId)?.title||"名称未設定")}</strong>${x.memo?`<div class="small muted">${esc(x.memo)}</div>`:""}</div>
+       <div>${x.ho?`HO：${esc(x.ho)}`:""}</div>
+       <button type="button" class="danger" data-remove-external="${esc(x.id)}">削除</button>
+     </div>`).join(""):'<div class="small muted">別卓通過済みの登録はありません。</div>'}</div>
+   </section>
+ </div>`;
+
+ q("backToPlayers").onclick=()=>{focusedPlayerId="";render()};
+ q("addExternalPlayed").onclick=()=>{
+   const sid=q("externalScenario").value;
+   if(!sid)return alert("シナリオを選んでください。");
+   addExternalPlayed(player.id,sid,q("externalHo").value,q("externalMemo").value);
+   renderPlayerDetail(player);
+ };
+ document.querySelectorAll("[data-remove-external]").forEach(b=>b.onclick=()=>{removeExternalPlayed(player.id,b.dataset.removeExternal);renderPlayerDetail(player)});
+}
 function renderPlayerView(){
+ if(focusedPlayerId){
+   const player=playerById(focusedPlayerId);
+   if(player){renderPlayerDetail(player);return}
+   focusedPlayerId="";
+ }
  const term=q("search").value.trim().toLowerCase(),rows=players.map(x=>({x,st:playerStats(x.name)})).filter(({x})=>!term||[x.name,x.publicName,x.socialName].filter(Boolean).join(" ").toLowerCase().includes(term)).sort((a,b)=>String(a.x.name).localeCompare(String(b.x.name),"ja"));
  q("summary").textContent=`同卓者 ${rows.length}人`;q("list").classList.remove("library-grid");
- q("list").innerHTML=`<div class="library-directory-grid">${rows.length?rows.map(({x,st})=>`<article class="library-dir-card"><div class="library-dir-title">${esc(x.name)}</div><div class="library-dir-meta">公開名：${esc(x.publicName||x.name)}</div><div class="library-dir-meta">同卓 ${st.count}シナリオ${st.first?` ／ 初同卓 ${esc(st.first)}`:""}${st.last?` ／ 最終 ${esc(st.last)}`:""}</div><div class="library-dir-history">${st.scenarios.length?st.scenarios.map(s=>`<div class="history-row"><a class="link" href="?view=scenario${s.scenarioId?`&scenario=${encodeURIComponent(s.scenarioId)}`:""}&player=${encodeURIComponent(x.name)}">${esc(s.title)}</a></div>`).join(""):'<div class="small muted">同卓記録はまだありません。</div>'}</div><div class="lib-parent-actions"><a class="link" href="../players/index.html?focus=${encodeURIComponent(x.id)}">同卓者情報を編集</a></div></article>`).join(""):'<div class="empty">該当する同卓者がいません。</div>'}</div>`;
+ q("list").innerHTML=`<div class="library-directory-grid">${rows.length?rows.map(({x,st})=>`<article class="library-dir-card" data-player-focus="${esc(x.id)}" tabindex="0"><div class="library-dir-title">${esc(x.name)}</div><div class="library-dir-meta">公開名：${esc(x.publicName||x.name)}</div><div class="library-dir-meta">同卓 ${st.count}シナリオ${st.first?` ／ 初同卓 ${esc(st.first)}`:""}${st.last?` ／ 最終 ${esc(st.last)}`:""}</div></article>`).join(""):'<div class="empty">該当する同卓者がいません。</div>'}</div>`;
+ document.querySelectorAll("[data-player-focus]").forEach(card=>{
+   card.onclick=()=>{focusedPlayerId=card.dataset.playerFocus;render()};
+   card.onkeydown=e=>{if(e.key==="Enter"){focusedPlayerId=card.dataset.playerFocus;render()}};
+ });
 }
 function syncLibraryView(){
  document.querySelectorAll("[data-library-view]").forEach(b=>b.classList.toggle("active",b.dataset.libraryView===libraryView));
@@ -1041,8 +1203,8 @@ q("save").onclick=save;
 q("cancel").onclick=()=>{reset();hideEditor()};
 q("image").oninput=updateImagePreview;
 q("openLibraryEditor").onclick=()=>{reset();showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"})};q("xPreviewText").oninput=updateXPreviewCount;q("xPreviewCancel").onclick=()=>q("xPreviewDialog").close();q("xPreviewPost").onclick=confirmPostAlbumToX;
-q("search").oninput=()=>{focusedScenarioKey="";focusedRunId="";render()};q("filter").onchange=()=>{focusedScenarioKey="";focusedRunId="";render()};q("archiveFilter").onchange=()=>{focusedScenarioKey="";focusedRunId="";render()};
-document.querySelectorAll("[data-library-view]").forEach(b=>b.onclick=()=>{libraryView=b.dataset.libraryView||"scenario";focusedScenarioKey="";focusedRunId="";const u=new URL(location.href);u.searchParams.set("view",libraryView);u.searchParams.delete("scenario");u.searchParams.delete("pc");u.searchParams.delete("player");history.replaceState(null,"",u);render()});q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
+q("search").oninput=()=>{focusedScenarioKey="";focusedRunId="";focusedPlayerId="";render()};q("filter").onchange=()=>{focusedScenarioKey="";focusedRunId="";render()};q("archiveFilter").onchange=()=>{focusedScenarioKey="";focusedRunId="";render()};
+document.querySelectorAll("[data-library-view]").forEach(b=>b.onclick=()=>{libraryView=b.dataset.libraryView||"scenario";focusedScenarioKey="";focusedPlayerId="";focusedRunId="";const u=new URL(location.href);u.searchParams.set("view",libraryView);u.searchParams.delete("scenario");u.searchParams.delete("pc");u.searchParams.delete("player");history.replaceState(null,"",u);render()});q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
 q("coverCancel").onclick=closeCoverEditor;
 q("coverReset").onclick=()=>{coverEditingY=50;updateCoverPreview()};
 q("coverSave").onclick=()=>{

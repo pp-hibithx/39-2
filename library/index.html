@@ -780,11 +780,14 @@ function buildXReportText(x){
  const facilitatorRows=[...(groups.get("KP")||[]),...(groups.get("DL")||[]),...(groups.get("GM")||[])];
  if(facilitatorRows.length&&!cfg.less){const values=facilitatorRows.map(r=>`${r.ho?`${r.ho}：`:""}${r.plName||""}${r.pcName?`/${r.pcName}`:""}`).filter(Boolean);if(values.length)lines.push(`${cfg.label}：${values.join("、")}`);else lines.push(`${cfg.label}`)}
  const skps=groups.get("SKP")||[];if(skps.length){const values=skps.map(r=>`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`).filter(Boolean);if(values.length)lines.push(`SKP：${values.join("、")}`)}
- const pls=groups.get("PL")||[];
+ const pls=(groups.get("PL")||[]).slice().sort((a,b)=>{
+   const hoNum=v=>{const m=String(v?.ho||"").match(/(\d+)/);return m?Number(m[1]):9999};
+   return hoNum(a)-hoNum(b);
+ });
  if(pls.length){pls.forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(r.ho?`${r.ho}：${who}`:`PL：${who}`)})}
  (groups.get("見学")||[]).forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(`見学：${who}`)});
  (groups.get("その他")||[]).forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(`${r.ho?`${r.ho}：`:""}${who}`)});
- (groups.get("_excluded")||[]).forEach(r=>{if(r.plName)lines.push(r.plName)});
+ (groups.get("_anonymousPL")||[]).forEach(r=>{if(r.plName)lines.push(r.plName)});
  if(rows.some(r=>r.plName&&!r._excludedSummary))lines.push("※敬称略");
  if(String(x.comment||"").trim())lines.push("",String(x.comment).trim());
  return lines.join("\n");

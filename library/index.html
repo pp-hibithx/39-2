@@ -311,18 +311,13 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
     <div class="lib-form-grid">
       <div><label>自分の役割</label><select id="role"><option>PL</option><option>KP</option><option>SKP</option><option>見学</option><option>その他</option></select></div>
       <div><label>自分のHO <span class="small muted">（PL時・任意）</span></label><input id="selfHo" placeholder="HO1 / 探偵 など"></div>
-<div class="small" style="margin-top:4px">
-  <label style="display:flex;align-items:center;gap:6px;margin:0">
-    <input id="rememberSelfHo" type="checkbox" style="width:auto">
-    このシナリオでは次回もこのHOを使う
-  </label>
-</div>
       <div><label>自PC</label><select id="pcSelect"><option value="">直接入力</option></select><input id="pc" placeholder="自分のPC名"></div>
     </div>
   </div>
 
   <div class="lib-form-section">
     <div class="row"><div><h3>参加メンバー</h3><p class="small muted">役割・HO・PL・PCを必要な人数だけ追加できます。HOは自由入力です。</p></div><button id="addParticipantRow" type="button">＋ 参加者を追加</button></div>
+    <label class="checkline" style="margin:6px 0 10px"><input id="rememberParticipantHo" type="checkbox"> KP/DL/GM時、このシナリオのHO構成を次の陣にも引き継ぐ <span class="small muted">（PL名・PC名は引き継ぎません）</span></label>
     <div class="participant-head"><span>役割</span><span>HO</span><span>PL</span><span>PC</span><span>自PCとの関係</span><span></span></div>
     <div id="participantRows"></div>
     <p class="small muted">PLAYERS管理をONにしている場合、PL名はPLAYERSへ自動登録され、その人が使用したPC・自PCとの関係も同卓履歴から確認できます。他PLのPCはPCページには追加されません。</p>
@@ -395,22 +390,22 @@ TRPG39.syncAllEventsToAlbum?.();
 let scenarios=TRPG39.loadScenarios();
 let data=TRPG39.loadAlbum();
 
-const SELF_HO_DEFAULT_KEY="saku_meru_library_self_ho_defaults_v1";
-function loadSelfHoDefaults(){
- try{const v=JSON.parse(localStorage.getItem(SELF_HO_DEFAULT_KEY)||"{}");return v&&typeof v==="object"?v:{}}catch{return {}}
+const PARTICIPANT_HO_TEMPLATE_KEY="saku_meru_library_participant_ho_templates_v1";
+function loadParticipantHoTemplates(){try{const v=JSON.parse(localStorage.getItem(PARTICIPANT_HO_TEMPLATE_KEY)||"{}");return v&&typeof v==="object"?v:{}}catch{return {}}}
+function saveParticipantHoTemplates(v){localStorage.setItem(PARTICIPANT_HO_TEMPLATE_KEY,JSON.stringify(v))}
+function participantHoTemplateKey(scenarioId,title){return scenarioId?`id:${scenarioId}`:`title:${String(title||"").trim()}`}
+function getParticipantHoTemplate(scenarioId,title){const rows=loadParticipantHoTemplates()[participantHoTemplateKey(scenarioId,title)];return Array.isArray(rows)?rows:[]}
+function setParticipantHoTemplate(scenarioId,title,rows){
+ const all=loadParticipantHoTemplates(),key=participantHoTemplateKey(scenarioId,title);
+ const clean=(rows||[]).map(r=>({role:String(r.role||"PL"),ho:String(r.ho||"").trim()})).filter(r=>r.ho);
+ if(clean.length)all[key]=clean;else delete all[key];
+ saveParticipantHoTemplates(all);
 }
-function saveSelfHoDefaults(v){localStorage.setItem(SELF_HO_DEFAULT_KEY,JSON.stringify(v))}
-function selfHoDefaultKey(scenarioId,title){return scenarioId?`id:${scenarioId}`:`title:${String(title||"").trim()}`}
-function getSelfHoDefault(scenarioId,title){return String(loadSelfHoDefaults()[selfHoDefaultKey(scenarioId,title)]||"")}
-function setSelfHoDefault(scenarioId,title,value){
- const all=loadSelfHoDefaults(),key=selfHoDefaultKey(scenarioId,title),v=String(value||"").trim();
- if(v)all[key]=v;else delete all[key];
- saveSelfHoDefaults(all);
-}
-function applySelfHoDefault(scenarioId,title){
- const v=getSelfHoDefault(scenarioId,title);
- q("selfHo").value=v;
- q("rememberSelfHo").checked=!!v;
+function applyParticipantHoTemplate(scenarioId,title){
+ const rows=getParticipantHoTemplate(scenarioId,title);
+ if(!rows.length){q("rememberParticipantHo").checked=false;return}
+ setParticipantRows(rows.map(r=>({role:r.role,ho:r.ho,plName:"",pcName:"",relation:""})));
+ q("rememberParticipantHo").checked=true;
 }
 
 let focusedScenarioKey="";
@@ -454,9 +449,7 @@ let playerArchiveFilter="active";
 let playerDetailRoleFilter="all";
 let playerDetailSystemFilter="all";
 
-{let changed=false;data=data.map(x=>{if(!x.spoilerBody&&x.spoiler){changed=true;return TRPG39.normalizeAlbum({...x,spoilerBody:x.spoiler,spoiler:""})}return x});if(changed)if(q("rememberSelfHo").checked)setSelfHoDefault(item.scenarioId,item.title,q("selfHo").value);
- else setSelfHoDefault(item.scenarioId,item.title,"");
- TRPG39.saveAlbum(data);}
+{let changed=false;data=data.map(x=>{if(!x.spoilerBody&&x.spoiler){changed=true;return TRPG39.normalizeAlbum({...x,spoilerBody:x.spoiler,spoiler:""})}return x});if(changed)TRPG39.saveAlbum(data);}
 
 function migrateScenarioLinks(){
   let changed=false;
@@ -611,9 +604,9 @@ function setParticipantRows(rows=[]){
 }
 function reset(prefillScenarioId=""){
  q("editId").value="";
- ["title","date","startTime","endTime","system","selfHo","pc","image","comment","spoilerBody","runId","runLabel"].forEach(x=>q(x).value="");q("sessionKind").value="main";q("rememberSelfHo").checked=false;
+ ["title","date","startTime","endTime","system","selfHo","pc","image","comment","spoilerBody","runId","runLabel"].forEach(x=>q(x).value="");q("sessionKind").value="main";
  q("status").value="done";q("facilitatorPresence").value="present";q("facilitatorTermMode").value="auto";q("facilitatorTermCustom").value="";q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
- q("externalLinks").innerHTML="";addLinkRow();setParticipantRows();updateImagePreview();fillScenarioSelect();fillPCSelect();
+ q("externalLinks").innerHTML="";addLinkRow();q("rememberParticipantHo").checked=false;setParticipantRows();updateImagePreview();fillScenarioSelect();fillPCSelect();
  q("scenarioSelect").value=prefillScenarioId||"";syncScenarioSearchLabel();
  if(prefillScenarioId){
    const s=scenarioById(prefillScenarioId);
@@ -688,11 +681,16 @@ function save(){
    item=TRPG39.normalizeAlbum({...item,eventId,date:String(item.start).slice(0,10)});
    i=data.findIndex(x=>x.id===item.id);if(i>=0)data[i]=item;
  }
+ const selfRoleForHoTemplate=String(item.role||"").toUpperCase();
+ if(["KP","DL","GM","KPGM","SKP"].includes(selfRoleForHoTemplate)){
+   if(q("rememberParticipantHo").checked)setParticipantHoTemplate(item.scenarioId,item.title,getParticipantRows());
+   else setParticipantHoTemplate(item.scenarioId,item.title,[]);
+ }
  persist();reset();render();hideEditor();
 }
 function edit(id){
  let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";const st=splitLibraryDateTime(x.start||x.date||""),en=splitLibraryDateTime(x.end||"");q("date").value=x.date||st.date||"";q("startTime").value=st.time||"";q("endTime").value=en.time||"";q("sessionKind").value=sessionKindForRecord(x);q("status").value=x.status||"done";q("rememberSelfHo").checked=!!getSelfHoDefault(x.scenarioId,x.title);q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setParticipantRows(rowsFromRecord(x));q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
+ q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";const st=splitLibraryDateTime(x.start||x.date||""),en=splitLibraryDateTime(x.end||"");q("date").value=x.date||st.date||"";q("startTime").value=st.time||"";q("endTime").value=en.time||"";q("sessionKind").value=sessionKindForRecord(x);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setParticipantRows(rowsFromRecord(x));q("rememberParticipantHo").checked=getParticipantHoTemplate(x.scenarioId,x.title).length>0;q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -910,7 +908,7 @@ function nextRunLabelForScenario(scenarioId,title=""){
 function addForScenario(id){
  const s=scenarioById(id);
  reset(id);
- applySelfHoDefault(id,s?.title||q("title").value||"");
+ applyParticipantHoTemplate(id,s?.title||q("title").value||"");
  q("runId").value=TRPG39.uuid();
  q("runLabel").value=nextRunLabelForScenario(id,s?.title||"");
  showEditor();

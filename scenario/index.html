@@ -86,6 +86,10 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 .tag-suggestions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
 .tag-suggestion{width:auto!important;padding:4px 8px!important;border-radius:999px!important;font-size:11px!important}
 .tag-suggestion.used{opacity:.45}
+.sc-system-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.sc-system-tab{width:auto!important;padding:5px 10px!important;border-radius:999px!important;font-size:12px!important}
+.sc-system-tab.active{font-weight:700;box-shadow:inset 0 0 0 1px var(--accent)}
+.sc-system-count{opacity:.7;margin-left:4px}
 </style>
 <script src="../assets/js/supabase-config.js?v=0292"></script>
 <script src="../assets/js/supabase-share.js?v=0292"></script>
@@ -118,6 +122,7 @@ input,select{width:100%}label{display:block;margin:7px 0 3px}
 <div class="sc-filter"><label>表示</label><select id="archiveFilter"><option value="active">通常</option><option value="archived">アーカイブ</option><option value="all">すべて</option></select></div>
 <div class="sc-sort"><label>並び順</label><select id="sort"><option value="name">50音順</option><option value="new">登録が新しい順</option><option value="old">登録が古い順</option><option value="recentRun">最近回した順</option><option value="recentPlay">最近遊んだ順</option><option value="kpCount">回した回数順</option></select></div>
 </div><div class="sc-tools"><button id="shareScenarioList" type="button">共有</button><button id="openForm" type="button">＋ 追加</button></div></div><div id="summary" class="small" style="margin-top:8px"></div>
+<div id="systemTabs" class="sc-system-tabs" aria-label="システムで絞り込み"></div>
 <div id="list" class="sc-list"></div>
 
 <details class="sc-panel friend-panel" id="draftPanel">
@@ -206,6 +211,58 @@ const q=id=>document.getElementById(id),flags={owned:"所持",played:"通過済�
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let data=TRPG39.loadScenarios();
 const persist=()=>TRPG39.saveScenarios(data);
+let systemTabFilter="all";
+
+function systemTabKey(value){
+ const raw=String(value||"").trim();
+ if(!raw)return "unset";
+ const n=normScenarioSystem(raw);
+ if(n==="coc6")return "coc6";
+ if(n==="coc7")return "coc7";
+ if(n==="emoklore")return "emoklore";
+ return "raw:"+raw.normalize("NFKC").toLowerCase();
+}
+function systemTabLabel(key){
+ if(key==="all")return "すべて";
+ if(key==="coc6")return "CoC6";
+ if(key==="coc7")return "CoC7";
+ if(key==="emoklore")return "エモクロア";
+ if(key==="unset")return "未設定";
+ if(key.startsWith("raw:")){
+   const hit=data.find(x=>systemTabKey(x.system)===key);
+   return hit?.system||key.slice(4);
+ }
+ return key;
+}
+function renderSystemTabs(){
+ const box=q("systemTabs");
+ if(!box)return;
+
+ const counts=new Map();
+ data.forEach(x=>{
+   if(x.archived)return;
+   const key=systemTabKey(x.system);
+   counts.set(key,(counts.get(key)||0)+1);
+ });
+
+ const order=["coc6","coc7","emoklore"];
+ const others=[...counts.keys()].filter(k=>!order.includes(k))
+   .sort((a,b)=>systemTabLabel(a).localeCompare(systemTabLabel(b),"ja"));
+ const keys=["all",...order.filter(k=>counts.has(k)),...others];
+ if(systemTabFilter!=="all"&&!keys.includes(systemTabFilter))systemTabFilter="all";
+
+ box.innerHTML=keys.map(k=>{
+   const count=k==="all"
+     ? [...counts.values()].reduce((a,b)=>a+b,0)
+     : (counts.get(k)||0);
+   return `<button type="button" class="sc-system-tab ${systemTabFilter===k?"active":""}" data-system-tab="${esc(k)}">${esc(systemTabLabel(k))}<span class="sc-system-count">${count}</span></button>`;
+ }).join("");
+
+ box.querySelectorAll("[data-system-tab]").forEach(b=>b.onclick=()=>{
+   systemTabFilter=b.dataset.systemTab||"all";
+   render();
+ });
+}
 function currentTagValues(){
  return q("tags").value.split(/[,、]/).map(v=>v.trim()).filter(Boolean);
 }
@@ -892,7 +949,15 @@ function detail(id){
 }
 function render(){
  let term=q("search").value.trim().toLowerCase(),f=q("filter").value;
- refreshTagFilter();renderTagSuggestions();const archiveMode=q("archiveFilter")?.value||"active";let xs=data.filter(x=>(archiveMode==="all"||(archiveMode==="archived"?!!x.archived:!x.archived))&&(!f||(x.flags&&x.flags[f]))&&(!term||[x.title,x.system,x.author,(x.tags||[]).join(" ")].join(" ").toLowerCase().includes(term))&&matchesExtraFilters(x));
+ refreshTagFilter();renderTagSuggestions();renderSystemTabs();
+ const archiveMode=q("archiveFilter")?.value||"active";
+ let xs=data.filter(x=>
+   (archiveMode==="all"||(archiveMode==="archived"?!!x.archived:!x.archived)) &&
+   (!f||(x.flags&&x.flags[f])) &&
+   (systemTabFilter==="all"||systemTabKey(x.system)===systemTabFilter) &&
+   (!term||[x.title,x.system,x.author,(x.tags||[]).join(" ")].join(" ").toLowerCase().includes(term)) &&
+   matchesExtraFilters(x)
+ );
  const rows=sortScenarios(xs);xs=rows.map(r=>r.x);
  q("summary").textContent=`登録 ${data.length}件 ／ 表示 ${xs.length}件${friendSources.length?` ／ 友人のみ ${scenarioGroupsForView("scenario").length}件`:""}`;
  const cards=xs.map(x=>`<article class="sc-card" data-open="${x.id}" tabindex="0"><div class="sc-thumb-wrap">${x.thumbnailUrl?`<img class="sc-thumb" src="${esc(x.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="sc-placeholder">🌺</div>`}</div><div class="sc-menu-wrap"><button class="sc-menu-btn" data-menu="${x.id}" type="button" aria-label="メニュー">⋯</button><div class="sc-menu" data-menu-panel="${x.id}">${x.url?`<a target="_blank" rel="noopener noreferrer" href="${esc(x.url)}">配布ページ</a>`:""}<button data-record="${x.id}" type="button">LIBRARYに記録</button><button data-library="${x.id}" type="button">過去の開催記録</button><button data-prep="${x.id}" type="button">準備チェック</button><button data-schedule="${x.id}" type="button">卓予定を作る</button><button data-edit="${x.id}" type="button">編集</button><button data-archive="${x.id}" type="button">${x.archived?"アーカイブから戻す":"アーカイブ"}</button><button class="danger" data-del="${x.id}" type="button">削除</button></div></div><div class="sc-body"><div class="sc-head"><h3>${esc(x.title)}</h3></div>${x.system?`<div class="small sc-system">${esc(x.system)}</div>`:""}${x.author?`<div class="small muted sc-author sc-author-top">${esc(x.author)}</div>`:""}<div class="sc-meta">${pubBadge(x)}${rangeText(x.playersMin,x.playersMax,"人")?`<span class="badge">${rangeText(x.playersMin,x.playersMax,"人")}</span>`:""}${rangeText(x.hoursMin,x.hoursMax,"h")?`<span class="badge">${rangeText(x.hoursMin,x.hoursMax,"h")}</span>`:""}${Object.entries(flags).filter(([k])=>x.flags&&x.flags[k]).map(([,v])=>`<span class="badge">${v}</span>`).join("")}${(x.tags||[]).slice(0,3).map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>${(()=>{const owners=friendOwnersForScenario(x);return owners.length?`<div class="small muted" style="margin-top:5px">友人も所持：${owners.map(esc).join("、")}</div>`:""})()}</div></article>`).join("");

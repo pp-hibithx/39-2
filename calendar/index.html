@@ -97,7 +97,8 @@
 <div class="calendar-toolbar">
   <div class="month-nav">
     <button id="prevMonth" type="button" aria-label="前の月">←</button>
-    <strong id="monthLabel"></strong>
+    <input id="monthJump" type="month" aria-label="表示する年月" style="width:auto;min-width:150px">
+    <button id="jumpMonthBtn" type="button">移動</button>
     <button id="nextMonth" type="button" aria-label="次の月">→</button>
     <button id="todayBtn" type="button">今月</button>
   </div>
@@ -335,7 +336,7 @@ function resetForm(dateStr="",type="trpg"){
 }
 function editEvent(id){const list=events(),x=list.find(v=>v.id===id);if(!x)return;clearBulkDays();const info=runDayInfo(x,list),sessionDay=info.specialKind?Math.max(1,Number(x.sessionDay||1)):(info.excluded?info.rawDay:info.day);$("eventId").value=x.id;$("eventType").value=x.type==="blocked"?"blocked":"trpg";$("eventTitle").value=x.type==="blocked"?(x.title==="予定あり"?"":x.title):(x.title||"");fillScenarioSelect(x.scenarioId||"");const start=String(x.start||""),end=String(x.end||"");$("eventDate").value=start.slice(0,10);$("dateMode").value="single";$("rangeEndDate").value="";clearMultiDates();updateDateModeUI();$("eventSessionKind").value=x.sessionKind||"main";$("eventDay").value=sessionDay;$("eventDay").dataset.originalSessionDay=String(info.rawDay);$("eventDay").dataset.loadedEffectiveDay=String(sessionDay);$("eventTimeBand").value=x.timeBand||"";$("eventColor").value=x.calendarColor||"";$("eventStartTime").value=(x.timeSpecified!==false&&start.includes("T"))?start.slice(11,16):"";$("eventEndTime").value=end.includes("T")?end.slice(11,16):"";$("eventStatus").value=x.status==="blocked"?"planned":x.status||"planned";$("eventSystem").value=x.system||"";updateRoleOptions(x.role||"");$("eventPc").value=x.pcName||"";fillEventPcSelect(x.pcId||"");$("eventPeople").value=(x.participants||[]).join(", ");$("eventMemo").value=x.calendarMemo||"";$("eventHeading").textContent=x.type==="blocked"?"卓以外の予定を編集":"卓予定を編集";$("deleteEvent").hidden=false;updateTypeUI();if(x.type!=="blocked")$("eventDay").value=sessionDay;showEditor();$("eventPanel").scrollIntoView({behavior:"smooth",block:"start"})}
 function renderCalendar(){
- const y=current.getFullYear(),m=current.getMonth();$("monthLabel").textContent=`${y}年${m+1}月`;$("weekdayHead").innerHTML=["月","火","水","木","金","土","日"].map(x=>`<div class="calendar-head">${x}</div>`).join("");
+ const y=current.getFullYear(),m=current.getMonth();$("monthJump").value=`${y}-${pad(m+1)}`;$("weekdayHead").innerHTML=["月","火","水","木","金","土","日"].map(x=>`<div class="calendar-head">${x}</div>`).join("");
  const first=new Date(y,m,1),offset=(first.getDay()+6)%7,start=new Date(y,m,1-offset),ev=events(),today=new Date();let html="";
  for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;const dayEvents=ev.filter(x=>String(x.start||"").slice(0,10)===ds).sort((a,b)=>{const ta=(a.timeSpecified!==false&&String(a.start||"").includes("T"))?String(a.start).slice(11,16):"";const tb=(b.timeSpecified!==false&&String(b.start||"").includes("T"))?String(b.start).slice(11,16):"";if(ta&&tb)return ta.localeCompare(tb);if(ta)return -1;if(tb)return 1;return (timeBandOrder[a.timeBand||""]??9)-(timeBandOrder[b.timeBand||""]??9)});html+=`<div class="calendar-day ${d.getMonth()!==m?"out":""} ${d.toDateString()===today.toDateString()?"today":""} ${dayEvents.length?"has-events":""}" data-date="${ds}"><div class="daynum">${d.getDate()}</div>${dayEvents.map(x=>{const blocked=x.type==="blocked"||x.status==="blocked";const hasTime=!blocked&&x.timeSpecified!==false&&String(x.start||"").includes("T");const tm=hasTime?String(x.start||"").slice(11,16):"";const sc=!blocked&&x.scenarioId?scenarios().find(v=>v.id===x.scenarioId):null;const title=blocked?(x.title&&x.title!=="予定あり"?x.title:"予定あり"):((sc&&sc.shortTitle)||x.title||"卓");const label=blocked?"× 卓以外の予定あり":(statusLabel[x.status]||"□ 予定");const line1=blocked?title:(tm?`${tm}：${title}`:title);const dayInfo=blocked?null:runDayInfo(x,ev);const day=blocked?0:(dayInfo?.day||0);const band=blocked?"":(timeBandLabel[x.timeBand||""]||"");const kind=(x.sessionKind||"main");const meta=blocked?"":(kind!=="main"?`${sessionKindLabel[kind]||kind}${band?`・${band}`:""}`:(dayInfo?.excluded?(band||""):`${day}日目${band?`・${band}`:""}`));const memo=blocked?"":String(x.calendarMemo||"").trim();return `<button type="button" class="event-chip ${blocked?"blocked":x.status}" data-color="${esc(x.calendarColor||"")}" data-id="${x.id}"><span class="event-chip-title">${esc(line1)}</span>${meta?`<span class="small session-meta">${esc(meta)}</span>`:""}${memo?`<span class="small muted event-memo">${esc(memo)}</span>`:""}<span class="small status-badge">${esc(label)}</span></button>`}).join("")}</div>`}
  $("calendar").innerHTML=html;
@@ -386,7 +387,17 @@ $("saveEvent").onclick=()=>{
  resetForm();hideEditor();renderCalendar();
 };
 $("deleteEvent").onclick=()=>{const id=$("eventId").value;if(!id||!confirm("この予定を削除しますか？"))return;const old=events().find(x=>x.id===id);saveEvents(events().filter(x=>x.id!==id));if(old?.type!=="blocked")TRPG39.saveAlbum(TRPG39.loadAlbum().filter(x=>x.eventId!==id));resetForm();hideEditor();renderCalendar()};
-$("prevMonth").onclick=()=>{current.setMonth(current.getMonth()-1);renderCalendar()};$("nextMonth").onclick=()=>{current.setMonth(current.getMonth()+1);renderCalendar()};$("todayBtn").onclick=()=>{current=new Date();current.setDate(1);renderCalendar()};$("newEventBtn").onclick=()=>{resetForm();showEditor();$("eventPanel").scrollIntoView({behavior:"smooth"})};$("resetEvent").onclick=()=>{resetForm();hideEditor()};
+$("prevMonth").onclick=()=>{current.setMonth(current.getMonth()-1);renderCalendar()};
+$("nextMonth").onclick=()=>{current.setMonth(current.getMonth()+1);renderCalendar()};
+$("jumpMonthBtn").onclick=()=>{
+ const ym=$("monthJump").value;
+ if(!/^\d{4}-\d{2}$/.test(ym))return;
+ const [y,m]=ym.split("-").map(Number);
+ current=new Date(y,m-1,1);
+ renderCalendar();
+};
+$("monthJump").addEventListener("change",()=>{$("jumpMonthBtn").click()});
+$("todayBtn").onclick=()=>{current=new Date();current.setDate(1);renderCalendar()};$("newEventBtn").onclick=()=>{resetForm();showEditor();$("eventPanel").scrollIntoView({behavior:"smooth"})};$("resetEvent").onclick=()=>{resetForm();hideEditor()};
 TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();renderCalendar();
 })();
 </script>

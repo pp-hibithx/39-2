@@ -312,7 +312,12 @@ function runDayInfo(x,list=events()){
  });
  const ds=String(x.start||"").slice(0,10);
  const info=mapped.get(`date:${ds||"unknown"}`)||{day:direct,excluded:nonPlayingStatuses.has(x.status)};
- if(x.status==="done")return {day:direct,excluded:false,rawDay:direct};
+
+ // 旧データ互換：
+ // 同じrunId内がすべてsessionDay=1で保存されている場合は、
+ // 完了済みも含めて開催日順から1日目、2日目、3日目…を推定する。
+ // 明示的に2日目以降が保存されている新しいデータは、
+ // 上の分岐でこれまでどおり確定値を使う。
  return {day:info.day||direct,excluded:info.excluded,rawDay:direct};
 }
 function effectiveSessionDay(x,list=events()){return runDayInfo(x,list).day}

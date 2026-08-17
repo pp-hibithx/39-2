@@ -299,6 +299,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
       <div><label>進行役の呼称</label><select id="facilitatorTermMode"><option value="auto">自動</option><option value="KP">KP</option><option value="DL">DL</option><option value="GM">GM</option><option value="custom">任意</option></select><input id="facilitatorTermCustom" placeholder="任意の呼称" hidden></div>
     </div>
     <div class="lib-form-grid">
+      <div><label>予定内容</label><select id="sessionKind"><option value="prelude">事前導入</option><option value="main">本編</option><option value="reserve">予備日</option><option value="aftertalk">感想戦</option></select></div>
       <div><label>日付</label><input id="date" type="date"></div>
       <div><label>開始時刻 <span class="small muted">（任意）</span></label><input id="startTime" type="time"></div>
       <div><label>終了時刻 <span class="small muted">（任意）</span></label><input id="endTime" type="time"></div>
@@ -373,6 +374,14 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 const q=id=>document.getElementById(id);
 const vis={private:"自分のみ",table:"同卓者のみ（準備中）",link:"リンク限定",public:"公開"};
 const statusLabel={tentative:"仮押さえ",planned:"予定",confirmed:"予定",done:"完了",rescheduling:"リスケ中",postponed:"延期",cancelled:"中止"};
+const sessionKindLabel={prelude:"事前導入",main:"本編",reserve:"予備日",aftertalk:"感想戦"};
+function sessionKindForRecord(x){
+ if(x?.eventId){
+   const ev=(TRPG39.loadEvents?.()||[]).find(e=>e.id===x.eventId);
+   if(ev?.sessionKind)return ev.sessionKind;
+ }
+ return String(x?.sessionKind||"main");
+}
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const normTitle=s=>String(s||"").normalize("NFKC").replace(/\s+/g,"").toLowerCase();
 
@@ -575,7 +584,7 @@ function setParticipantRows(rows=[]){
 }
 function reset(prefillScenarioId=""){
  q("editId").value="";
- ["title","date","startTime","endTime","system","selfHo","pc","image","comment","spoilerBody","runId","runLabel"].forEach(x=>q(x).value="");
+ ["title","date","startTime","endTime","system","selfHo","pc","image","comment","spoilerBody","runId","runLabel"].forEach(x=>q(x).value="");q("sessionKind").value="main";
  q("status").value="done";q("facilitatorPresence").value="present";q("facilitatorTermMode").value="auto";q("facilitatorTermCustom").value="";q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
  q("externalLinks").innerHTML="";addLinkRow();setParticipantRows();updateImagePreview();fillScenarioSelect();fillPCSelect();
  q("scenarioSelect").value=prefillScenarioId||"";syncScenarioSearchLabel();
@@ -647,7 +656,7 @@ function save(){
  if(item.start){
    let evs=TRPG39.loadEvents(),eventId=item.eventId||TRPG39.uuid();
    const ei=evs.findIndex(e=>e.id===eventId),base=ei>=0?evs[ei]:{};
-   const ev=TRPG39.normalizeEvent({...base,id:eventId,type:"trpg",scenarioId:item.scenarioId,title:item.title,scenarioTitle:item.title,start:item.start,end:item.end,status:item.status,system:item.system,facilitatorLabel:item.facilitatorLabel,facilitatorless:item.facilitatorless,role:item.role,pcName:item.pcName,pcId:item.pcId,participants:item.participants,participantIds:item.participantIds,runId:item.runId,runLabel:item.runLabel,linkedAlbumId:item.id});
+   const ev=TRPG39.normalizeEvent({...base,id:eventId,type:"trpg",scenarioId:item.scenarioId,title:item.title,scenarioTitle:item.title,start:item.start,end:item.end,status:item.status,sessionKind:q("sessionKind").value||"main",system:item.system,facilitatorLabel:item.facilitatorLabel,facilitatorless:item.facilitatorless,role:item.role,pcName:item.pcName,pcId:item.pcId,participants:item.participants,participantIds:item.participantIds,runId:item.runId,runLabel:item.runLabel,linkedAlbumId:item.id});
    if(ei>=0)evs[ei]=ev;else evs.push(ev);TRPG39.saveEvents(evs);
    item=TRPG39.normalizeAlbum({...item,eventId,date:String(item.start).slice(0,10)});
    i=data.findIndex(x=>x.id===item.id);if(i>=0)data[i]=item;
@@ -656,7 +665,7 @@ function save(){
 }
 function edit(id){
  let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";const st=splitLibraryDateTime(x.start||x.date||""),en=splitLibraryDateTime(x.end||"");q("date").value=x.date||st.date||"";q("startTime").value=st.time||"";q("endTime").value=en.time||"";q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setParticipantRows(rowsFromRecord(x));q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
+ q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";const st=splitLibraryDateTime(x.start||x.date||""),en=splitLibraryDateTime(x.end||"");q("date").value=x.date||st.date||"";q("startTime").value=st.time||"";q("endTime").value=en.time||"";q("sessionKind").value=sessionKindForRecord(x);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setParticipantRows(rowsFromRecord(x));q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -1029,7 +1038,7 @@ function runDetailHtml(g,r){
  <div class="lib-parent-actions"><button type="button" data-add-run="${esc(r.id)}" data-run-label="${esc(r.label)}" data-run-scenario="${esc(g.scenarioId)}">＋ この陣に日程</button><button type="button" data-archive-run="${esc(r.id)}" data-archived="${r.items.every(x=>x.archived)?"1":"0"}">${r.items.every(x=>x.archived)?"アーカイブから戻す":"アーカイブ"}</button></div>
  ${images.length?`<div class="lib-run-gallery">${images.map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>`:""}
  <div style="margin-top:14px">${r.items.map((x,i)=>`<article class="lib-child" id="record-${esc(x.id)}">
-   <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}${x.start&&String(x.start).slice(11,16)?` ${esc(String(x.start).slice(11,16))}`:""}<br><span class="badge">${esc(statusLabel[x.status]||"完了")}</span></div>
+   <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}${x.start&&String(x.start).slice(11,16)?` ${esc(String(x.start).slice(11,16))}`:""}<br><span class="badge">${esc(sessionKindLabel[sessionKindForRecord(x)]||"本編")}</span> <span class="badge">${esc(statusLabel[x.status]||"完了")}</span></div>
    <div>${(x.imageUrls||[])[0]?`<img class="lib-child-thumb" src="${esc((x.imageUrls||[])[0])}" alt="" loading="lazy">`:""}
      <div class="lib-child-title">${esc(x.pcName?`PC：${x.pcName}`:(displayRoleForRecord(x)||"開催記録"))}${x.selfHo?` <span class="badge">${esc(x.selfHo)}</span>`:""}</div>${x.articleBody?`<div class="lib-article-body">${esc(x.articleBody).replace(/\n/g,"<br>")}</div>`:""}${x.spoilerBody?`<details class="lib-spoiler"><summary>ネタバレを表示</summary><div class="spoiler-body">${esc(x.spoilerBody).replace(/\n/g,"<br>")}</div></details>`:""}
      <div class="lib-child-meta">${participantHtml(x)}<span class="badge lib-visibility">公開設定：${esc(vis[x.visibility]||"自分のみ")}</span></div>

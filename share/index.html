@@ -2,269 +2,42 @@
 <html lang="ja">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SHARE｜SAKU+MERU</title>
 <meta name="description" content="「一緒に」探す・遊ぶ・記録・共有。卓のあれこれをサクッとまとめるサイト。">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="SAKU+MERU">
-<meta property="og:title" content="SAKU+MERU">
-<meta property="og:description" content="「一緒に」探す・遊ぶ・記録・共有。卓のあれこれをサクッとまとめるサイト。">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="SAKU+MERU">
-<meta name="twitter:description" content="「一緒に」探す・遊ぶ・記録・共有。卓のあれこれをサクッとまとめるサイト。"><script>
-(()=>{try{const k="trpg39_theme",v=localStorage.getItem(k)||"system",m=(v==="light"||v==="dark")?v:(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"),r=document.documentElement;r.setAttribute("data-theme",m);r.setAttribute("data-theme-mode",v);r.classList.remove("theme-light","theme-dark");r.classList.add(m==="light"?"theme-light":"theme-dark");r.style.colorScheme=m;}catch(e){}})();
-</script>
-<link rel="stylesheet" href="../assets/css/style-v0296.css">
-<script defer src="../assets/js/theme-v0296.js"></script>
+<script>(()=>{try{const k="trpg39_theme",v=localStorage.getItem(k)||"system",m=(v==="light"||v==="dark")?v:(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"),r=document.documentElement;r.setAttribute("data-theme",m);r.classList.add(m==="light"?"theme-light":"theme-dark");r.style.colorScheme=m}catch(e){}})();</script>
+<link rel="stylesheet" href="../assets/css/style-v0296.css"><script defer src="../assets/js/theme-v0296.js"></script>
 <style>
-.share-page{display:grid;gap:14px}
-.share-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
-.share-meta{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
-.share-list{display:grid;gap:8px}
-.share-row{border-top:1px solid rgba(255,255,255,.07);padding-top:8px}
-.share-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10)}
-.share-day{min-height:68px;background:var(--panel);padding:6px;font-size:12px}
-.share-day .num{color:var(--muted);font-size:11px}
-.free{margin-top:6px;font-weight:700}
-.busy{margin-top:6px;color:var(--muted)}
-@media(max-width:760px){.share-cal{font-size:11px}.share-day{min-height:54px;padding:4px}}
-
-.share-scenario-tools{display:grid;gap:10px;margin:12px 0 14px}
-.share-scenario-tabs{display:flex;gap:7px;flex-wrap:wrap}
-.share-scenario-tab{width:auto;padding:6px 10px}
-.share-scenario-tab.active{font-weight:700;box-shadow:inset 0 0 0 1px var(--accent)}
-.share-scenario-search{max-width:520px}
-.share-scenario-count{font-size:12px;color:var(--muted)}
-.share-row[hidden]{display:none}
-.share-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
-
-.share-scenario-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
-  gap:14px;
-  margin-top:12px;
-}
-.share-scenario-card{
-  border:1px solid var(--line);
-  border-radius:12px;
-  overflow:hidden;
-  background:var(--panel);
-}
-.share-scenario-thumb{
-  width:100%;
-  aspect-ratio:16/10;
-  object-fit:cover;
-  display:block;
-  background:rgba(255,255,255,.025);
-}
-.share-scenario-placeholder{
-  width:100%;
-  aspect-ratio:16/10;
-  display:grid;
-  place-items:center;
-  font-size:34px;
-  background:rgba(255,255,255,.025);
-}
-.share-scenario-body{padding:12px}
-.share-scenario-title{font-size:1rem;font-weight:700;line-height:1.45;margin-bottom:6px}
-.share-scenario-author{font-size:12px;color:var(--muted);margin-top:6px}
-.share-scenario-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
-.share-scenario-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
-.share-room-preview{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
-.share-room-preview summary{cursor:pointer;font-weight:600}
-.share-room-preview img{
-  margin-top:8px;width:100%;aspect-ratio:16/10;object-fit:cover;
-  border-radius:8px;border:1px solid var(--line)
-}
+.share-page{display:grid;gap:14px}.share-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}.share-meta{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}.share-list{display:grid;gap:8px}.share-row{border-top:1px solid rgba(255,255,255,.07);padding-top:8px}.share-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10)}.share-day{min-height:68px;background:var(--panel);padding:6px;font-size:12px}.share-day .num{color:var(--muted);font-size:11px}.free{margin-top:6px;font-weight:700}.busy{margin-top:6px;color:var(--muted)}
+.share-article-body{white-space:pre-wrap;line-height:1.9;margin-top:16px}.share-article-head{border-bottom:1px solid var(--line);padding-bottom:12px}.share-password{max-width:480px;margin:12px auto;text-align:left}.share-password-row{display:flex;gap:8px;align-items:end}.share-password-row>div{flex:1}.share-password-row button{width:auto;white-space:nowrap}.share-password-error{font-size:12px;margin-top:6px;color:var(--muted)}
+.share-scenario-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:12px}.share-scenario-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}.share-scenario-thumb{width:100%;aspect-ratio:16/10;object-fit:cover;display:block}.share-scenario-placeholder{width:100%;aspect-ratio:16/10;display:grid;place-items:center;font-size:34px}.share-scenario-body{padding:12px}.share-scenario-title{font-weight:700}.share-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}.share-report-block{margin-top:12px;line-height:1.7}.share-report-block>strong{display:block;margin-bottom:4px}.share-spoiler{margin-top:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden}.share-spoiler summary{cursor:pointer;padding:9px 11px;font-weight:700}.share-spoiler .spoiler-body{padding:10px 12px;border-top:1px solid var(--line)}
+@media(max-width:760px){.share-cal{font-size:11px}.share-day{min-height:54px;padding:4px}.share-password-row{display:grid}}
 </style>
-<style>
-.share-article{margin-top:10px;line-height:1.8}
-.share-spoiler{margin-top:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.share-spoiler summary{cursor:pointer;padding:9px 11px;font-weight:700;user-select:none}
-.share-spoiler .spoiler-body{padding:10px 12px;border-top:1px solid var(--line);line-height:1.8}
-.share-report-block{margin-top:12px;line-height:1.7}.share-report-block>strong{display:block;margin-bottom:4px}</style>
-<script src="../assets/js/optional-features.js?v=0292" defer></script>
 </head>
 <body>
-<header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav><div class="theme-switcher" aria-label="テーマ">
-<button type="button" data-theme-choice="system">端末</button>
-<span>·</span>
-<button type="button" data-theme-choice="dark">ダーク</button>
-<span>·</span>
-<button type="button" data-theme-choice="light">ライト</button>
-</div></div></header>
-<main><div class="wrap share-page">
-  <div class="hero"><h2>SHARED</h2><p>SAKU+MERUで共有されたページです。</p></div>
-  <div id="shareContent" class="share-card"><p>読み込み中...</p></div>
-</div></main>
+<header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav></div></header>
+<main><div class="wrap share-page"><div class="hero"><h2>SHARED</h2><p>SAKU+MERUで共有されたページです。</p></div><div id="shareContent" class="share-card"><p>読み込み中...</p></div></div></main>
 <footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
-<script src="../assets/js/main.js?v=0292"></script>
-<script src="../assets/js/supabase-config.js?v=0292"></script>
-<script src="../assets/js/supabase-share.js?v=02307"></script>
+<script src="../assets/js/main.js?v=0292"></script><script src="../assets/js/supabase-config.js?v=0292"></script><script src="../assets/js/supabase-share.js?v=02307"></script>
 <script>
 (async()=>{
  const box=document.getElementById("shareContent");
  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
- const reportHtml=p=>{
-   const rows=Array.isArray(p.participantRows)?p.participantRows.slice():[];
-   const selfRole=String(p.selfRole||"").trim();
-   const selfPc=String(p.selfPcName||"").trim();
-   if(selfRole){
-     rows.push({
-       role:selfRole,
-       ho:"",
-       plName:"自分",
-       pcName:selfRole==="PL"?selfPc:"",
-       relation:""
-     });
-   }
-   if(!rows.length){
-     return (p.participants||[]).length?`<p><strong>参加者</strong><br>${esc((p.participants||[]).join(" / "))}</p>`:"";
-   }
-   const groups=new Map();
-   rows.forEach(r=>{
-     const role=String(r.role||"PL");
-     if(!groups.has(role))groups.set(role,[]);
-     groups.get(role).push(r);
-   });
-   const order=["KP","SKP","PL","その他"];
-   return order.filter(role=>groups.has(role)).map(role=>{
-     const rs=groups.get(role);
-     if(role==="PL"){
-       return `<div class="share-report-block"><strong>PL / PC</strong>${rs.map(r=>`<div>${r.ho?`${esc(r.ho)}：`:""}${esc(r.plName||"")} ${r.pcName?`/ ${esc(r.pcName)}`:""}</div>`).join("")}</div>`;
-     }
-     return `<div class="share-report-block"><strong>${esc(role)}</strong>${rs.map(r=>`<div>${r.ho?`${esc(r.ho)}：`:""}${esc(r.plName||"")}${r.pcName?` / ${esc(r.pcName)}`:""}</div>`).join("")}</div>`;
-   }).join("");
+ async function sha256Text(text){const bytes=new TextEncoder().encode(String(text||""));const hash=await crypto.subtle.digest("SHA-256",bytes);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("")}
+ const renderArticle=p=>{box.innerHTML=`<div class="share-article-head"><div class="small muted">${esc([p.scenarioTitle,p.runLabel].filter(Boolean).join(" ／ "))}</div><h2>${esc(p.title||"卓記事")}</h2>${p.updatedAt?`<div class="small muted">更新 ${esc(p.updatedAt)}</div>`:""}</div>${p.image?`<img src="${esc(p.image)}" alt="" style="max-width:620px;width:100%;border-radius:10px;border:1px solid var(--line);margin-top:14px">`:""}<div class="share-article-body">${esc(p.body||"")}</div>`};
+ const unlockArticle=p=>{
+   if(!p.passwordRequired){renderArticle(p);return}
+   box.innerHTML=`<div class="share-password"><h2>パスワード保護された卓記事です</h2><p class="small muted">共有者から案内されたパスワードを入力してください。</p><div class="share-password-row"><div><label>パスワード</label><input id="articleSharePassword" type="password" autocomplete="current-password"></div><button id="articleShareUnlock" type="button">開く</button></div><div id="articleShareError" class="share-password-error"></div></div>`;
+   const input=document.getElementById("articleSharePassword"),btn=document.getElementById("articleShareUnlock"),err=document.getElementById("articleShareError");
+   const check=async()=>{const hash=await sha256Text(input.value);if(hash===String(p.passwordHash||"")){renderArticle(p)}else{err.textContent="パスワードが違います。";input.select()}};btn.onclick=check;input.onkeydown=e=>{if(e.key==="Enter")check()};input.focus();
  };
- const id=new URLSearchParams(location.search).get("id")||location.hash.replace(/^#/,"");
- if(!id){box.innerHTML="<p>共有IDがありません。</p>";return;}
+ const reportHtml=p=>{const rows=Array.isArray(p.participantRows)?p.participantRows.slice():[];if(p.selfRole)rows.push({role:p.selfRole,ho:p.selfHo||"",plName:"自分",pcName:p.selfRole==="PL"?(p.selfPcName||""):""});return rows.length?`<div class="share-report-block"><strong>参加</strong>${rows.map(r=>`<div>${esc(r.ho?`${r.ho}：`:r.role?`${r.role}：`:"")}${esc(r.plName||"")}${r.pcName?` / ${esc(r.pcName)}`:""}</div>`).join("")}</div>`:""};
+ const id=new URLSearchParams(location.search).get("id")||location.hash.replace(/^#/,"");if(!id){box.innerHTML="<p>共有IDがありません。</p>";return}
  try{
-   const payload=await TRPG39Cloud.getSharedPage(id);
-   const legacyPayload=Array.isArray(payload)?{kind:"scenario-list",items:payload}:payload;
-   const p=legacyPayload;
-   if(!payload)throw new Error("共有データが見つかりません");
-   if(legacyPayload.kind==="library-session"){
-     box.innerHTML=`<h2>${esc(legacyPayload.title||"LIBRARY")}</h2>
-       <div class="share-meta">${legacyPayload.system?`<span class="badge">${esc(legacyPayload.system)}</span>`:""}${p.role?`<span class="badge">${esc(p.role)}</span>`:""}${p.date?`<span class="badge">${esc(p.date)}</span>`:""}</div>
-       ${p.image?`<img src="${esc(p.image)}" alt="" style="max-width:420px;width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:10px">`:""}
-       ${reportHtml(p)}
-       ${p.comment?`<div class="share-report-block"><strong>ひとこと</strong><p style="white-space:pre-wrap;margin:.35em 0 0">${esc(p.comment)}</p></div>`:""}
-       ${p.spoiler?`<details class="spoiler"><summary>⚠ ネタバレ</summary><div class="spoiler-body">${esc(p.spoiler)}</div></details>`:""}`;
-   } else if(legacyPayload.kind==="calendar-availability"){
-     const days=p.days||[];
-     box.innerHTML=`<h2>${esc(legacyPayload.label||"空き日カレンダー")}</h2>
-       <p class="small">共有されているのは空き状況だけです。予定の内容は表示されません。</p>
-       <div class="share-cal">${days.map(d=>`<div class="share-day"><div class="num">${esc(d.date)}</div><div class="${d.state==="free"?"free":"busy"}">${d.state==="free"?"○ 空き":"予定あり"}</div></div>`).join("")}</div>`;
-
-   } else if(legacyPayload.kind==="scenario-list" || legacyPayload.kind==="scenarios" || Array.isArray(legacyPayload.scenarios) || Array.isArray(legacyPayload.items)){
-     const items=Array.isArray(legacyPayload.scenarios)?legacyPayload.scenarios:(Array.isArray(legacyPayload.items)?legacyPayload.items:[]);
-     const title=legacyPayload.title||legacyPayload.label||"SCENARIO";
-     const classLabels={owned:"所持",wish:"気になる",played:"通過済み",watched:"視聴済み",planned:"通過予定",kpDone:"回した",kpPlanned:"回す予定",roomReady:"部屋あり"};
-
-     const normalized=items.map((x,i)=>{
-       const c={};
-
-       // v5: 共有元カードと同じ分類キーをそのまま利用。
-       const keys=Array.isArray(x.statusKeys)?x.statusKeys:[];
-       keys.forEach(k=>{if(k in classLabels)c[k]=true});
-
-       const explicitLabels=Array.isArray(x.statusLabels)?x.statusLabels:[];
-       Object.entries(classLabels).forEach(([k,v])=>{
-         if(explicitLabels.includes(v))c[k]=true;
-       });
-
-       // v4以前との互換
-       Object.assign(c,(x.classifications&&typeof x.classifications==="object")?x.classifications:{});
-       const rawFlags=(x.flags&&typeof x.flags==="object")?x.flags:{};
-       Object.keys(classLabels).forEach(k=>{
-         if(rawFlags[k]===true)c[k]=true;
-         if(x[k]===true)c[k]=true;
-       });
-       const labels=Array.isArray(x.labels)?x.labels:[];
-       Object.entries(classLabels).forEach(([k,v])=>{
-         if(labels.includes(v))c[k]=true;
-       });
-
-       return {...x,_idx:i,_classifications:c};
-     });
-
-     box.innerHTML=`<h2>${esc(title)}</h2>
-       <p class="small">共有されたシナリオ棚です。分類を切り替えて見ることができます。${(legacyPayload.shareFormat==="scenario-shelf-v5"||items.some(x=>Array.isArray(x.statusKeys)))?"":"（旧形式の共有データ）"}</p>
-       <div class="share-scenario-tools">
-         <div class="share-scenario-tabs">
-           <button type="button" class="share-scenario-tab active" data-share-scenario-filter="">すべて</button>
-           <button type="button" class="share-scenario-tab" data-share-scenario-filter="owned">所持</button>
-           <button type="button" class="share-scenario-tab" data-share-scenario-filter="wish">気になる</button>
-           <button type="button" class="share-scenario-tab" data-share-scenario-filter="played">通過済み</button>
-           <button type="button" class="share-scenario-tab" data-share-scenario-filter="watched">視聴済み</button>
-           <button type="button" class="share-scenario-tab" data-share-scenario-filter="planned">通過予定</button>
-           <button type="button" class="share-scenario-tab" data-share-scenario-filter="kpDone">回した</button>
-           <button type="button" class="share-scenario-tab" data-share-scenario-filter="kpPlanned">回す予定</button>
-           <button type="button" class="share-scenario-tab" data-share-scenario-filter="roomReady">部屋あり</button>
-         </div>
-         <input id="shareScenarioSearch" class="share-scenario-search" type="search" placeholder="シナリオ名・システム・作者・タグで検索">
-         <div id="shareScenarioCount" class="share-scenario-count"></div>
-       </div>
-       <div id="shareScenarioList" class="share-scenario-grid">${normalized.length?normalized.map(x=>`
-         <article class="share-scenario-card" data-share-item="${x._idx}">
-           ${x.thumbnailUrl||x.image||x.imageUrl
-             ?`<img class="share-scenario-thumb" src="${esc(x.thumbnailUrl||x.image||x.imageUrl)}" alt="" loading="lazy">`
-             :`<div class="share-scenario-placeholder">🌺</div>`}
-           <div class="share-scenario-body">
-             <div class="share-scenario-title">${esc(x.title||x.name||"名称未設定")}</div>
-             <div class="share-scenario-badges">
-               ${x.system?`<span class="badge">${esc(x.system)}</span>`:""}
-               ${x.playersMin||x.playersMax?`<span class="badge">${esc((x.playersMin||x.playersMax||"")+"〜"+(x.playersMax||x.playersMin||"")+"人")}</span>`:""}
-               ${x.hoursMin||x.hoursMax?`<span class="badge">${esc((x.hoursMin||x.hoursMax||"")+"〜"+(x.hoursMax||x.hoursMin||"")+"h")}</span>`:""}
-               ${Object.entries(x._classifications).filter(([,v])=>v).map(([k])=>classLabels[k]?`<span class="badge">${esc(classLabels[k])}</span>`:"").join("")}
-             </div>
-             ${x.author?`<div class="share-scenario-author">${esc(x.author)}</div>`:""}
-             ${(x.tags||[]).length?`<div class="share-tags">${x.tags.map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>`:""}
-             <div class="share-scenario-links">
-               ${x.url?`<a class="link" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布・掲載ページ</a>`:""}
-             </div>
-             ${x.roomImageUrl?`<details class="share-room-preview"><summary>部屋を見る</summary><img src="${esc(x.roomImageUrl)}" alt="部屋画像" loading="lazy"></details>`:""}
-           </div>
-         </article>`).join(""):`<p>共有されたシナリオはありません。</p>`}</div>`;
-
-     let scenarioFilter="";
-     const searchInput=document.getElementById("shareScenarioSearch");
-     const countEl=document.getElementById("shareScenarioCount");
-     const applyScenarioShelfFilter=()=>{
-       const term=String(searchInput?.value||"").trim().normalize("NFKC").toLowerCase();
-       let visible=0;
-       normalized.forEach(x=>{
-         const classOk=!scenarioFilter||!!x._classifications?.[scenarioFilter];
-         const searchText=[x.title,x.shortTitle,x.system,x.author,(x.tags||[]).join(" ")].filter(Boolean).join(" ").normalize("NFKC").toLowerCase();
-         const searchOk=!term||searchText.includes(term);
-         const el=document.querySelector(`[data-share-item="${x._idx}"]`);
-         if(el)el.hidden=!(classOk&&searchOk);
-         if(classOk&&searchOk)visible++;
-       });
-       if(countEl)countEl.textContent=`${visible}件 / 全${normalized.length}件`;
-     };
-     document.querySelectorAll("[data-share-scenario-filter]").forEach(btn=>{
-       btn.onclick=()=>{
-         scenarioFilter=btn.dataset.shareScenarioFilter||"";
-         document.querySelectorAll("[data-share-scenario-filter]").forEach(b=>b.classList.toggle("active",b===btn));
-         applyScenarioShelfFilter();
-       };
-     });
-     if(searchInput)searchInput.oninput=applyScenarioShelfFilter;
-     applyScenarioShelfFilter();
-
-   } else if(legacyPayload.kind==="scenario" || legacyPayload.scenario || (legacyPayload.title && (legacyPayload.system || legacyPayload.author || legacyPayload.thumbnailUrl || legacyPayload.status))){
-     const x=legacyPayload.scenario||payload;
-     box.innerHTML=`<h2>${esc(x.title||x.name||"SCENARIO")}</h2>
-       <div class="share-meta">
-         ${x.system?`<span class="badge">${esc(x.system)}</span>`:""}
-         ${x.status?`<span class="badge">${esc(x.status)}</span>`:""}
-       </div>
-       ${x.thumbnailUrl||x.image||x.imageUrl?`<img src="${esc(x.thumbnailUrl||x.image||x.imageUrl)}" alt="" style="max-width:520px;width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:10px">`:`<div style="font-size:52px;margin:8px 0">🌺</div>`}
-       ${x.author?`<p><strong>作者</strong>　${esc(x.author)}</p>`:""}
-       ${x.description||x.memo?`<p style="white-space:pre-wrap">${esc(x.description||x.memo)}</p>`:""}`;
-
-   } else {
-     box.innerHTML="<p>この共有データ形式には対応していません。</p>";
-   }
+  const payload=await TRPG39Cloud.getSharedPage(id);if(!payload)throw new Error("共有データが見つかりません");const p=Array.isArray(payload)?{kind:"scenario-list",items:payload}:payload;
+  if(p.kind==="library-article"){unlockArticle(p);return}
+  if(p.kind==="library-session"){box.innerHTML=`<h2>${esc(p.title||"LIBRARY")}</h2><div class="share-meta">${p.system?`<span class="badge">${esc(p.system)}</span>`:""}${p.date?`<span class="badge">${esc(p.date)}</span>`:""}</div>${p.image?`<img src="${esc(p.image)}" alt="" style="max-width:420px;width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:10px">`:""}${reportHtml(p)}${p.comment?`<div class="share-report-block"><strong>ひとこと</strong><p style="white-space:pre-wrap">${esc(p.comment)}</p></div>`:""}${p.spoiler?`<details class="share-spoiler"><summary>⚠ ネタバレ</summary><div class="spoiler-body">${esc(p.spoiler)}</div></details>`:""}`;return}
+  if(p.kind==="calendar-availability"){const days=p.days||[];box.innerHTML=`<h2>${esc(p.label||"空き日カレンダー")}</h2><div class="share-cal">${days.map(d=>`<div class="share-day"><div class="num">${esc(d.date)}</div><div class="${d.state==="free"?"free":"busy"}">${d.state==="free"?"○ 空き":"予定あり"}</div></div>`).join("")}</div>`;return}
+  if(p.kind==="scenario-list"||p.kind==="scenarios"||Array.isArray(p.scenarios)||Array.isArray(p.items)){const items=Array.isArray(p.scenarios)?p.scenarios:(p.items||[]);box.innerHTML=`<h2>${esc(p.title||p.label||"SCENARIO")}</h2><div class="share-scenario-grid">${items.map(x=>`<article class="share-scenario-card">${x.thumbnailUrl||x.image||x.imageUrl?`<img class="share-scenario-thumb" src="${esc(x.thumbnailUrl||x.image||x.imageUrl)}" alt="">`:`<div class="share-scenario-placeholder">🌺</div>`}<div class="share-scenario-body"><div class="share-scenario-title">${esc(x.title||x.name||"名称未設定")}</div><div class="share-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}</div>${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}${(x.tags||[]).length?`<div class="share-tags">${x.tags.map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>`:""}</div></article>`).join("")}</div>`;return}
+  if(p.kind==="scenario"||p.scenario){const x=p.scenario||p;box.innerHTML=`<h2>${esc(x.title||x.name||"SCENARIO")}</h2>${x.thumbnailUrl||x.image||x.imageUrl?`<img src="${esc(x.thumbnailUrl||x.image||x.imageUrl)}" alt="" style="max-width:520px;width:100%;border-radius:8px;border:1px solid var(--line)">`:""}${x.author?`<p><strong>作者</strong> ${esc(x.author)}</p>`:""}${x.description||x.memo?`<p style="white-space:pre-wrap">${esc(x.description||x.memo)}</p>`:""}`;return}
+  box.innerHTML="<p>この共有データ形式には対応していません。</p>";
  }catch(e){console.error(e);box.innerHTML=`<p>共有ページを読み込めませんでした。<br><span class="small">${esc(e.message||e)}</span></p>`}
 })();
-</script>
-</body></html>
+</script></body></html>

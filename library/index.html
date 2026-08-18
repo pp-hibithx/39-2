@@ -399,7 +399,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.3</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.3.1</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -842,7 +842,15 @@ function snsNameForRow(r){
  const hit=playerForRow(r);
  return String(hit?.socialName||r.plName||"").trim();
 }
-function rowIsExcluded(r){return !!playerForRow(r)?.excluded;}
+function rowIsExcluded(r){
+ const hit=playerForRow(r);
+ // 現在のPLAYERSで「除外」されている人は匿名枠として扱う。
+ if(hit)return !!hit.excluded;
+ // 旧データでplayerIdだけ残り、PLAYERS側から既に削除されている場合も
+ // 名前を再表示せず「PL：他○名」に集約する。
+ if(r?.playerId)return true;
+ return false;
+}
 function reportRowsWithSelf(x){
  const rows=rowsFromRecord(x).map(r=>({...r,_excluded:rowIsExcluded(r),plName:snsNameForRow(r)}));
  const selfRole=String(x.role||"").trim();
@@ -864,7 +872,7 @@ function reportRowsWithSelf(x){
    }
    if(hasName||r._self)visible.push(r);
  });
- if(anonPl.length)visible.push({role:"_anonymousPL",plName:`他PL${anonPl.length}名`,_anonymousSummary:true});
+ if(anonPl.length)visible.push({role:"_anonymousPL",plName:`PL：他${anonPl.length}名`,_anonymousSummary:true});
  return visible;
 }
 function buildXReportText(x){
@@ -1040,7 +1048,7 @@ function participantHtml(x){
    else body.push(`<div>${r.ho?`${esc(r.ho)}　`:""}${name}${pc}</div>`);
  });
 
- if(anonPl.length)body.push(`<div class="muted">他PL${anonPl.length}名</div>`);
+ if(anonPl.length)body.push(`<div class="muted">PL：他${anonPl.length}名</div>`);
 
  const lessNote=cfg.less?`<div><strong>${esc(cfg.label)}レス</strong></div>`:"";
  return `<div class="lib-participants">${lessNote}${body.join("")}${named.length?`<div class="small muted honorific-note">※敬称略</div>`:""}</div>`;

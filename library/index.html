@@ -240,6 +240,23 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 }
 </style>
 <script src="../assets/js/beta-gate.js?v=02316"></script>
+
+<style>
+.lib-article-pages{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.lib-article-pages-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.lib-article-page-list{display:grid;gap:10px}
+.lib-article-page{border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.015);overflow:hidden}
+.lib-article-page summary{cursor:pointer;list-style:none;padding:11px 12px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.lib-article-page summary::-webkit-details-marker{display:none}
+.lib-article-page-title{font-weight:700}
+.lib-article-page-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.lib-article-page-body{padding:0 12px 12px;line-height:1.8;white-space:pre-wrap}
+.lib-article-page-actions{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 12px}
+.lib-article-page-actions button{width:auto;font-size:12px}
+.lib-article-editor{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.lib-article-editor[hidden]{display:none}
+.lib-article-editor textarea{min-height:180px}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -352,7 +369,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.32.9</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.0</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -412,6 +429,14 @@ let focusedScenarioKey="";
 let focusedRunId="";
 let libraryPlayFilter="all";
 const RUN_COVER_POS_KEY="saku_meru_library_run_cover_position_v2";
+const RUN_ARTICLE_PAGES_KEY="saku_meru_library_run_article_pages_v1";
+function loadRunArticlePages(){
+ try{const v=JSON.parse(localStorage.getItem(RUN_ARTICLE_PAGES_KEY)||"{}");return v&&typeof v==="object"?v:{}}catch{return {}}
+}
+function saveRunArticlePages(v){try{localStorage.setItem(RUN_ARTICLE_PAGES_KEY,JSON.stringify(v))}catch{}}
+function articlePagesForRun(runId){const all=loadRunArticlePages();return Array.isArray(all[runId])?all[runId]:[]}
+function saveArticlePagesForRun(runId,pages){const all=loadRunArticlePages();if(pages?.length)all[runId]=pages;else delete all[runId];saveRunArticlePages(all)}
+
 function loadRunCoverPositions(){
  try{
    const v=JSON.parse(localStorage.getItem(RUN_COVER_POS_KEY)||"{}");
@@ -1053,6 +1078,55 @@ function runCardHtml(g,r){
    </div>
  </article>`;
 }
+
+function articlePagesHtml(r){
+ const pages=articlePagesForRun(r.id).slice().sort((a,b)=>String(a.createdAt||"").localeCompare(String(b.createdAt||"")));
+ return `<section class="lib-article-pages">
+   <div class="lib-article-pages-head"><div><strong>卓記事</strong><div class="small muted">この陣について、感想・メモ・ログなどをページ単位で追加できます。</div></div><button type="button" data-article-new="${esc(r.id)}">＋ ページを追加</button></div>
+   <div class="lib-article-page-list">${pages.length?pages.map((p,i)=>`<details class="lib-article-page" ${i===0?"open":""}>
+     <summary><div><div class="lib-article-page-title">${esc(p.title||`ページ ${i+1}`)}</div><div class="lib-article-page-meta">${esc(p.updatedAt||p.createdAt||"")}</div></div><span>▼</span></summary>
+     <div class="lib-article-page-body">${esc(p.body||"")}</div>
+     <div class="lib-article-page-actions"><button type="button" data-article-edit="${esc(p.id)}" data-run-id="${esc(r.id)}">編集</button><button type="button" class="danger" data-article-delete="${esc(p.id)}" data-run-id="${esc(r.id)}">削除</button></div>
+   </details>`).join(""):'<div class="small muted">卓記事ページはまだありません。</div>'}</div>
+   <div class="lib-article-editor" id="articleEditor-${esc(r.id)}" hidden>
+     <input type="hidden" class="articleEditId">
+     <label>ページタイトル</label><input class="articleTitle" placeholder="例：セッション感想／KPメモ／あとがき">
+     <label>本文</label><textarea class="articleBodyInput" placeholder="書きたいことを自由に残せます。"></textarea>
+     <div class="album-actions"><button type="button" data-article-save="${esc(r.id)}">保存</button><button type="button" data-article-cancel="${esc(r.id)}">キャンセル</button></div>
+   </div>
+ </section>`;
+}
+function openArticleEditor(runId,pageId=""){
+ const ed=document.getElementById(`articleEditor-${runId}`);if(!ed)return;
+ const pages=articlePagesForRun(runId),page=pages.find(p=>p.id===pageId)||null;
+ ed.querySelector('.articleEditId').value=page?.id||"";
+ ed.querySelector('.articleTitle').value=page?.title||"";
+ ed.querySelector('.articleBodyInput').value=page?.body||"";
+ ed.hidden=false;
+ ed.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function saveArticlePage(runId){
+ const ed=document.getElementById(`articleEditor-${runId}`);if(!ed)return;
+ const title=ed.querySelector('.articleTitle').value.trim(),body=ed.querySelector('.articleBodyInput').value.trim();
+ if(!title&&!body)return alert("ページタイトルか本文を入力してください。");
+ const pages=articlePagesForRun(runId).slice(),id=ed.querySelector('.articleEditId').value||TRPG39.uuid(),now=new Date().toISOString().slice(0,16).replace('T',' ');
+ const i=pages.findIndex(p=>p.id===id);
+ const page={...(i>=0?pages[i]:{}),id,title:title||"無題",body,createdAt:i>=0?(pages[i].createdAt||now):now,updatedAt:now};
+ if(i>=0)pages[i]=page;else pages.push(page);
+ saveArticlePagesForRun(runId,pages);render();
+}
+function deleteArticlePage(runId,pageId){
+ if(!confirm("この卓記事ページを削除しますか？"))return;
+ saveArticlePagesForRun(runId,articlePagesForRun(runId).filter(p=>p.id!==pageId));render();
+}
+function bindArticlePageButtons(){
+ document.querySelectorAll('[data-article-new]').forEach(b=>b.onclick=()=>openArticleEditor(b.dataset.articleNew));
+ document.querySelectorAll('[data-article-edit]').forEach(b=>b.onclick=()=>openArticleEditor(b.dataset.runId,b.dataset.articleEdit));
+ document.querySelectorAll('[data-article-delete]').forEach(b=>b.onclick=()=>deleteArticlePage(b.dataset.runId,b.dataset.articleDelete));
+ document.querySelectorAll('[data-article-save]').forEach(b=>b.onclick=()=>saveArticlePage(b.dataset.articleSave));
+ document.querySelectorAll('[data-article-cancel]').forEach(b=>b.onclick=()=>{const ed=document.getElementById(`articleEditor-${b.dataset.articleCancel}`);if(ed)ed.hidden=true});
+}
+
 function runDetailHtml(g,r){
  const images=[...new Set(r.items.flatMap(x=>x.imageUrls||[]).filter(Boolean))];
  const dates=r.items.map(x=>x.date).filter(Boolean).sort();
@@ -1063,6 +1137,7 @@ function runDetailHtml(g,r){
  </div>
  <div class="lib-parent-actions"><button type="button" data-add-run="${esc(r.id)}" data-run-label="${esc(r.label)}" data-run-scenario="${esc(g.scenarioId)}">＋ この陣に日程</button><button type="button" data-archive-run="${esc(r.id)}" data-archived="${r.items.every(x=>x.archived)?"1":"0"}">${r.items.every(x=>x.archived)?"アーカイブから戻す":"アーカイブ"}</button></div>
  ${images.length?`<div class="lib-run-gallery">${images.map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>`:""}
+ ${articlePagesHtml(r)}
  <div style="margin-top:14px">${r.items.map((x,i)=>`<article class="lib-child" id="record-${esc(x.id)}">
    <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}${x.start&&String(x.start).slice(11,16)?` ${esc(String(x.start).slice(11,16))}`:""}<br><span class="badge">${esc(sessionKindLabel[sessionKindForRecord(x)]||"本編")}</span> <span class="badge">${esc(statusLabel[x.status]||"完了")}</span></div>
    <div>${(x.imageUrls||[])[0]?`<img class="lib-child-thumb" src="${esc((x.imageUrls||[])[0])}" alt="" loading="lazy">`:""}
@@ -1437,6 +1512,7 @@ function render(){
      card.onkeydown=e=>{if(e.key==="Enter"){focusedRunId=card.dataset.runFocus;render()}};
    });
    bindCoverAdjustButtons();
+   bindArticlePageButtons();
  }else{
    q("list").classList.add("library-grid");
    const visibleGroups=groups.filter(groupMatchesPlayFilter);

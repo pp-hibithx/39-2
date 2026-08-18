@@ -100,6 +100,17 @@ html[data-theme="light"] .prep-item{
 .backup-actions button{width:100%}
 .backup-note{font-size:12px;color:var(--muted);line-height:1.6}
 .backup-file{display:none}
+
+.pdf-import-box{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.pdf-import-actions{display:grid;gap:8px}
+.pdf-import-actions button{width:100%}
+.pdf-import-note{font-size:12px;color:var(--muted);line-height:1.6}
+.pdf-import-file{display:none}
+.pdf-import-preview{margin-top:10px;display:grid;gap:8px}
+.pdf-page{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--panel)}
+.pdf-page-head{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.pdf-page textarea{width:100%;min-height:130px;margin-top:8px;resize:vertical}
+.pdf-page-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 </style><script src="../assets/js/beta-gate.js?v=02315"></script>
 </head><body><main class="prep-wrap"><p><a href="../scenario/index.html?v=0292">← SCENARIO</a></p><h1>卓準備</h1><div id="scenarioTitle" class="small muted"></div>
 <div class="prep-grid"><aside class="prep-panel"><h2>テンプレート</h2><button class="template-btn" data-template="kp">CoC KP基本セット</button><button class="template-btn" data-template="pl">CoC PL基本セット</button><h3>自作テンプレート</h3><div id="customTemplates"></div><button id="saveTemplate">現在の項目をテンプレート保存</button>
@@ -117,7 +128,21 @@ html[data-theme="light"] .prep-item{
   </div>
   <div id="backupStatus" class="small muted" style="margin-top:8px"></div>
 </div>
-<div class="material-launch"><h3>素材LIBRARY</h3><button id="openMaterialLibrary" type="button">🎛 BGM・画像素材を管理</button><div class="small muted">卓で使うBGMや背景・マップなどを一度登録して、各シーンから呼び出せます。</div></div></aside>
+<div class="material-launch"><h3>素材LIBRARY</h3><button id="openMaterialLibrary" type="button">🎛 BGM・画像素材を管理</button><div class="small muted">卓で使うBGMや背景・マップなどを一度登録して、各シーンから呼び出せます。</div></div>
+<div class="pdf-import-box">
+  <h3>PDF → 進行ノート</h3>
+  <div class="pdf-import-note">
+    シナリオPDFから文字を取り込み、ページ単位で確認してからシーンへ追加します。<br>
+    PDF本体や抽出本文は共有されません。画像だけのPDFは文字抽出できない場合があります。
+  </div>
+  <div class="pdf-import-actions">
+    <button type="button" id="pickPdf">PDFを選択</button>
+    <input class="pdf-import-file" id="pdfFile" type="file" accept="application/pdf,.pdf">
+  </div>
+  <div id="pdfStatus" class="small muted" style="margin-top:8px"></div>
+  <div id="pdfPreview" class="pdf-import-preview"></div>
+</div>
+</aside>
 <section class="prep-panel"><div class="prep-head"><div><label>準備の種類</label><select id="scope"><option value="scenario">シナリオ共通準備</option><option value="kpRun">陣ごとのKP準備</option><option value="plSession">卓ごとのPL準備</option></select></div><div><label>陣・卓名</label><input id="runLabel" placeholder="例：1陣目／自陣"></div></div><div id="progress" style="margin:12px 0"></div><div id="saveNote" class="small muted" style="margin:-6px 0 10px">変更内容は自動保存されます。</div><div id="items" class="prep-list"></div><hr><h3>項目を追加</h3><input id="newTitle" placeholder="例：キャラシ提出"><div class="prep-add"><input id="newDeadline" class="deadline" type="date"><input id="newUrl" type="url" placeholder="関連URL"><input id="newMemo" placeholder="メモ"><button id="addItem">追加</button></div>
 
 <div id="scenePanel" class="scene-panel" hidden><div class="scene-head"><div><h2>シーン進行ノート</h2><div class="small muted">背景・BGM・本文・KPメモをシーンごとにまとめます。</div></div><button id="addScene" type="button">＋ シーンを追加</button></div><div id="sceneList" class="scene-list"></div></div>
@@ -336,6 +361,77 @@ q("backupNormal").onclick=()=>makeBackup(false);
 q("backupFull").onclick=()=>makeBackup(true);
 q("restoreBackup").onclick=()=>q("restoreBackupFile").click();
 q("restoreBackupFile").onchange=()=>{const f=q("restoreBackupFile").files?.[0];if(f)restoreBackupFile(f);q("restoreBackupFile").value="";};
+
+
+let pdfImportPages=[];
+q("pickPdf").onclick=()=>q("pdfFile").click();
+q("pdfFile").onchange=async()=>{
+  const file=q("pdfFile").files?.[0];
+  q("pdfFile").value="";
+  if(!file)return;
+  if(q("scope").value!=="kpRun"){
+    alert("PDFからシーンへ追加する場合は「陣ごとのKP準備」を選択してください。");
+    return;
+  }
+  const status=q("pdfStatus"),preview=q("pdfPreview");
+  status.textContent="PDFを読み込み中…";preview.innerHTML="";
+  try{
+    const pdfjsLib=await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs");
+    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
+    pdfImportPages=[];
+    for(let n=1;n<=pdf.numPages;n++){
+      status.textContent=`文字を抽出中… ${n}/${pdf.numPages}ページ`;
+      const page=await pdf.getPage(n);
+      const tc=await page.getTextContent();
+      let text="",lastY=null;
+      for(const item of tc.items||[]){
+        const y=item.transform?.[5];
+        if(lastY!==null && y!==undefined && Math.abs(y-lastY)>4)text+="\n";
+        else if(text && !text.endsWith("\n"))text+=" ";
+        text+=item.str||"";
+        lastY=y;
+      }
+      pdfImportPages.push({page:n,title:`PDF p.${n}`,text:text.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim()});
+    }
+    status.textContent=`${pdf.numPages}ページを読み込みました。必要なページだけシーンへ追加できます。`;
+    renderPdfPreview();
+  }catch(e){
+    console.error(e);
+    status.textContent="PDFの読み込みに失敗しました。";
+    alert("PDFを読み込めませんでした。画像だけのPDFや保護されたPDFでは抽出できない場合があります。");
+  }
+};
+function renderPdfPreview(){
+  const preview=q("pdfPreview");
+  preview.innerHTML=pdfImportPages.map((p,i)=>`
+    <div class="pdf-page">
+      <div class="pdf-page-head"><b>PDF p.${p.page}</b><span class="small muted">${p.text.length}文字</span></div>
+      <input type="text" data-pdf-title="${i}" value="${esc(p.title)}" placeholder="シーン名">
+      <textarea data-pdf-text="${i}" placeholder="抽出本文">${esc(p.text)}</textarea>
+      <div class="pdf-page-actions">
+        <button type="button" data-pdf-add="${i}">このページをシーンに追加</button>
+      </div>
+    </div>`).join("");
+  document.querySelectorAll("[data-pdf-add]").forEach(b=>b.onclick=()=>{
+    const i=Number(b.dataset.pdfAdd),p=pdfImportPages[i];
+    const title=document.querySelector(`[data-pdf-title="${i}"]`)?.value.trim()||`PDF p.${p.page}`;
+    const text=document.querySelector(`[data-pdf-text="${i}"]`)?.value||"";
+    const xs=sceneBucket();
+    xs.push({
+      id:crypto.randomUUID?crypto.randomUUID():Date.now()+Math.random()+"",
+      title,
+      body:text,
+      memo:"",
+      imageId:"",
+      imageUrl:"",
+      bgmId:""
+    });
+    saveScenes();
+    q("pdfStatus").textContent=`PDF p.${p.page} をシーン「${title}」として追加しました。`;
+  });
+}
 
 chooseInitialView();activeLabel=normLabel(q("runLabel").value);saveUI();render();
 })();

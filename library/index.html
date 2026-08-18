@@ -287,6 +287,23 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .article-local-audio{font-size:11px;color:var(--muted);margin-top:5px}
 @media(max-width:760px){.article-bgm-grid{grid-template-columns:1fr}}
 </style>
+
+<style>
+/* v0.2.33.4 — reusable BGM library */
+.bgm-lib-actions{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 10px}.bgm-lib-actions button{width:auto}
+.bgm-lib-tags{font-size:11px;color:var(--muted);margin-top:5px}
+.bgm-library-dialog{width:min(820px,calc(100vw - 28px));max-height:86vh;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:inherit;padding:0;overflow:hidden}
+.bgm-library-dialog::backdrop{background:rgba(0,0,0,.58)}
+.bgm-library-panel{padding:16px;display:grid;gap:12px;max-height:86vh;overflow:auto}
+.bgm-library-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.bgm-library-head button{width:auto}
+.bgm-library-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:8px}.bgm-library-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.bgm-library-card{border:1px solid var(--line);border-radius:10px;padding:11px;background:rgba(255,255,255,.018)}
+.bgm-library-title{font-weight:700}.bgm-library-meta{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.55}.bgm-library-card audio{width:100%;margin-top:8px}
+.bgm-library-card-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.bgm-library-card-actions button{width:auto;font-size:12px}
+.bgm-library-empty{padding:18px;border:1px dashed var(--line);border-radius:10px;color:var(--muted);text-align:center}
+@media(max-width:650px){.bgm-library-toolbar{grid-template-columns:1fr}}
+</style>
+
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -399,7 +416,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.3.1</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.4</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -408,6 +425,13 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 </div></div>
 
 <dialog id="xPreviewDialog" class="x-preview"><h2>X卓報告プレビュー</h2><p class="small muted">投稿前に自由に編集できます。SNS表示名が設定されている人は短縮名で表示します。</p><textarea id="xPreviewText"></textarea><div class="x-preview-actions"><span id="xPreviewCount" class="small muted"></span><div class="row"><button id="xPreviewCancel" type="button">戻る</button><button id="xPreviewPost" type="button">X投稿画面へ</button></div></div></dialog>
+
+<dialog id="bgmLibraryDialog" class="bgm-library-dialog"><div class="bgm-library-panel">
+  <div class="bgm-library-head"><div><h2 style="margin:0">BGM LIBRARY</h2><div class="small muted">登録した曲を卓記事で何度でも再利用できます。</div></div><button type="button" id="bgmLibraryClose">閉じる</button></div>
+  <div class="bgm-library-toolbar"><div><label>検索</label><input id="bgmLibrarySearch" type="search" placeholder="曲名・作者・配布元・タグ"></div><div><label>タグ</label><select id="bgmLibraryTag"><option value="">すべて</option></select></div></div>
+  <div id="bgmLibraryList" class="bgm-library-grid"></div>
+</div></dialog>
+
 <footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
 
 <script src="../assets/js/main.js?v=0292"></script>
@@ -1159,6 +1183,29 @@ async function hydrateLocalArticleAudio(root=document){
  const nodes=[...root.querySelectorAll('audio[data-local-audio-id]')];
  for(const el of nodes){try{const row=await getLocalArticleAudio(el.dataset.localAudioId);if(!row?.blob)continue;const url=URL.createObjectURL(row.blob);el.src=url;el.dataset.objectUrl=url;el.closest('.article-bgm-card')?.querySelector('.article-local-audio')?.replaceChildren(document.createTextNode(`この端末：${row.name||"MP3"}`))}catch(e){console.warn("local audio load failed",e)}}
 }
+const BGM_LIBRARY_KEY="saku_meru_bgm_library_v1";
+function loadBgmLibrary(){try{const v=JSON.parse(localStorage.getItem(BGM_LIBRARY_KEY)||"[]");return Array.isArray(v)?v:[]}catch{return []}}
+function saveBgmLibrary(v){localStorage.setItem(BGM_LIBRARY_KEY,JSON.stringify(Array.isArray(v)?v:[]))}
+function normalizeBgmTags(v){return [...new Set(String(v||"").split(/[、,\n]/).map(x=>x.trim()).filter(Boolean))]}
+function bgmLibraryTrackFromBlock(b){return {
+ id:b.libraryId||TRPG39.uuid(),title:String(b.title||"").trim(),artist:String(b.artist||"").trim(),sourceLabel:String(b.sourceLabel||"").trim(),sourceUrl:String(b.sourceUrl||"").trim(),audioUrl:String(b.audioUrl||"").trim(),localAudioId:String(b.localAudioId||""),localFileName:String(b.localFileName||""),tags:normalizeBgmTags(Array.isArray(b.tags)?b.tags.join(","):b.tags),updatedAt:new Date().toISOString()
+}}
+function saveBgmTrackFromEditorRow(row){
+ const b={libraryId:row.querySelector('.articleBgmLibraryId')?.value||"",title:row.querySelector('.articleBgmTitle')?.value||"",artist:row.querySelector('.articleBgmArtist')?.value||"",sourceLabel:row.querySelector('.articleBgmSourceLabel')?.value||"",sourceUrl:row.querySelector('.articleBgmSourceUrl')?.value||"",audioUrl:row.querySelector('.articleBgmAudioUrl')?.value||"",localAudioId:row.querySelector('.articleBgmLocalId')?.value||"",localFileName:row.querySelector('.articleBgmLocalName')?.value||"",tags:row.querySelector('.articleBgmTags')?.value||""};
+ if(!String(b.title).trim())return alert("BGM LIBRARYへ登録するには曲名を入力してください。");
+ const track=bgmLibraryTrackFromBlock(b),lib=loadBgmLibrary(),i=lib.findIndex(x=>x.id===track.id);if(i>=0)lib[i]={...lib[i],...track};else lib.unshift(track);saveBgmLibrary(lib);row.querySelector('.articleBgmLibraryId').value=track.id;alert(i>=0?"BGM LIBRARYを更新しました。":"BGM LIBRARYへ登録しました。");
+}
+let bgmLibraryTargetRow=null;
+function bgmUsageCount(id){let n=0;const all=loadRunArticlePages();Object.values(all).forEach(pages=>(pages||[]).forEach(p=>normalizedArticleBlocks(p).forEach(b=>{if(b.type==="bgm"&&b.libraryId===id)n++})));return n}
+function renderBgmLibrary(){
+ const dlg=q("bgmLibraryDialog"),list=q("bgmLibraryList"),term=String(q("bgmLibrarySearch")?.value||"").trim().toLowerCase(),tag=String(q("bgmLibraryTag")?.value||"");let lib=loadBgmLibrary();
+ const tags=[...new Set(lib.flatMap(x=>Array.isArray(x.tags)?x.tags:[]))].sort((a,b)=>a.localeCompare(b,"ja"));if(q("bgmLibraryTag")){const cur=q("bgmLibraryTag").value;q("bgmLibraryTag").innerHTML='<option value="">すべて</option>'+tags.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");q("bgmLibraryTag").value=tags.includes(cur)?cur:""}
+ lib=lib.filter(x=>(!tag||(x.tags||[]).includes(tag))&&(!term||[x.title,x.artist,x.sourceLabel,(x.tags||[]).join(" ")].join(" ").toLowerCase().includes(term))).sort((a,b)=>String(a.title||"").localeCompare(String(b.title||""),"ja"));
+ list.innerHTML=lib.length?lib.map(x=>{const src=x.sourceUrl?`<a class="link" href="${esc(x.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(x.sourceLabel||"配布元")}</a>`:esc(x.sourceLabel||"");const audio=x.audioUrl?`<audio controls preload="metadata" src="${esc(x.audioUrl)}"></audio>`:(x.localAudioId?`<audio controls preload="metadata" data-local-audio-id="${esc(x.localAudioId)}"></audio>`:"");return `<article class="bgm-library-card"><div class="bgm-library-title">🎵 ${esc(x.title||"BGM")}</div><div class="bgm-library-meta">${x.artist?`作者：${esc(x.artist)}<br>`:""}${src?`配布元：${src}<br>`:""}使用 ${bgmUsageCount(x.id)}件</div>${x.tags?.length?`<div class="bgm-lib-tags">${x.tags.map(t=>`#${esc(t)}`).join(" ")}</div>`:""}${audio}<div class="bgm-library-card-actions"><button type="button" data-bgm-lib-use="${esc(x.id)}">この曲を使う</button><button type="button" class="danger" data-bgm-lib-delete="${esc(x.id)}">削除</button></div></article>`}).join(""):'<div class="bgm-library-empty">登録済みBGMはまだありません。<br>BGMブロックから「BGM LIBRARYに登録」できます。</div>';
+ list.querySelectorAll('[data-bgm-lib-use]').forEach(b=>b.onclick=()=>useBgmLibraryTrack(b.dataset.bgmLibUse));list.querySelectorAll('[data-bgm-lib-delete]').forEach(b=>b.onclick=()=>{const id=b.dataset.bgmLibDelete;if(!confirm("このBGMをLIBRARYから削除しますか？\n卓記事内の使用済みBGMは消えません。"))return;saveBgmLibrary(loadBgmLibrary().filter(x=>x.id!==id));renderBgmLibrary()});hydrateLocalArticleAudio(list);
+}
+function openBgmLibrary(row){bgmLibraryTargetRow=row;renderBgmLibrary();q("bgmLibraryDialog").showModal()}
+function useBgmLibraryTrack(id){const x=loadBgmLibrary().find(v=>v.id===id),row=bgmLibraryTargetRow;if(!x||!row)return;row.querySelector('.articleBgmLibraryId').value=x.id;row.querySelector('.articleBgmTitle').value=x.title||"";row.querySelector('.articleBgmArtist').value=x.artist||"";row.querySelector('.articleBgmSourceLabel').value=x.sourceLabel||"";row.querySelector('.articleBgmSourceUrl').value=x.sourceUrl||"";row.querySelector('.articleBgmAudioUrl').value=x.audioUrl||"";row.querySelector('.articleBgmLocalId').value=x.localAudioId||"";row.querySelector('.articleBgmLocalName').value=x.localFileName||"";row.querySelector('.articleBgmTags').value=(x.tags||[]).join("、");row.querySelector('.article-local-audio').textContent=x.localFileName?`保存済み：${x.localFileName}`:"MP3本体は共有記事には含まれません。";q("bgmLibraryDialog").close();bgmLibraryTargetRow=null}
 function bgmBlockHasContent(b){return [b.title,b.artist,b.scene,b.sourceLabel,b.sourceUrl,b.audioUrl,b.localAudioId,b.memo].some(v=>String(v||"").trim())}
 function articleBlocksHtml(page){
  const blocks=normalizedArticleBlocks(page);
@@ -1185,7 +1232,7 @@ function articleEditorBlockHtml(b,index,total){
  const id=esc(b.id||TRPG39.uuid());
  const actions=`<div class="article-block-actions"><button type="button" data-block-up="${id}" ${index===0?"disabled":""}>↑</button><button type="button" data-block-down="${id}" ${index===total-1?"disabled":""}>↓</button><button type="button" class="danger" data-block-remove="${id}">削除</button></div>`;
  if(b.type==="image")return `<div class="article-block" data-block-id="${id}" data-block-type="image"><div class="article-block-head"><span class="article-block-label">🖼 画像</span>${actions}</div><div class="article-image-inputs"><div><label>画像URL</label><input class="articleBlockImageUrl" type="url" value="${esc(b.url||"")}" placeholder="https://..."></div><div><label>画像ファイル</label><input class="articleBlockImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif"><button type="button" data-block-upload="${id}">アップロード</button><div class="article-upload-status"></div></div></div><label>キャプション <span class="small muted">（任意）</span></label><input class="articleBlockCaption" value="${esc(b.caption||"")}" placeholder="画像の説明"><div class="article-block-preview" ${b.url?"":"hidden"}>${b.url?`<img src="${esc(b.url)}" alt="">`:""}</div></div>`;
- if(b.type==="bgm")return `<div class="article-block" data-block-id="${id}" data-block-type="bgm"><div class="article-block-head"><span class="article-block-label">🎵 BGM</span>${actions}</div><div class="article-bgm-grid"><div><label>曲名</label><input class="articleBgmTitle" value="${esc(b.title||"")}" placeholder="曲名"></div><div><label>作者・アーティスト</label><input class="articleBgmArtist" value="${esc(b.artist||"")}" placeholder="作者名"></div><div><label>使用シーン</label><input class="articleBgmScene" value="${esc(b.scene||"")}" placeholder="例：Scene 3／終盤"></div><div><label>配布元名</label><input class="articleBgmSourceLabel" value="${esc(b.sourceLabel||"")}" placeholder="DOVA-SYNDROME など"></div><div><label>配布元URL</label><input class="articleBgmSourceUrl" type="url" value="${esc(b.sourceUrl||"")}" placeholder="https://..."></div><div><label>音源URL <span class="small muted">（任意）</span></label><input class="articleBgmAudioUrl" type="url" value="${esc(b.audioUrl||"")}" placeholder="直接再生できるMP3 URL"></div></div><label>手元のMP3 <span class="small muted">（自分用・このブラウザに保存）</span></label><div class="article-image-inputs"><div><input class="articleBgmFile" type="file" accept="audio/mpeg,audio/mp3,.mp3"><input class="articleBgmLocalId" type="hidden" value="${esc(b.localAudioId||"")}"><input class="articleBgmLocalName" type="hidden" value="${esc(b.localFileName||"")}"><div class="article-local-audio">${b.localFileName?`保存済み：${esc(b.localFileName)}`:"MP3本体は共有記事には含まれません。"}</div></div><div><button type="button" data-bgm-local-save="${id}">この端末に保存</button><div class="article-upload-status"></div></div></div><label>メモ <span class="small muted">（任意）</span></label><textarea class="articleBgmMemo" placeholder="この場面で流した、イントロから使用など">${esc(b.memo||"")}</textarea></div>`;
+ if(b.type==="bgm")return `<div class="article-block" data-block-id="${id}" data-block-type="bgm"><div class="article-block-head"><span class="article-block-label">🎵 BGM</span>${actions}</div><input class="articleBgmLibraryId" type="hidden" value="${esc(b.libraryId||"")}"><div class="bgm-lib-actions"><button type="button" data-bgm-lib-open="${id}">BGM LIBRARYから選ぶ</button><button type="button" data-bgm-lib-save="${id}">BGM LIBRARYに登録／更新</button></div><div class="article-bgm-grid"><div><label>曲名</label><input class="articleBgmTitle" value="${esc(b.title||"")}" placeholder="曲名"></div><div><label>作者・アーティスト</label><input class="articleBgmArtist" value="${esc(b.artist||"")}" placeholder="作者名"></div><div><label>使用シーン</label><input class="articleBgmScene" value="${esc(b.scene||"")}" placeholder="例：Scene 3／終盤"></div><div><label>タグ <span class="small muted">（、区切り）</span></label><input class="articleBgmTags" value="${esc(Array.isArray(b.tags)?b.tags.join("、"):(b.tags||""))}" placeholder="不穏、戦闘、エンディング"></div><div><label>配布元名</label><input class="articleBgmSourceLabel" value="${esc(b.sourceLabel||"")}" placeholder="DOVA-SYNDROME など"></div><div><label>配布元URL</label><input class="articleBgmSourceUrl" type="url" value="${esc(b.sourceUrl||"")}" placeholder="https://..."></div><div><label>音源URL <span class="small muted">（任意）</span></label><input class="articleBgmAudioUrl" type="url" value="${esc(b.audioUrl||"")}" placeholder="直接再生できるMP3 URL"></div></div><label>手元のMP3 <span class="small muted">（自分用・このブラウザに保存）</span></label><div class="article-image-inputs"><div><input class="articleBgmFile" type="file" accept="audio/mpeg,audio/mp3,.mp3"><input class="articleBgmLocalId" type="hidden" value="${esc(b.localAudioId||"")}"><input class="articleBgmLocalName" type="hidden" value="${esc(b.localFileName||"")}"><div class="article-local-audio">${b.localFileName?`保存済み：${esc(b.localFileName)}`:"MP3本体は共有記事には含まれません。"}</div></div><div><button type="button" data-bgm-local-save="${id}">この端末に保存</button><div class="article-upload-status"></div></div></div><label>メモ <span class="small muted">（任意）</span></label><textarea class="articleBgmMemo" placeholder="この場面で流した、イントロから使用など">${esc(b.memo||"")}</textarea></div>`;
  if(b.type==="youtube")return `<div class="article-block" data-block-id="${id}" data-block-type="youtube"><div class="article-block-head"><span class="article-block-label">▶ YouTube</span>${actions}</div><label>YouTube URL</label><input class="articleBlockYoutubeUrl" type="url" value="${esc(b.url||"")}" placeholder="https://www.youtube.com/watch?v=..."><label>見出し <span class="small muted">（任意）</span></label><input class="articleBlockCaption" value="${esc(b.caption||"")}" placeholder="セッション録画 など"><div class="article-youtube-preview"></div></div>`;
  return `<div class="article-block" data-block-id="${id}" data-block-type="text"><div class="article-block-head"><span class="article-block-label">✎ 文章</span>${actions}</div><textarea class="articleBlockText" placeholder="書きたいことを自由に残せます。">${esc(b.text||"")}</textarea></div>`;
 }
@@ -1217,7 +1264,7 @@ function editorBlocks(ed){
    const type=row.dataset.blockType,id=row.dataset.blockId||TRPG39.uuid();
    if(type==="image")return {id,type,url:row.querySelector('.articleBlockImageUrl')?.value.trim()||"",caption:row.querySelector('.articleBlockCaption')?.value.trim()||""};
    if(type==="youtube")return {id,type,url:row.querySelector('.articleBlockYoutubeUrl')?.value.trim()||"",caption:row.querySelector('.articleBlockCaption')?.value.trim()||""};
-   if(type==="bgm")return {id,type,title:row.querySelector('.articleBgmTitle')?.value.trim()||"",artist:row.querySelector('.articleBgmArtist')?.value.trim()||"",scene:row.querySelector('.articleBgmScene')?.value.trim()||"",sourceLabel:row.querySelector('.articleBgmSourceLabel')?.value.trim()||"",sourceUrl:row.querySelector('.articleBgmSourceUrl')?.value.trim()||"",audioUrl:row.querySelector('.articleBgmAudioUrl')?.value.trim()||"",localAudioId:row.querySelector('.articleBgmLocalId')?.value||"",localFileName:row.querySelector('.articleBgmLocalName')?.value||"",memo:row.querySelector('.articleBgmMemo')?.value||""};
+   if(type==="bgm")return {id,type,libraryId:row.querySelector('.articleBgmLibraryId')?.value||"",title:row.querySelector('.articleBgmTitle')?.value.trim()||"",artist:row.querySelector('.articleBgmArtist')?.value.trim()||"",scene:row.querySelector('.articleBgmScene')?.value.trim()||"",tags:normalizeBgmTags(row.querySelector('.articleBgmTags')?.value||""),sourceLabel:row.querySelector('.articleBgmSourceLabel')?.value.trim()||"",sourceUrl:row.querySelector('.articleBgmSourceUrl')?.value.trim()||"",audioUrl:row.querySelector('.articleBgmAudioUrl')?.value.trim()||"",localAudioId:row.querySelector('.articleBgmLocalId')?.value||"",localFileName:row.querySelector('.articleBgmLocalName')?.value||"",memo:row.querySelector('.articleBgmMemo')?.value||""};
    return {id,type:"text",text:row.querySelector('.articleBlockText')?.value||""};
  }).filter(b=>b.type==="text"?b.text.trim():(b.type==="bgm"?bgmBlockHasContent(b):b.url.trim()));
 }
@@ -1227,7 +1274,7 @@ function renderArticleEditorBlocks(ed,blocks){
  bindArticleEditorBlockControls(ed);
 }
 function addEditorBlock(ed,type){
- const blocks=editorBlocks(ed);blocks.push(type==="text"?{id:TRPG39.uuid(),type,text:""}:type==="bgm"?{id:TRPG39.uuid(),type,title:"",artist:"",scene:"",sourceLabel:"",sourceUrl:"",audioUrl:"",localAudioId:"",localFileName:"",memo:""}:{id:TRPG39.uuid(),type,url:"",caption:""});renderArticleEditorBlocks(ed,blocks);
+ const blocks=editorBlocks(ed);blocks.push(type==="text"?{id:TRPG39.uuid(),type,text:""}:type==="bgm"?{id:TRPG39.uuid(),type,libraryId:"",title:"",artist:"",scene:"",tags:[],sourceLabel:"",sourceUrl:"",audioUrl:"",localAudioId:"",localFileName:"",memo:""}:{id:TRPG39.uuid(),type,url:"",caption:""});renderArticleEditorBlocks(ed,blocks);
 }
 function moveEditorBlock(ed,id,delta){
  const blocks=editorBlocks(ed),i=blocks.findIndex(b=>b.id===id),j=i+delta;if(i<0||j<0||j>=blocks.length)return;[blocks[i],blocks[j]]=[blocks[j],blocks[i]];renderArticleEditorBlocks(ed,blocks);
@@ -1254,6 +1301,8 @@ function bindArticleEditorBlockControls(ed){
    const row=b.closest('.article-block'),file=row?.querySelector('.articleBlockImageFile')?.files?.[0],status=row?.querySelector('.article-upload-status');
    try{b.disabled=true;if(status)status.textContent="アップロード中…";const url=await uploadArticleImageFile(file);row.querySelector('.articleBlockImageUrl').value=url;const pv=row.querySelector('.article-block-preview');pv.hidden=false;pv.innerHTML=`<img src="${esc(url)}" alt="">`;if(status)status.textContent="アップロードしました。"}catch(e){console.error(e);if(status)status.textContent="";alert(e.message||e)}finally{b.disabled=false}
  });
+ ed.querySelectorAll('[data-bgm-lib-open]').forEach(b=>b.onclick=()=>openBgmLibrary(b.closest('.article-block')));
+ ed.querySelectorAll('[data-bgm-lib-save]').forEach(b=>b.onclick=()=>saveBgmTrackFromEditorRow(b.closest('.article-block')));
  ed.querySelectorAll('[data-bgm-local-save]').forEach(b=>b.onclick=async()=>{
    const row=b.closest('.article-block'),file=row?.querySelector('.articleBgmFile')?.files?.[0],status=row?.querySelector('.article-upload-status');
    try{b.disabled=true;if(status)status.textContent="保存中…";const oldId=row.querySelector('.articleBgmLocalId')?.value||"",saved=await saveLocalArticleAudio(file,oldId);row.querySelector('.articleBgmLocalId').value=saved.id;row.querySelector('.articleBgmLocalName').value=saved.name;row.querySelector('.article-local-audio').textContent=`保存済み：${saved.name}`;if(status)status.textContent="この端末に保存しました。"}catch(e){console.error(e);if(status)status.textContent="";alert(e.message||e)}finally{b.disabled=false}
@@ -1766,6 +1815,7 @@ q("coverPreview").addEventListener("pointerup",e=>{
 q("coverPreview").addEventListener("pointercancel",e=>{
  try{q("coverPreview").releasePointerCapture(e.pointerId)}catch{}
 });
+q("bgmLibraryClose").onclick=()=>{q("bgmLibraryDialog").close();bgmLibraryTargetRow=null};q("bgmLibrarySearch").oninput=renderBgmLibrary;q("bgmLibraryTag").onchange=renderBgmLibrary;q("bgmLibraryDialog").addEventListener("click",e=>{if(e.target===q("bgmLibraryDialog")){q("bgmLibraryDialog").close();bgmLibraryTargetRow=null}});
 reset();hideEditor();render();{const p=new URLSearchParams(location.search),sid=p.get("scenario")||"";if(p.get("new")==="1"){addForScenario(sid)}}
 })();
 </script>

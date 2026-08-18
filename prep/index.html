@@ -155,16 +155,6 @@ html[data-theme="light"] .prep-item{
     <button type="button" id="clearPdfDraft" style="display:none">PDF作業データを破棄</button>
   </div>
   <div id="pdfPreview" class="pdf-import-preview"></div>
-  <div id="pdfComposer" class="pdf-composer" style="display:none">
-    <h4 style="margin:0 0 8px">シーン組み立て</h4>
-    <div class="pdf-import-note">複数ページの選択範囲をここへ追加して、1つのシーンにまとめられます。</div>
-    <input id="pdfComposerTitle" type="text" placeholder="シーン名">
-    <textarea id="pdfComposerText" placeholder="選択した本文をここにまとめます"></textarea>
-    <div class="pdf-composer-actions">
-      <button type="button" id="pdfComposerAddScene">まとめて1シーンに追加</button>
-      <button type="button" id="pdfComposerClear">組み立て内容をクリア</button>
-    </div>
-  </div>
 </div>
 </aside>
 <section class="prep-panel"><div class="prep-head"><div><label>準備の種類</label><select id="scope"><option value="scenario">シナリオ共通準備</option><option value="kpRun">陣ごとのKP準備</option><option value="plSession">卓ごとのPL準備</option></select></div><div><label>陣・卓名</label><input id="runLabel" placeholder="例：1陣目／自陣"></div></div><div id="progress" style="margin:12px 0"></div><div id="saveNote" class="small muted" style="margin:-6px 0 10px">変更内容は自動保存されます。</div><div id="items" class="prep-list"></div><hr><h3>項目を追加</h3><input id="newTitle" placeholder="例：キャラシ提出"><div class="prep-add"><input id="newDeadline" class="deadline" type="date"><input id="newUrl" type="url" placeholder="関連URL"><input id="newMemo" placeholder="メモ"><button id="addItem">追加</button></div>
@@ -494,16 +484,6 @@ function addPdfTextAsScene(i,text,titleSuffix=""){
   persistScenes();renderScenes();
   q("pdfStatus").textContent=`PDF p.${p.page} の内容をシーン「${title}」として追加しました。`;
 }
-function addToPdfComposer(i){
-  const p=pdfImportPages[i],text=selectedPdfText(i).trim();
-  if(!p||!text)return;
-  const composer=q("pdfComposerText");
-  const label=`【PDF p.${p.page}】`;
-  composer.value+=(composer.value.trim()?"\n\n":"")+label+"\n"+text;
-  if(!q("pdfComposerTitle").value.trim())q("pdfComposerTitle").value=`PDF p.${p.page}〜`;
-  q("pdfComposer").style.display="";
-  q("pdfStatus").textContent=`PDF p.${p.page} の選択内容をシーン組み立てへ追加しました。`;
-}
 function renderPdfPreview(){
   const preview=q("pdfPreview");
   preview.innerHTML=pdfImportPages.map((p,i)=>`
@@ -511,11 +491,10 @@ function renderPdfPreview(){
       <div class="pdf-page-head"><b>PDF p.${p.page}</b><span class="small muted">${p.text.length}文字</span></div>
       <input type="text" data-pdf-title="${i}" value="${esc(p.title)}" placeholder="シーン名">
       <textarea data-pdf-text="${i}" placeholder="抽出本文">${esc(p.text)}</textarea>
-      <div class="pdf-range-note">本文内で文字を選択してから「選択範囲」を使えます。未選択ならページ全文を使います。</div>
+      <div class="pdf-range-note">必要な文章をドラッグして選び、「選択部分をシーンにする」を押してください。</div>
       <div class="pdf-page-actions">
-        <button type="button" data-pdf-add="${i}">このページをシーンに追加</button>
-        <button type="button" data-pdf-range-add="${i}">選択範囲をシーンに追加</button>
-        <button type="button" data-pdf-range-compose="${i}">選択範囲を組み立てへ追加</button>
+        <button type="button" data-pdf-range-add="${i}">選択部分をシーンにする</button>
+        <button type="button" data-pdf-add="${i}">ページ全部をシーンにする</button>
       </div>
     </div>`).join("");
 
@@ -534,32 +513,12 @@ function renderPdfPreview(){
     const el=document.querySelector(`[data-pdf-text="${i}"]`);
     const hasSelection=el && (el.selectionStart??0)!==(el.selectionEnd??0);
     if(!hasSelection){alert("シーンにしたい文章を本文欄で選択してください。");return;}
-    addPdfTextAsScene(i,selectedPdfText(i),"（抜粋）");
-  });
-  document.querySelectorAll("[data-pdf-range-compose]").forEach(b=>b.onclick=()=>{
-    const i=Number(b.dataset.pdfRangeCompose);
-    const el=document.querySelector(`[data-pdf-text="${i}"]`);
-    const hasSelection=el && (el.selectionStart??0)!==(el.selectionEnd??0);
-    if(!hasSelection){alert("組み立てに追加したい文章を本文欄で選択してください。");return;}
-    addToPdfComposer(i);
+    addPdfTextAsScene(i,selectedPdfText(i));
   });
 }
 
 
 
-q("pdfComposerAddScene").onclick=()=>{
-  const text=q("pdfComposerText").value.trim();
-  if(!text){alert("シーンにする本文がありません。");return;}
-  const title=q("pdfComposerTitle").value.trim()||"PDFから作成したシーン";
-  const xs=sceneBucket();
-  xs.push({id:uuid(),title,body:text,backgroundUrl:"",backgroundId:"",kpMemo:"",bgmId:""});
-  persistScenes();renderScenes();
-  q("pdfStatus").textContent=`組み立てた内容をシーン「${title}」として追加しました。`;
-};
-q("pdfComposerClear").onclick=()=>{
-  if((q("pdfComposerText").value||q("pdfComposerTitle").value)&&!confirm("シーン組み立て中の内容をクリアしますか？"))return;
-  q("pdfComposerText").value="";q("pdfComposerTitle").value="";q("pdfComposer").style.display="none";
-};
 q("resumePdfDraft").onclick=resumePdfDraft;
 q("clearPdfDraft").onclick=()=>{
   if(confirm("保存しているPDFの作業途中データを破棄しますか？\nシーンへ追加済みの内容は消えません。"))clearPdfDraftData();

@@ -420,15 +420,16 @@ function renderPdfPreview(){
     const text=document.querySelector(`[data-pdf-text="${i}"]`)?.value||"";
     const xs=sceneBucket();
     xs.push({
-      id:crypto.randomUUID?crypto.randomUUID():Date.now()+Math.random()+"",
+      id:uuid(),
       title,
       body:text,
-      memo:"",
-      imageId:"",
-      imageUrl:"",
+      backgroundUrl:"",
+      backgroundId:"",
+      kpMemo:"",
       bgmId:""
     });
-    saveScenes();
+    persistScenes();
+    renderScenes();
     q("pdfStatus").textContent=`PDF p.${p.page} をシーン「${title}」として追加しました。`;
   });
 }

@@ -94,9 +94,29 @@ html[data-theme="light"] .prep-item{
 .scene-bg-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.scene-bg-actions button{width:auto}
 .scene-bg-source{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45}
 @media(max-width:820px){.scene-body{grid-template-columns:1fr}.bgm-prep-toolbar,.bgm-register-grid{grid-template-columns:1fr}.bgm-register-grid .wide{grid-column:auto}}
+
+.backup-box{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.backup-actions{display:grid;gap:8px}
+.backup-actions button{width:100%}
+.backup-note{font-size:12px;color:var(--muted);line-height:1.6}
+.backup-file{display:none}
 </style><script src="../assets/js/beta-gate.js?v=02315"></script>
 </head><body><main class="prep-wrap"><p><a href="../scenario/index.html?v=0292">← SCENARIO</a></p><h1>卓準備</h1><div id="scenarioTitle" class="small muted"></div>
 <div class="prep-grid"><aside class="prep-panel"><h2>テンプレート</h2><button class="template-btn" data-template="kp">CoC KP基本セット</button><button class="template-btn" data-template="pl">CoC PL基本セット</button><h3>自作テンプレート</h3><div id="customTemplates"></div><button id="saveTemplate">現在の項目をテンプレート保存</button>
+<div class="backup-box">
+  <h3>PREPバックアップ</h3>
+  <div class="backup-note">
+    卓準備・シーン・素材LIBRARYはこの端末のブラウザに保存されています。<br>
+    通常版は設定・文章・素材情報を、完全版は端末保存したBGM・画像本体も含めて書き出します。
+  </div>
+  <div class="backup-actions">
+    <button type="button" id="backupNormal">通常バックアップ</button>
+    <button type="button" id="backupFull">完全バックアップ（音源・画像込み）</button>
+    <button type="button" id="restoreBackup">バックアップから復元</button>
+    <input class="backup-file" id="restoreBackupFile" type="file" accept=".json,application/json">
+  </div>
+  <div id="backupStatus" class="small muted" style="margin-top:8px"></div>
+</div>
 <div class="material-launch"><h3>素材LIBRARY</h3><button id="openMaterialLibrary" type="button">🎛 BGM・画像素材を管理</button><div class="small muted">卓で使うBGMや背景・マップなどを一度登録して、各シーンから呼び出せます。</div></div></aside>
 <section class="prep-panel"><div class="prep-head"><div><label>準備の種類</label><select id="scope"><option value="scenario">シナリオ共通準備</option><option value="kpRun">陣ごとのKP準備</option><option value="plSession">卓ごとのPL準備</option></select></div><div><label>陣・卓名</label><input id="runLabel" placeholder="例：1陣目／自陣"></div></div><div id="progress" style="margin:12px 0"></div><div id="saveNote" class="small muted" style="margin:-6px 0 10px">変更内容は自動保存されます。</div><div id="items" class="prep-list"></div><hr><h3>項目を追加</h3><input id="newTitle" placeholder="例：キャラシ提出"><div class="prep-add"><input id="newDeadline" class="deadline" type="date"><input id="newUrl" type="url" placeholder="関連URL"><input id="newMemo" placeholder="メモ"><button id="addItem">追加</button></div>
 
@@ -189,6 +209,134 @@ document.querySelectorAll("[data-check]").forEach(c=>c.onchange=()=>{const x=xs.
 document.querySelectorAll("[data-save-detail]").forEach(b=>b.onclick=()=>{const id=b.dataset.saveDetail,x=xs.find(v=>v.id===id);if(!x)return;x.deadline=document.querySelector(`[data-edit-deadline="${CSS.escape(id)}"]`)?.value||"";x.url=document.querySelector(`[data-edit-url="${CSS.escape(id)}"]`)?.value.trim()||"";x.memo=document.querySelector(`[data-edit-memo="${CSS.escape(id)}"]`)?.value.trim()||"";save()});
 document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const i=xs.findIndex(v=>v.id===b.dataset.del);xs.splice(i,1);save()});renderTemplates();renderScenes()}
 function renderTemplates(){q("customTemplates").innerHTML=custom.map((t,i)=>`<button class="template-btn" data-custom="${i}">${esc(t.name)}</button>`).join("");document.querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{const t=custom[Number(b.dataset.custom)];t.items.forEach(x=>add(x.title,x.deadline||"",x.url||"",x.memo||""))})}
-q("addItem").onclick=()=>{add(q("newTitle").value,q("newDeadline").value,q("newUrl").value,q("newMemo").value);q("newTitle").value=q("newDeadline").value=q("newUrl").value=q("newMemo").value=""};document.querySelectorAll("[data-template]").forEach(b=>b.onclick=()=>applyTemplate(b.dataset.template));q("scope").onchange=()=>{activeLabel=normLabel(q("runLabel").value);saveUI();render()};q("runLabel").oninput=()=>saveUI();q("runLabel").onchange=commitRunLabel;q("runLabel").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();q("runLabel").blur()}};q("saveTemplate").onclick=()=>{const name=prompt("テンプレート名");if(!name)return;custom.push({name,items:bucket().map(({title,deadline,url,memo})=>({title,deadline,url,memo}))});localStorage.setItem(TK,JSON.stringify(custom));renderTemplates()};q("addScene").onclick=()=>{sceneBucket().push(makeScene());persistScenes();renderScenes()};q("openMaterialLibrary").onclick=()=>openMaterialLibrary("bgm","");q("bgmPrepClose").onclick=()=>q("bgmPrepDialog").close();document.querySelectorAll("[data-material-tab]").forEach(b=>b.onclick=()=>setMaterialTab(b.dataset.materialTab));q("bgmPrepSearch").oninput=renderBgmPrep;q("bgmPrepTag").onchange=renderBgmPrep;q("bgmNewSave").onclick=registerNewBgm;q("bgmEditCancel").onclick=resetBgmForm;q("imagePrepSearch").oninput=renderImagePrep;q("imagePrepType").onchange=renderImagePrep;q("imageNewSave").onclick=registerNewImage;q("imageEditCancel").onclick=resetImageForm;chooseInitialView();activeLabel=normLabel(q("runLabel").value);saveUI();render();
+q("addItem").onclick=()=>{add(q("newTitle").value,q("newDeadline").value,q("newUrl").value,q("newMemo").value);q("newTitle").value=q("newDeadline").value=q("newUrl").value=q("newMemo").value=""};document.querySelectorAll("[data-template]").forEach(b=>b.onclick=()=>applyTemplate(b.dataset.template));q("scope").onchange=()=>{activeLabel=normLabel(q("runLabel").value);saveUI();render()};q("runLabel").oninput=()=>saveUI();q("runLabel").onchange=commitRunLabel;q("runLabel").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();q("runLabel").blur()}};q("saveTemplate").onclick=()=>{const name=prompt("テンプレート名");if(!name)return;custom.push({name,items:bucket().map(({title,deadline,url,memo})=>({title,deadline,url,memo}))});localStorage.setItem(TK,JSON.stringify(custom));renderTemplates()};q("addScene").onclick=()=>{sceneBucket().push(makeScene());persistScenes();renderScenes()};q("openMaterialLibrary").onclick=()=>openMaterialLibrary("bgm","");q("bgmPrepClose").onclick=()=>q("bgmPrepDialog").close();document.querySelectorAll("[data-material-tab]").forEach(b=>b.onclick=()=>setMaterialTab(b.dataset.materialTab));q("bgmPrepSearch").oninput=renderBgmPrep;q("bgmPrepTag").onchange=renderBgmPrep;q("bgmNewSave").onclick=registerNewBgm;q("bgmEditCancel").onclick=resetBgmForm;q("imagePrepSearch").oninput=renderImagePrep;q("imagePrepType").onchange=renderImagePrep;q("imageNewSave").onclick=registerNewImage;q("imageEditCancel").onclick=resetImageForm;
+const PREP_BACKUP_VERSION=1;
+const PREP_BACKUP_KEYS=[
+  "39x2_prep_v1",
+  "39x2_prep_templates_v1",
+  "39x2_prep_ui_v1",
+  "saku_meru_prep_scenes_v1",
+  "saku_meru_bgm_library_v1",
+  "saku_meru_image_library_v1"
+];
+
+function backupStamp(){
+  const d=new Date(),p=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+}
+function downloadJSON(obj,name){
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function collectLocalStorage(){
+  const data={};
+  PREP_BACKUP_KEYS.forEach(k=>{
+    const v=localStorage.getItem(k);
+    if(v!==null)data[k]=v;
+  });
+  return data;
+}
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open("saku_meru_media_v1",1);
+    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains("files"))db.createObjectStore("files");};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+function blobToDataURL(blob){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error);r.readAsDataURL(blob);
+  });
+}
+function dataURLToBlob(dataURL){
+  const [head,body]=String(dataURL).split(",");
+  const mime=(head.match(/data:([^;]+)/)||[])[1]||"application/octet-stream";
+  const bin=atob(body||""),arr=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+async function exportMedia(){
+  const db=await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction("files","readonly"),store=tx.objectStore("files");
+    const req=store.openCursor(),rows=[];
+    req.onsuccess=async()=>{
+      const cur=req.result;
+      if(!cur){resolve(rows);return;}
+      try{
+        const value=cur.value;
+        const blob=value instanceof Blob?value:(value?.blob instanceof Blob?value.blob:null);
+        if(blob){
+          rows.push({key:cur.key,data:await blobToDataURL(blob),name:value?.name||"",type:blob.type||value?.type||""});
+        }
+        cur.continue();
+      }catch(e){reject(e);}
+    };
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function importMedia(rows){
+  if(!Array.isArray(rows)||!rows.length)return;
+  const db=await idbOpen();
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction("files","readwrite"),store=tx.objectStore("files");
+    rows.forEach(row=>{
+      const blob=dataURLToBlob(row.data);
+      store.put(blob,row.key);
+    });
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+  });
+}
+async function makeBackup(full){
+  const status=q("backupStatus");
+  try{
+    status.textContent=full?"完全バックアップを作成中…":"通常バックアップを作成中…";
+    const payload={
+      app:"SAKU+MERU",
+      kind:"PREP_BACKUP",
+      version:PREP_BACKUP_VERSION,
+      mode:full?"full":"normal",
+      createdAt:new Date().toISOString(),
+      localStorage:collectLocalStorage()
+    };
+    if(full)payload.media=await exportMedia();
+    downloadJSON(payload,`SAKUMERU_PREP_${full?"FULL":"NORMAL"}_${backupStamp()}.json`);
+    status.textContent=full
+      ?`完全バックアップを書き出しました（端末保存素材 ${payload.media?.length||0}件）。`
+      :"通常バックアップを書き出しました。MP3・画像本体は含まれません。";
+  }catch(e){
+    console.error(e);status.textContent="バックアップ作成に失敗しました。";
+    alert("バックアップ作成に失敗しました。");
+  }
+}
+async function restoreBackupFile(file){
+  const status=q("backupStatus");
+  try{
+    const payload=JSON.parse(await file.text());
+    if(payload?.kind!=="PREP_BACKUP"||!payload.localStorage)throw new Error("invalid backup");
+    if(!confirm(`PREPの現在データをバックアップ内容で復元します。\nバックアップ日時：${payload.createdAt||"不明"}\n続けますか？`))return;
+    Object.entries(payload.localStorage).forEach(([k,v])=>{
+      if(PREP_BACKUP_KEYS.includes(k))localStorage.setItem(k,String(v));
+    });
+    if(payload.mode==="full"&&Array.isArray(payload.media)){
+      status.textContent="端末保存素材を復元中…";
+      await importMedia(payload.media);
+    }
+    status.textContent="復元しました。画面を再読み込みします。";
+    setTimeout(()=>location.reload(),300);
+  }catch(e){
+    console.error(e);status.textContent="復元できませんでした。対応するPREPバックアップか確認してください。";
+    alert("復元できませんでした。対応するSAKU+MERU PREPバックアップを選んでください。");
+  }
+}
+q("backupNormal").onclick=()=>makeBackup(false);
+q("backupFull").onclick=()=>makeBackup(true);
+q("restoreBackup").onclick=()=>q("restoreBackupFile").click();
+q("restoreBackupFile").onchange=()=>{const f=q("restoreBackupFile").files?.[0];if(f)restoreBackupFile(f);q("restoreBackupFile").value="";};
+
+chooseInitialView();activeLabel=normLabel(q("runLabel").value);saveUI();render();
 })();
 </script></body></html>

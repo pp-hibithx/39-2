@@ -459,7 +459,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.5</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.5.1</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1137,7 +1137,14 @@ function participantHtml(x){
    else body.push(`<div>${r.ho?`${esc(r.ho)}　`:""}${name}${pc}</div>`);
  });
 
- if(anonPl.length)body.push(`<div class="muted">PL：他${anonPl.length}名</div>`);
+ if(anonPl.length){
+   body.push(`<div class="muted">PL：他${anonPl.length}名</div>`);
+   anonPl.forEach(r=>{
+     if(r.pcName){
+       body.push(`<div>${r.ho?`<strong>${esc(r.ho)}</strong>　`:""}PC：${esc(r.pcName)}${r.relation?` <span class="small muted">（自PCとの関係：${esc(r.relation)}）</span>`:""}</div>`);
+     }
+   });
+ }
 
  const lessNote=cfg.less?`<div><strong>${esc(cfg.label)}レス</strong></div>`:"";
  return `<div class="lib-participants">${lessNote}${body.join("")}${named.length?`<div class="small muted honorific-note">※敬称略</div>`:""}</div>`;

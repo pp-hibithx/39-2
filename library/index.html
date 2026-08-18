@@ -459,7 +459,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.5.1</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.6</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -494,6 +494,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   </div>
 </div>
 
+<datalist id="participantPlayerList"></datalist>
 <footer class="footer"><div class="wrap">© <span data-year></span> SAKU+MERU</div></footer>
 
 <script src="../assets/js/main.js?v=0292"></script>
@@ -720,10 +721,34 @@ function addParticipantRow(v={},opts={}){
  const cfg=facilitatorConfig({});
  row.innerHTML=`<div><label>役割</label><select class="partRole">${roleOptions(role,cfg.label)}</select></div>
  <div><label>HO</label><input class="partHo" value="${esc(ho)}" placeholder="HO1 / 探偵 など"></div>
- <div><label>PL</label><input class="partPl" value="${esc(pl)}" placeholder="PL名"></div>
- <div><label>PC</label><input class="partPc" value="${esc(pc)}" placeholder="PC名"></div>
+ <div><label>PL</label><input class="partPl" list="participantPlayerList" value="${esc(pl)}" placeholder="PL名"></div>
+ <div><label>PC</label><input class="partPc" list="" value="${esc(pc)}" placeholder="PC名"><datalist class="partPcList"></datalist><div class="small muted partPcHint"></div></div>
  <div><label>自PCとの関係</label><input class="partRelation" value="${esc(relation)}" placeholder="相棒・友人など"></div>
  <button type="button" class="danger participant-remove">削除</button>`;
+ const plInput=row.querySelector(".partPl"),pcInput=row.querySelector(".partPc"),pcList=row.querySelector(".partPcList"),pcHint=row.querySelector(".partPcHint");
+ const listId="participantPcList_"+Math.random().toString(36).slice(2);
+ pcList.id=listId;pcInput.setAttribute("list",listId);
+ function playerPcCandidates(){
+   const plName=plInput.value.trim(),key=String(plName).normalize("NFKC").trim().toLowerCase();
+   if(!key)return [];
+   const names=new Set();
+   data.forEach(rec=>{
+     rowsFromRecord(rec).forEach(r=>{
+       const same=(r.playerId&&players.some(p=>p.id===r.playerId&&String(p.name||"").normalize("NFKC").trim().toLowerCase()===key))
+         ||String(r.plName||"").normalize("NFKC").trim().toLowerCase()===key;
+       if(same&&String(r.pcName||"").trim())names.add(String(r.pcName).trim());
+     });
+   });
+   return [...names].sort((a,b)=>a.localeCompare(b,"ja"));
+ }
+ function refreshPcCandidates(){
+   const names=playerPcCandidates();
+   pcList.innerHTML=names.map(name=>`<option value="${esc(name)}"></option>`).join("");
+   pcHint.textContent=plInput.value.trim()?(names.length?`このPLの登録済みPC：${names.length}人`:"このPLのPCはまだ未登録です。新しい名前を入力できます。"):"";
+ }
+ plInput.addEventListener("input",refreshPcCandidates);
+ plInput.addEventListener("change",refreshPcCandidates);
+ refreshPcCandidates();
  row.querySelector(".participant-remove").onclick=()=>row.remove();
  q("participantRows").appendChild(row);
 }
@@ -741,7 +766,12 @@ function rowsFromRecord(x){
  if(Array.isArray(x?.participantRows)&&x.participantRows.length)return x.participantRows;
  return (x?.participants||[]).map((name,i)=>({role:"PL",ho:"",plName:name,playerId:(x.participantIds||[])[i]||"",pcName:"",relation:""}));
 }
+function refreshParticipantPlayerList(){
+ const el=q("participantPlayerList");if(!el)return;
+ el.innerHTML=players.filter(p=>!p.excluded&&!p.archived&&p.name).sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja")).map(p=>`<option value="${esc(p.name)}"></option>`).join("");
+}
 function setParticipantRows(rows=[]){
+ refreshParticipantPlayerList();
  q("participantRows").innerHTML="";
  if(rows.length)rows.forEach(v=>addParticipantRow(v,{placeholder:false}));
  else addParticipantRow({}, {placeholder:true});

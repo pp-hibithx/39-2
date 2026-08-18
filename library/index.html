@@ -627,8 +627,9 @@ function addLinkRow(v={label:"",url:"",spoiler:false}){
 }
 function getLinks(){return [...document.querySelectorAll(".ext-row")].map(r=>({label:r.querySelector(".extLabel").value.trim(),url:r.querySelector(".extUrl").value.trim(),spoiler:r.querySelector(".extSpoiler").checked})).filter(x=>x.url)}
 function updateImagePreview(){const u=q("image").value.trim();q("imagePreview").hidden=!u;q("imagePreviewImg").src=u||""}
-function addParticipantRow(v={}){
+function addParticipantRow(v={},opts={}){
  const row=document.createElement("div");row.className="participant-row";
+ row.dataset.placeholder=opts.placeholder?"1":"0";
  const role=String(v.role||"PL"),ho=String(v.ho||""),pl=String(v.plName||v.name||""),pc=String(v.pcName||""),relation=String(v.relation||"");
  const cfg=facilitatorConfig({});
  row.innerHTML=`<div><label>役割</label><select class="partRole">${roleOptions(role,cfg.label)}</select></div>
@@ -646,8 +647,9 @@ function getParticipantRows(){
    ho:r.querySelector(".partHo").value.trim(),
    plName:r.querySelector(".partPl").value.trim(),
    pcName:r.querySelector(".partPc").value.trim(),
-   relation:r.querySelector(".partRelation").value.trim()
- })).filter(r=>r.plName||r.pcName||r.ho);
+   relation:r.querySelector(".partRelation").value.trim(),
+   _placeholder:r.dataset.placeholder==="1"
+ })).filter(r=>!r._placeholder||r.plName||r.pcName||r.ho||r.relation).map(({_placeholder,...r})=>r);
 }
 function rowsFromRecord(x){
  if(Array.isArray(x?.participantRows)&&x.participantRows.length)return x.participantRows;
@@ -655,7 +657,8 @@ function rowsFromRecord(x){
 }
 function setParticipantRows(rows=[]){
  q("participantRows").innerHTML="";
- (rows.length?rows:[{}]).forEach(addParticipantRow);
+ if(rows.length)rows.forEach(v=>addParticipantRow(v,{placeholder:false}));
+ else addParticipantRow({}, {placeholder:true});
 }
 function reset(prefillScenarioId=""){
  q("editId").value="";

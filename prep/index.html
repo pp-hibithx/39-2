@@ -111,6 +111,9 @@ html[data-theme="light"] .prep-item{
 .pdf-page-head{display:flex;justify-content:space-between;gap:8px;align-items:center}
 .pdf-page textarea{width:100%;min-height:130px;margin-top:8px;resize:vertical}
 .pdf-page-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+
+.pdf-draft-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pdf-draft-actions button{width:auto}
 </style><script src="../assets/js/beta-gate.js?v=02315"></script>
 </head><body><main class="prep-wrap"><p><a href="../scenario/index.html?v=0292">← SCENARIO</a></p><h1>卓準備</h1><div id="scenarioTitle" class="small muted"></div>
 <div class="prep-grid"><aside class="prep-panel"><h2>テンプレート</h2><button class="template-btn" data-template="kp">CoC KP基本セット</button><button class="template-btn" data-template="pl">CoC PL基本セット</button><h3>自作テンプレート</h3><div id="customTemplates"></div><button id="saveTemplate">現在の項目をテンプレート保存</button>
@@ -140,6 +143,10 @@ html[data-theme="light"] .prep-item{
     <input class="pdf-import-file" id="pdfFile" type="file" accept="application/pdf,.pdf">
   </div>
   <div id="pdfStatus" class="small muted" style="margin-top:8px"></div>
+  <div class="pdf-draft-actions">
+    <button type="button" id="resumePdfDraft" style="display:none">前回のPDF作業を再開</button>
+    <button type="button" id="clearPdfDraft" style="display:none">PDF作業データを破棄</button>
+  </div>
   <div id="pdfPreview" class="pdf-import-preview"></div>
 </div>
 </aside>
@@ -242,7 +249,8 @@ const PREP_BACKUP_KEYS=[
   "39x2_prep_ui_v1",
   "saku_meru_prep_scenes_v1",
   "saku_meru_bgm_library_v1",
-  "saku_meru_image_library_v1"
+  "saku_meru_image_library_v1",
+  "saku_meru_pdf_draft_v1"
 ];
 
 function backupStamp(){
@@ -363,6 +371,54 @@ q("restoreBackup").onclick=()=>q("restoreBackupFile").click();
 q("restoreBackupFile").onchange=()=>{const f=q("restoreBackupFile").files?.[0];if(f)restoreBackupFile(f);q("restoreBackupFile").value="";};
 
 
+
+const PDF_DRAFT_KEY="saku_meru_pdf_draft_v1";
+let pdfDraftMeta={fileName:"",savedAt:""};
+function savePdfDraft(){
+  try{
+    const payload={
+      scenarioId:sid,
+      scope:q("scope").value,
+      label:normLabel(q("runLabel").value),
+      fileName:pdfDraftMeta.fileName||"",
+      savedAt:new Date().toISOString(),
+      pages:pdfImportPages
+    };
+    localStorage.setItem(PDF_DRAFT_KEY,JSON.stringify(payload));
+    pdfDraftMeta={fileName:payload.fileName,savedAt:payload.savedAt};
+    updatePdfDraftButtons();
+  }catch(e){console.warn("PDF draft save failed",e);}
+}
+function loadPdfDraft(){
+  try{return JSON.parse(localStorage.getItem(PDF_DRAFT_KEY)||"null")}catch{return null}
+}
+function clearPdfDraftData(){
+  localStorage.removeItem(PDF_DRAFT_KEY);
+  pdfImportPages=[];pdfDraftMeta={fileName:"",savedAt:""};
+  q("pdfPreview").innerHTML="";
+  q("pdfStatus").textContent="PDF作業データを破棄しました。";
+  updatePdfDraftButtons();
+}
+function updatePdfDraftButtons(){
+  const d=loadPdfDraft(),has=!!(d&&Array.isArray(d.pages)&&d.pages.length);
+  q("resumePdfDraft").style.display=has?"":"none";
+  q("clearPdfDraft").style.display=has?"":"none";
+  if(has){
+    const when=d.savedAt?new Date(d.savedAt).toLocaleString("ja-JP"):"";
+    q("resumePdfDraft").textContent=`前回のPDF作業を再開${d.fileName?`：${d.fileName}`:""}${when?`（${when}）`:""}`;
+  }
+}
+function resumePdfDraft(){
+  const d=loadPdfDraft();
+  if(!d||!Array.isArray(d.pages)||!d.pages.length)return;
+  if(d.scenarioId&&d.scenarioId!==sid){
+    if(!confirm("このPDF作業データは別のシナリオで作成されたものです。それでも表示しますか？"))return;
+  }
+  pdfImportPages=d.pages;
+  pdfDraftMeta={fileName:d.fileName||"",savedAt:d.savedAt||""};
+  renderPdfPreview();
+  q("pdfStatus").textContent=`PDF作業を再開しました。${d.fileName?` ${d.fileName}`:""}`;
+}
 let pdfImportPages=[];
 q("pickPdf").onclick=()=>q("pdfFile").click();
 q("pdfFile").onchange=async()=>{
@@ -374,7 +430,7 @@ q("pdfFile").onchange=async()=>{
     return;
   }
   const status=q("pdfStatus"),preview=q("pdfPreview");
-  status.textContent="PDFを読み込み中…";preview.innerHTML="";
+  status.textContent="PDFを読み込み中…";preview.innerHTML="";pdfDraftMeta={fileName:file.name,savedAt:""};
   try{
     const pdfjsLib=await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs");
     pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
@@ -396,6 +452,7 @@ q("pdfFile").onchange=async()=>{
       pdfImportPages.push({page:n,title:`PDF p.${n}`,text:text.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim()});
     }
     status.textContent=`${pdf.numPages}ページを読み込みました。必要なページだけシーンへ追加できます。`;
+    savePdfDraft();
     renderPdfPreview();
   }catch(e){
     console.error(e);
@@ -414,6 +471,13 @@ function renderPdfPreview(){
         <button type="button" data-pdf-add="${i}">このページをシーンに追加</button>
       </div>
     </div>`).join("");
+
+  document.querySelectorAll("[data-pdf-title]").forEach(el=>el.oninput=()=>{
+    const i=Number(el.dataset.pdfTitle);if(pdfImportPages[i]){pdfImportPages[i].title=el.value;savePdfDraft();}
+  });
+  document.querySelectorAll("[data-pdf-text]").forEach(el=>el.oninput=()=>{
+    const i=Number(el.dataset.pdfText);if(pdfImportPages[i]){pdfImportPages[i].text=el.value;savePdfDraft();}
+  });
   document.querySelectorAll("[data-pdf-add]").forEach(b=>b.onclick=()=>{
     const i=Number(b.dataset.pdfAdd),p=pdfImportPages[i];
     const title=document.querySelector(`[data-pdf-title="${i}"]`)?.value.trim()||`PDF p.${p.page}`;
@@ -434,6 +498,12 @@ function renderPdfPreview(){
   });
 }
 
+
+q("resumePdfDraft").onclick=resumePdfDraft;
+q("clearPdfDraft").onclick=()=>{
+  if(confirm("保存しているPDFの作業途中データを破棄しますか？\nシーンへ追加済みの内容は消えません。"))clearPdfDraftData();
+};
+updatePdfDraftButtons();
 chooseInitialView();activeLabel=normLabel(q("runLabel").value);saveUI();render();
 })();
 </script></body></html>

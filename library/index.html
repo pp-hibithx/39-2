@@ -676,7 +676,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.34.0</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.34.1</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -703,13 +703,14 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
       <button type="button" id="pcRelationClose">閉じる</button>
     </div>
     <div class="pc-rel-toolbar">
-  <button type="button" id="pcRelAddRelation">＋ PCとの関係</button>
+  <button type="button" id="pcRelAddRelation">＋ PC同士の関係</button>
   <button type="button" id="pcRelAddEvent">＋ 出来事 / EVENT</button>
 </div>
 <div id="pcRelRelationForm" class="pc-event-form" hidden>
-  <strong>PCとの関係を追加</strong>
+  <strong>PC同士の関係を追加</strong>
   <div class="pc-event-grid">
-    <div><label>相手PC</label><select id="pcRelTargetPc"></select></div>
+    <div><label>PC A</label><select id="pcRelPcA"></select></div>
+    <div><label>PC B</label><select id="pcRelPcB"></select></div>
     <div><label>関係</label><input id="pcRelRelationName" placeholder="恋人・相棒・知人など"></div>
     <div><label>由来</label><input id="pcRelRelationSource" placeholder="別セッション／設定上／継続再会など"></div>
     <div><label>時系列メモ</label><input id="pcRelRelationTime" placeholder="過去／現在／未来／IFなど"></div>
@@ -1821,8 +1822,15 @@ function pcById(id){return pcs.find(p=>p.id===id)||null}
 function openPcRelRelationForm(){
  const focus=pcById(activePcRelationId); if(!focus)return;
  q("pcRelEventForm").hidden=true;q("pcRelRelationForm").hidden=false;
- q("pcRelTargetPc").innerHTML=pcs.filter(p=>p.id!==focus.id).sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja")).map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
- q("pcRelRelationName").value="";q("pcRelRelationSource").value="";q("pcRelRelationTime").value="";
+ const opts=pcs.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja")).map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+ q("pcRelPcA").innerHTML=opts;
+ q("pcRelPcB").innerHTML=opts;
+ q("pcRelPcA").value=focus.id;
+ const other=pcs.find(p=>p.id!==focus.id);
+ q("pcRelPcB").value=other?.id||focus.id;
+ q("pcRelRelationName").value="";
+ q("pcRelRelationSource").value="";
+ q("pcRelRelationTime").value="";
 }
 function openPcRelEventForm(){
  q("pcRelRelationForm").hidden=true;q("pcRelEventForm").hidden=false;
@@ -1830,10 +1838,24 @@ function openPcRelEventForm(){
  q("pcRelEventPcChecks").innerHTML=pcs.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja")).map(p=>`<label class="pc-event-check"><input type="checkbox" value="${esc(p.id)}" ${p.id===activePcRelationId?"checked":""}> ${esc(p.name)}</label>`).join("");
 }
 function saveManualPcRelation(){
- const target=q("pcRelTargetPc").value;if(!activePcRelationId||!target)return;
+ const a=q("pcRelPcA").value,b=q("pcRelPcB").value;
+ if(!a||!b)return;
+ if(a===b)return alert("同じPC同士には関係を追加できません。");
  const x=pcRelExtras();x.relations=x.relations||[];
- x.relations.push({id:TRPG39.uuid(),a:activePcRelationId,b:target,relation:q("pcRelRelationName").value.trim(),source:q("pcRelRelationSource").value.trim(),time:q("pcRelRelationTime").value.trim()});
- savePcRelExtras(x);q("pcRelRelationForm").hidden=true;renderPcRelationshipGraph(pcById(activePcRelationId));
+ const relation=q("pcRelRelationName").value.trim();
+ const source=q("pcRelRelationSource").value.trim();
+ const time=q("pcRelRelationTime").value.trim();
+ const pair=[a,b].sort().join("||");
+ const existing=x.relations.find(r=>[r.a,r.b].sort().join("||")===pair && String(r.relation||"")===relation);
+ if(existing){
+   existing.source=source;
+   existing.time=time;
+ }else{
+   x.relations.push({id:TRPG39.uuid(),a,b,relation,source,time});
+ }
+ savePcRelExtras(x);
+ q("pcRelRelationForm").hidden=true;
+ renderPcRelationshipGraph(pcById(activePcRelationId));
 }
 function savePcEvent(){
  const name=q("pcRelEventName").value.trim();if(!name)return alert("出来事名を入力してください。");
@@ -1958,27 +1980,63 @@ function buildPcRelationshipGraph(pc){
  }
 
  const extras=pcRelExtras();
- // Manual PC-to-PC relationships, including relationships between the user's own PCs.
+
+ // Grow the visible network from the focus through manual PC relationships.
+ // This lets a relation like "犀川 ↔ 九重" appear while viewing 白十字,
+ // as long as 犀川 or 九重 is already connected into the visible network.
+ let expanded=true,guard=0;
+ while(expanded&&guard++<20){
+   expanded=false;
+   (extras.relations||[]).forEach(r=>{
+     const pa=pcById(r.a),pb=pcById(r.b);if(!pa||!pb)return;
+     const ka=pcRelNameKey(pa.name),kb=pcRelNameKey(pb.name);
+     if(!nodes.has(ka)&&!nodes.has(kb))return;
+     const before=nodes.size;
+     const na=ensureNode(pa.name,{relation:r.a===pc.id?r.relation:""});
+     const nb=ensureNode(pb.name,{relation:r.b===pc.id?r.relation:""});
+     addEdge(na.key,nb.key,{relation:r.relation||""});
+     const e=edges.get([na.key,nb.key].sort().join("||"));
+     if(e){e.manual=true;e.source=r.source||"";e.time=r.time||""}
+     if(nodes.size>before)expanded=true;
+   });
+ }
+
+ const eventNodes=[],eventKeys=new Set();
+ // Show EVENTs that touch any PC already visible, then pull all PCs in that EVENT into the graph.
+ let eventExpanded=true,eventGuard=0;
+ while(eventExpanded&&eventGuard++<20){
+   eventExpanded=false;
+   (extras.events||[]).forEach(ev=>{
+     if(eventKeys.has(ev.id))return;
+     const touches=(ev.pcIds||[]).some(pid=>{
+       const p=pcById(pid);return p&&nodes.has(pcRelNameKey(p.name));
+     });
+     if(!touches)return;
+     const ek=`event:${ev.id}`;
+     eventKeys.add(ev.id);
+     eventNodes.push({key:ek,name:ev.name,isEvent:true,time:ev.time||"",note:ev.note||"",pcIds:ev.pcIds||[]});
+     (ev.pcIds||[]).forEach(pid=>{
+       const p=pcById(pid);if(!p)return;
+       const before=nodes.size,n=ensureNode(p.name);
+       const key=[ek,n.key].sort().join("||");
+       edges.set(key,{key,a:ek,b:n.key,count:1,scenarios:new Map(),relations:new Set(),event:true,eventId:ev.id});
+       if(nodes.size>before)eventExpanded=true;
+     });
+   });
+ }
+
+ // One more pass so newly pulled-in EVENT PCs can expose their manual relationships too.
  (extras.relations||[]).forEach(r=>{
    const pa=pcById(r.a),pb=pcById(r.b);if(!pa||!pb)return;
-   if(r.a!==pc.id&&r.b!==pc.id)return;
+   const ka=pcRelNameKey(pa.name),kb=pcRelNameKey(pb.name);
+   if(!nodes.has(ka)&&!nodes.has(kb))return;
    const na=ensureNode(pa.name,{relation:r.a===pc.id?r.relation:""});
    const nb=ensureNode(pb.name,{relation:r.b===pc.id?r.relation:""});
    addEdge(na.key,nb.key,{relation:r.relation||""});
-   const e=edges.get([na.key,nb.key].sort().join("||"));if(e){e.manual=true;e.source=r.source||"";e.time=r.time||""}
+   const e=edges.get([na.key,nb.key].sort().join("||"));
+   if(e){e.manual=true;e.source=r.source||"";e.time=r.time||""}
  });
- const eventNodes=[];
- (extras.events||[]).forEach(ev=>{
-   if(!(ev.pcIds||[]).includes(pc.id))return;
-   const ek=`event:${ev.id}`;
-   eventNodes.push({key:ek,name:ev.name,isEvent:true,time:ev.time||"",note:ev.note||"",pcIds:ev.pcIds||[]});
-   (ev.pcIds||[]).forEach(pid=>{
-     const p=pcById(pid);if(!p)return;
-     const n=ensureNode(p.name);
-     const key=[ek,n.key].sort().join("||");
-     edges.set(key,{key,a:ek,b:n.key,count:1,scenarios:new Map(),relations:new Set(),event:true,eventId:ev.id});
-   });
- });
+
  return {focusKey,nodes:[...nodes.values(),...eventNodes],edges:[...edges.values()]};
 }
 function pcRelEdgeLabel(edge){

@@ -684,6 +684,19 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .player-rel-frequency-note{font-size:11px;color:var(--muted)}
 </style>
 
+
+<style>
+.player-rel-controls button{width:auto;min-width:38px}
+.player-rel-stage.player-rel-expanded{
+ position:fixed;inset:12px;z-index:10020;background:var(--bg);
+ height:auto;min-height:0;border-radius:14px;padding:44px 10px 10px;
+ box-shadow:0 10px 50px rgba(0,0,0,.45)
+}
+.player-rel-stage.player-rel-expanded svg{height:calc(100vh - 78px);min-width:1120px}
+.player-rel-expanded-close{
+ position:fixed;right:28px;top:24px;z-index:10021;width:auto
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -800,7 +813,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.4.3</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.4.4</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -832,6 +845,10 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
     </div>
     <div class="player-rel-controls">
       <label><input type="checkbox" id="playerRelationShowAllEdges"> 同卓者同士の線を強調</label>
+      <button type="button" id="playerRelationZoomOut">−</button>
+      <button type="button" id="playerRelationZoomReset">100%</button>
+      <button type="button" id="playerRelationZoomIn">＋</button>
+      <button type="button" id="playerRelationFullscreen">大きく見る</button>
       <span class="player-rel-frequency-note">中心人物との線を強調しつつ、同卓者同士の線も薄く表示します。1陣だけの人ほど外側に配置します。</span>
     </div>
     <div id="playerRelationStage" class="player-rel-stage"></div>
@@ -3030,6 +3047,7 @@ function playerPcHistoryHtml(player,pcItem){
 const PLAYER_REL_SELF_ID="__self__";
 let activePlayerRelationId=PLAYER_REL_SELF_ID;
 let playerRelationShowAllEdges=false;
+let playerRelationZoom=1;
 
 function playerRelSelfName(){
  return String(localStorage.getItem("39x2_self_sns_name_v1")||"自分").trim()||"自分";
@@ -3236,7 +3254,7 @@ function renderPlayerRelationshipGraph(focusId){
 
  q("playerRelationTitle").textContent=`${focus.name}｜同卓者関係図`;
  q("playerRelationSummary").textContent=`直接同卓 ${Math.max(0,graph.nodes.length-1)}人 ／ 関係線 ${graph.edges.length}本`;
- q("playerRelationStage").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(focus.name)}の同卓者関係図">${edgeSvg}${nodeSvg}</svg>`;
+ q("playerRelationStage").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(focus.name)}の同卓者関係図"><g id="playerRelationZoomLayer" transform="translate(${cx} ${cy}) scale(${playerRelationZoom}) translate(${-cx} ${-cy})">${edgeSvg}${nodeSvg}</g></svg>`;
  q("playerRelationStage").querySelectorAll("[data-player-rel-node]").forEach(el=>el.onclick=()=>showPlayerRelationNodeDetail(graph,el.dataset.playerRelNode));
  q("playerRelationShowAllEdges").checked=playerRelationShowAllEdges;
  showPlayerRelationNodeDetail(graph,focusId);
@@ -3581,6 +3599,20 @@ q("pcRelRelationSave").addEventListener("click",e=>{
 q("pcRelRelationCancel").onclick=()=>{editingRelationId="";q("pcRelRelationForm").hidden=true};
 q("pcRelEventSave").onclick=savePcEvent;
 q("pcRelEventCancel").onclick=()=>{editingEventId="";q("pcRelEventForm").hidden=true};
+
+function refreshPlayerRelationZoom(){
+ const layer=q("playerRelationZoomLayer");
+ if(layer)layer.setAttribute("transform",`translate(560 360) scale(${playerRelationZoom}) translate(-560 -360)`);
+ const b=q("playerRelationZoomReset");if(b)b.textContent=`${Math.round(playerRelationZoom*100)}%`;
+}
+q("playerRelationZoomIn").onclick=()=>{playerRelationZoom=Math.min(2.2,playerRelationZoom+.15);refreshPlayerRelationZoom()};
+q("playerRelationZoomOut").onclick=()=>{playerRelationZoom=Math.max(.65,playerRelationZoom-.15);refreshPlayerRelationZoom()};
+q("playerRelationZoomReset").onclick=()=>{playerRelationZoom=1;refreshPlayerRelationZoom()};
+q("playerRelationFullscreen").onclick=()=>{
+ const stage=q("playerRelationStage");
+ const expanded=stage.classList.toggle("player-rel-expanded");
+ q("playerRelationFullscreen").textContent=expanded?"元の大きさ":"大きく見る";
+};
 q("playerRelationShowAllEdges").onchange=()=>{
  playerRelationShowAllEdges=q("playerRelationShowAllEdges").checked;
  renderPlayerRelationshipGraph(activePlayerRelationId);

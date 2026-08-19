@@ -749,7 +749,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.2</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.2.1</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -2028,7 +2028,14 @@ function pcRelExtras(){
  try{return JSON.parse(localStorage.getItem("trpg39_pc_relation_extras")||'{"relations":[],"events":[]}')}
  catch(e){return {relations:[],events:[]}}
 }
-function savePcRelExtras(v){localStorage.setItem("trpg39_pc_relation_extras",JSON.stringify(v))}
+function savePcRelExtras(v){
+ const safe={
+   relations:Array.isArray(v?.relations)?v.relations:[],
+   events:Array.isArray(v?.events)?v.events:[]
+ };
+ localStorage.setItem(PC_REL_EXTRAS_KEY,JSON.stringify(safe));
+ return safe;
+}
 function pcById(id){return anyPcById(id)}
 function openPcRelRelationForm(editId=""){
  const focus=anyPcById(activePcRelationId); if(!focus)return;
@@ -2079,22 +2086,47 @@ function openPcRelEventForm(editId=""){
 }
 function saveManualPcRelation(){
  const a=q("pcRelPcA").value,b=q("pcRelPcB").value;
- if(!a||!b)return;
+ if(!a||!b)return alert("関係を登録するPCを2人選んでください。");
  if(a===b)return alert("同じPC同士には関係を追加できません。");
- const x=pcRelExtras();x.relations=x.relations||[];
  const relation=q("pcRelRelationName").value.trim();
  const source=q("pcRelRelationSource").value.trim();
  const time=q("pcRelRelationTime").value.trim();
+ if(!relation&&!source&&!time)return alert("関係名・由来・時系列メモのいずれかを入力してください。");
+
+ const x=pcRelExtras();
+ x.relations=Array.isArray(x.relations)?x.relations:[];
+ let savedId=editingRelationId||"";
+
  if(editingRelationId){
-   const i=x.relations.findIndex(r=>r.id===editingRelationId);
-   if(i>=0)x.relations[i]={...x.relations[i],a,b,relation,source,time};
+   const i=x.relations.findIndex(r=>String(r.id)===String(editingRelationId));
+   if(i>=0){
+     x.relations[i]={...x.relations[i],a,b,relation,source,time};
+   }else{
+     savedId=TRPG39.uuid();
+     x.relations.push({id:savedId,a,b,relation,source,time});
+   }
  }else{
-   x.relations.push({id:TRPG39.uuid(),a,b,relation,source,time});
+   savedId=TRPG39.uuid();
+   x.relations.push({id:savedId,a,b,relation,source,time});
  }
+
  savePcRelExtras(x);
+
+ // Verify the write before closing the form.
+ const verify=pcRelExtras();
+ const ok=(verify.relations||[]).some(r=>String(r.id)===String(savedId));
+ if(!ok){
+   alert("関係の保存に失敗しました。ページを更新せず、バックアップを取ってください。");
+   return;
+ }
+
  editingRelationId="";
  q("pcRelRelationForm").hidden=true;
- renderPcRelationshipGraph(anyPcById(activePcRelationId));
+ const focus=anyPcById(activePcRelationId)||anyPcById(a)||anyPcById(b);
+ if(focus){
+   activePcRelationId=focus.id;
+   renderPcRelationshipGraph(focus);
+ }
  renderPcRelManageList();
 }
 function savePcEvent(){
@@ -2163,6 +2195,7 @@ function renderPcRelManageList(){
  const box=q("pcRelManageList");if(!box)return;
  const x=pcRelExtras();
  const rels=(x.relations||[]).filter(relationTouchesVisibleFocus);
+ const allRelCount=(x.relations||[]).length;
  const evs=(x.events||[]).filter(eventTouchesVisibleFocus);
  const rows=[];
  rels.forEach(r=>{
@@ -2180,7 +2213,7 @@ function renderPcRelManageList(){
      <div class="pc-rel-manage-actions"><button type="button" data-manage-event-edit="${esc(ev.id)}">編集</button><button type="button" class="danger" data-manage-event-del="${esc(ev.id)}">削除</button></div>
    </div>`);
  });
- box.innerHTML=rows.length?rows.join(""):'<div class="pc-rel-manage-empty">手動登録した関係・出来事はまだありません。</div>';
+ box.innerHTML=`<div class="pc-rel-manage-meta">保存済みPC関係：${allRelCount}件</div>`+(rows.length?rows.join(""):'<div class="pc-rel-manage-empty">この相関図に表示できる手動関係・出来事はまだありません。</div>');
  box.querySelectorAll("[data-manage-rel-edit]").forEach(b=>b.onclick=()=>openPcRelRelationForm(b.dataset.manageRelEdit));
  box.querySelectorAll("[data-manage-rel-del]").forEach(b=>b.onclick=()=>deletePcRelation(b.dataset.manageRelDel));
  box.querySelectorAll("[data-manage-event-edit]").forEach(b=>b.onclick=()=>openPcRelEventForm(b.dataset.manageEventEdit));

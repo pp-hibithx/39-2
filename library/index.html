@@ -792,7 +792,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.4</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.4.1</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -817,7 +817,10 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
         <h2 id="playerRelationTitle">同卓者関係図</h2>
         <div id="playerRelationSummary" class="pc-rel-summary"></div>
       </div>
-      <button type="button" id="playerRelationClose">閉じる</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" id="playerRelationSelf">自分視点</button>
+        <button type="button" id="playerRelationClose">閉じる</button>
+      </div>
     </div>
     <div id="playerRelationStage" class="player-rel-stage"></div>
     <div class="pc-rel-legend">同じ陣で遊んだ人同士を結びます。複数日卓は1陣として数え、同卓した陣が増えるほど線が太くなります。</div>
@@ -3054,7 +3057,9 @@ function playerRelRunPeople(run){
  };
  (run.items||[]).forEach(x=>{
    const selfRole=displayRoleForRecord(x)||x.role||"";
-   if(selfRole)add(PLAYER_REL_SELF_ID,playerRelSelfName(),selfRole);
+   // "自分"はPLAYERSには登録しない仮想ノード。
+   // 旧記録でroleが空でも、このLIBRARY記録そのものに参加した本人として必ず含める。
+   add(PLAYER_REL_SELF_ID,playerRelSelfName(),selfRole||"参加");
 
    rowsFromRecord(x).forEach(r=>{
      const hit=playerRelPlayerForRow(r);
@@ -3129,7 +3134,7 @@ function showPlayerRelationNodeDetail(graph,id){
  q("playerRelationDetail").innerHTML=`<div class="player-rel-detail-card">
    <strong>${esc(n.name)}</strong>${n.self?` <span class="small muted">［自分］</span>`:""}
    <div class="library-dir-meta">${id===graph.focusId?`同卓ネットワーク：${connections.length}人`:`中心人物との同卓：${focusEdge?.count||0}陣`}</div>
-   ${n.roles.size?`<div class="library-dir-meta">記録された役割：${esc([...n.roles].map(playerRoleLabel).join("、"))}</div>`:""}
+   ${[...n.roles].filter(r=>r!=="参加").length?`<div class="library-dir-meta">記録された役割：${esc([...n.roles].filter(r=>r!=="参加").map(playerRoleLabel).join("、"))}</div>`:""}
    ${id!==graph.focusId?`<button type="button" class="player-rel-center" data-player-rel-center="${esc(id)}">この人を中心に見る</button>`:""}
    <div style="margin-top:10px"><strong>${id===graph.focusId?"参加した陣":"中心人物との同卓陣"}</strong>
      ${runs.length?runs.map(r=>`<div class="player-rel-run">${r.date?`${esc(r.date)} ／ `:""}${esc(r.title)}</div>`).join(""):'<div class="small muted">該当する記録はありません。</div>'}
@@ -3166,7 +3171,8 @@ function renderPlayerRelationshipGraph(focusId){
  }).join("");
  const nodeSvg=graph.nodes.map(n=>{
    const p=pos.get(n.id),isFocus=n.id===focusId,r=isFocus?56:43;
-   const label=n.name.length>12?n.name.slice(0,11)+"…":n.name;
+   const rawLabel=n.self?`自分｜${n.name}`:n.name;
+   const label=rawLabel.length>12?rawLabel.slice(0,11)+"…":rawLabel;
    return `<g class="player-rel-node ${isFocus?"focus":""} ${n.self?"self":""}" data-player-rel-node="${esc(n.id)}" transform="translate(${p.x} ${p.y})">
      <circle r="${r}"></circle><text y="2">${esc(label)}</text>
    </g>`;
@@ -3517,6 +3523,7 @@ q("pcRelRelationSave").addEventListener("click",e=>{
 q("pcRelRelationCancel").onclick=()=>{editingRelationId="";q("pcRelRelationForm").hidden=true};
 q("pcRelEventSave").onclick=savePcEvent;
 q("pcRelEventCancel").onclick=()=>{editingEventId="";q("pcRelEventForm").hidden=true};
+q("playerRelationSelf").onclick=()=>openPlayerRelationshipGraph(PLAYER_REL_SELF_ID);
 q("playerRelationClose").onclick=closePlayerRelationshipGraph;
 q("playerRelationModal").addEventListener("click",e=>{if(e.target===q("playerRelationModal"))closePlayerRelationshipGraph()});
 q("pcRelationClose").onclick=closePcRelationshipGraph;

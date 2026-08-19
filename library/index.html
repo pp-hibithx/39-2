@@ -581,6 +581,16 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 }
 </style>
 
+
+<style>
+/* v0.2.34.3 — unified PC directory (MY PCs + table PCs) */
+.pc-rel-search-note{font-size:11px;color:var(--muted);margin-top:4px}
+.pc-event-person-owner{font-size:10px;color:var(--muted);font-weight:400;margin-left:5px}
+.pc-event-search{
+  margin-bottom:8px;
+}
+</style>
+
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -693,7 +703,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.34.2</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.34.3</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -741,7 +751,8 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
     <div><label>時系列メモ</label><input id="pcRelEventTime" placeholder="過去／現在／未来／IFなど"></div>
   </div>
   <label>説明</label><input id="pcRelEventNote" placeholder="複数章を通して同じ黒幕を追っていた、など">
-  <label>関与PC <span class="small muted">— PCごとに「同期」「関連事件を追っていた」などの関わり方と、そのPC視点の時系列を付けられます。</span></label>
+  <label>関与PC <span class="small muted">— 自PC・同卓PLのPCをまとめて選べます。PC名・PL名で検索できます。</span></label>
+  <input id="pcRelEventSearch" class="pc-event-search" type="search" placeholder="PC名・PL名で検索">
   <div id="pcRelEventPcChecks" class="pc-event-checks"></div>
   <div class="row" style="margin-top:8px"><button type="button" id="pcRelEventSave">保存</button><button type="button" id="pcRelEventCancel">キャンセル</button></div>
 </div>
@@ -1817,7 +1828,7 @@ function pcRelNameKey(name){
 }
 function pcRelRegisteredByName(name){
  const key=pcRelNameKey(name);
- return pcs.find(p=>pcRelNameKey(p.name)===key)||null;
+ return allLibraryPcs().find(p=>pcRelNameKey(p.name)===key)||null;
 }
 function pcRelRunKey(x){
  return x?.runId?`run:${x.runId}`:`record:${x?.id||TRPG39.uuid()}`;
@@ -1829,21 +1840,96 @@ function pcRelRows(x){
  }));
 }
 
+
+function allLibraryPcs(){
+ const map=new Map();
+
+ // MY PCs
+ (pcs||[]).forEach(p=>{
+   if(!p?.id||!String(p.name||"").trim())return;
+   map.set(String(p.id),{
+     id:String(p.id),
+     name:String(p.name||"").trim(),
+     ownerType:"self",
+     ownerLabel:"自分",
+     plName:"自分",
+     playerId:"",
+     system:String(p.system||""),
+     image:String(p.image||""),
+     registeredId:String(p.id)
+   });
+ });
+
+ // Other players' PCs from LIBRARY participant rows.
+ data.forEach(rec=>{
+   rowsFromRecord(rec).forEach(row=>{
+     const pcName=String(row.pcName||"").trim();
+     if(!pcName)return;
+     const plName=String(row.plName||"").trim();
+     const playerId=String(row.playerId||"").trim();
+     // If this is actually one of MY PCs, keep the registered MY PC identity.
+     const self=(pcs||[]).find(p=>pcRelNameKey(p.name)===pcRelNameKey(pcName));
+     if(self && (!plName || plName==="自分"))return;
+
+     const ownerKey=playerId || ("name:"+pcRelNameKey(plName||"不明"));
+     const refId=`guest:${ownerKey}:${pcRelNameKey(pcName)}`;
+     if(!map.has(refId)){
+       map.set(refId,{
+         id:refId,
+         name:pcName,
+         ownerType:"guest",
+         ownerLabel:plName?`PL：${plName}`:"同卓PC",
+         plName,
+         playerId,
+         system:String(rec.system||""),
+         image:"",
+         registeredId:""
+       });
+     }
+   });
+ });
+
+ return [...map.values()].sort((a,b)=>{
+   if(a.ownerType!==b.ownerType)return a.ownerType==="self"?-1:1;
+   return String(a.name||"").localeCompare(String(b.name||""),"ja");
+ });
+}
+function anyPcById(id){
+ if(!id)return null;
+ // Backward compatibility: old saved relation/event IDs are raw MY PC IDs.
+ const direct=(pcs||[]).find(p=>String(p.id)===String(id));
+ if(direct){
+   return {
+     id:String(direct.id),name:String(direct.name||"").trim(),
+     ownerType:"self",ownerLabel:"自分",plName:"自分",playerId:"",
+     system:String(direct.system||""),image:String(direct.image||""),registeredId:String(direct.id)
+   };
+ }
+ return allLibraryPcs().find(p=>String(p.id)===String(id))||null;
+}
+function pcOwnerText(p){
+ return p?.ownerType==="self"?"自分":(p?.ownerLabel||"同卓PC");
+}
+function pcChoiceLabel(p){
+ return `${p.name}［${pcOwnerText(p)}］`;
+}
+
 let activePcRelationId="";
 function pcRelExtras(){
  try{return JSON.parse(localStorage.getItem("trpg39_pc_relation_extras")||'{"relations":[],"events":[]}')}
  catch(e){return {relations:[],events:[]}}
 }
 function savePcRelExtras(v){localStorage.setItem("trpg39_pc_relation_extras",JSON.stringify(v))}
-function pcById(id){return pcs.find(p=>p.id===id)||null}
+function pcById(id){return anyPcById(id)}
 function openPcRelRelationForm(){
- const focus=pcById(activePcRelationId); if(!focus)return;
+ const focus=anyPcById(activePcRelationId); if(!focus)return;
  q("pcRelEventForm").hidden=true;q("pcRelRelationForm").hidden=false;
- const opts=pcs.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja")).map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+ const dir=allLibraryPcs();
+ const opts=dir.map(p=>`<option value="${esc(p.id)}">${esc(pcChoiceLabel(p))}</option>`).join("");
  q("pcRelPcA").innerHTML=opts;
  q("pcRelPcB").innerHTML=opts;
  q("pcRelPcA").value=focus.id;
- const other=pcs.find(p=>p.id!==focus.id);
+ const other=dir.find(p=>p.id!==focus.id);
  q("pcRelPcB").value=other?.id||focus.id;
  q("pcRelRelationName").value="";
  q("pcRelRelationSource").value="";
@@ -1852,18 +1938,25 @@ function openPcRelRelationForm(){
 function openPcRelEventForm(){
  q("pcRelRelationForm").hidden=true;q("pcRelEventForm").hidden=false;
  q("pcRelEventName").value="";q("pcRelEventTime").value="";q("pcRelEventNote").value="";
- q("pcRelEventPcChecks").innerHTML=pcs.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja")).map(p=>`
-   <div class="pc-event-person ${p.id===activePcRelationId?"selected":""}" data-event-pc="${esc(p.id)}">
-     <input class="pc-event-person-check" type="checkbox" value="${esc(p.id)}" ${p.id===activePcRelationId?"checked":""}>
-     <div class="pc-event-person-name">${esc(p.name)}</div>
-     <input class="pc-event-person-context" type="text" data-event-role placeholder="関わり方（同期など）">
-     <input class="pc-event-person-context" type="text" data-event-time placeholder="PC視点の時系列">
-   </div>`).join("");
- q("pcRelEventPcChecks").querySelectorAll(".pc-event-person").forEach(row=>{
-   const cb=row.querySelector(".pc-event-person-check");
-   const sync=()=>row.classList.toggle("selected",cb.checked);
-   cb.addEventListener("change",sync);sync();
- });
+ q("pcRelEventSearch").value="";
+ const renderChoices=()=>{
+   const term=q("pcRelEventSearch").value.trim().normalize("NFKC").toLowerCase();
+   const dir=allLibraryPcs().filter(p=>!term||[p.name,p.plName,p.ownerLabel,p.system].filter(Boolean).join(" ").normalize("NFKC").toLowerCase().includes(term));
+   q("pcRelEventPcChecks").innerHTML=dir.map(p=>`
+     <div class="pc-event-person ${p.id===activePcRelationId?"selected":""}" data-event-pc="${esc(p.id)}">
+       <input class="pc-event-person-check" type="checkbox" value="${esc(p.id)}" ${p.id===activePcRelationId?"checked":""}>
+       <div class="pc-event-person-name">${esc(p.name)}<span class="pc-event-person-owner">［${esc(pcOwnerText(p))}］</span></div>
+       <input class="pc-event-person-context" type="text" data-event-role placeholder="関わり方（同期など）">
+       <input class="pc-event-person-context" type="text" data-event-time placeholder="PC視点の時系列">
+     </div>`).join("") || '<div class="small muted">一致するPCがありません。</div>';
+   q("pcRelEventPcChecks").querySelectorAll(".pc-event-person").forEach(row=>{
+     const cb=row.querySelector(".pc-event-person-check");
+     const sync=()=>row.classList.toggle("selected",cb.checked);
+     cb.addEventListener("change",sync);sync();
+   });
+ };
+ q("pcRelEventSearch").oninput=renderChoices;
+ renderChoices();
 }
 function saveManualPcRelation(){
  const a=q("pcRelPcA").value,b=q("pcRelPcB").value;
@@ -1883,7 +1976,7 @@ function saveManualPcRelation(){
  }
  savePcRelExtras(x);
  q("pcRelRelationForm").hidden=true;
- renderPcRelationshipGraph(pcById(activePcRelationId));
+ renderPcRelationshipGraph(anyPcById(activePcRelationId));
 }
 function savePcEvent(){
  const name=q("pcRelEventName").value.trim();if(!name)return alert("出来事名を入力してください。");
@@ -1902,7 +1995,7 @@ function savePcEvent(){
    pcIds:participants.map(p=>p.pcId),
    participants
  });
- savePcRelExtras(x);q("pcRelEventForm").hidden=true;renderPcRelationshipGraph(pcById(activePcRelationId));
+ savePcRelExtras(x);q("pcRelEventForm").hidden=true;renderPcRelationshipGraph(anyPcById(activePcRelationId));
 }
 
 function buildPcRelationshipGraph(pc){
@@ -1917,7 +2010,10 @@ function buildPcRelationshipGraph(pc){
      const reg=pcRelRegisteredByName(name);
      nodes.set(key,{
        key,name:String(name||"").trim(),
-       registeredId:reg?.id||"",
+       registeredId:reg?.registeredId||"",
+       pcRefId:reg?.id||"",
+       ownerType:reg?.ownerType||"",
+       ownerLabel:reg?.ownerLabel||"",
        isFocus:key===focusKey,
        hos:new Set(),relations:new Set(),players:new Set(),
        scenarios:new Map()
@@ -2027,7 +2123,7 @@ function buildPcRelationshipGraph(pc){
  while(expanded&&guard++<20){
    expanded=false;
    (extras.relations||[]).forEach(r=>{
-     const pa=pcById(r.a),pb=pcById(r.b);if(!pa||!pb)return;
+     const pa=anyPcById(r.a),pb=anyPcById(r.b);if(!pa||!pb)return;
      const ka=pcRelNameKey(pa.name),kb=pcRelNameKey(pb.name);
      if(!nodes.has(ka)&&!nodes.has(kb))return;
      const before=nodes.size;
@@ -2048,14 +2144,14 @@ function buildPcRelationshipGraph(pc){
    (extras.events||[]).forEach(ev=>{
      if(eventKeys.has(ev.id))return;
      const touches=(ev.pcIds||[]).some(pid=>{
-       const p=pcById(pid);return p&&nodes.has(pcRelNameKey(p.name));
+       const p=anyPcById(pid);return p&&nodes.has(pcRelNameKey(p.name));
      });
      if(!touches)return;
      const ek=`event:${ev.id}`;
      eventKeys.add(ev.id);
      eventNodes.push({key:ek,name:ev.name,isEvent:true,time:ev.time||"",note:ev.note||"",pcIds:ev.pcIds||[],participants:Array.isArray(ev.participants)?ev.participants:[]});
      (ev.pcIds||[]).forEach(pid=>{
-       const p=pcById(pid);if(!p)return;
+       const p=anyPcById(pid);if(!p)return;
        const before=nodes.size,n=ensureNode(p.name);
        const key=[ek,n.key].sort().join("||");
        edges.set(key,{key,a:ek,b:n.key,count:1,scenarios:new Map(),relations:new Set(),event:true,eventId:ev.id});
@@ -2066,7 +2162,7 @@ function buildPcRelationshipGraph(pc){
 
  // One more pass so newly pulled-in EVENT PCs can expose their manual relationships too.
  (extras.relations||[]).forEach(r=>{
-   const pa=pcById(r.a),pb=pcById(r.b);if(!pa||!pb)return;
+   const pa=anyPcById(r.a),pb=anyPcById(r.b);if(!pa||!pb)return;
    const ka=pcRelNameKey(pa.name),kb=pcRelNameKey(pb.name);
    if(!nodes.has(ka)&&!nodes.has(kb))return;
    const na=ensureNode(pa.name,{relation:r.a===pc.id?r.relation:""});
@@ -2092,7 +2188,7 @@ function showPcRelationNodeDetail(graph,key){
    const linked=connections.map(e=>graph.nodes.find(x=>x.key===(e.a===key?e.b:e.a))).filter(Boolean);
    const participantMap=new Map((n.participants||[]).map(p=>[p.pcId,p]));
    const rows=linked.map(x=>{
-     const p=pcs.find(pc=>pcRelNameKey(pc.name)===x.key);
+     const p=allLibraryPcs().find(pc=>pcRelNameKey(pc.name)===x.key);
      const ctx=p?participantMap.get(p.id):null;
      return `<div class="history-row"><strong>${esc(x.name)}</strong>${ctx?.role?` ／ ${esc(ctx.role)}`:""}${ctx?.time?` <span class="small muted">｜${esc(ctx.time)}</span>`:""}</div>`;
    }).join("");
@@ -2103,7 +2199,7 @@ function showPcRelationNodeDetail(graph,key){
 
  q("pcRelationDetail").innerHTML=`<div class="pc-rel-detail-grid">
    <div class="pc-rel-detail-card">
-     <strong>${esc(n.name)}</strong>
+     <strong>${esc(n.name)}</strong>${n.ownerLabel?` <span class="small muted">［${esc(n.ownerLabel)}］</span>`:""}
      ${n.players.size?`<div class="library-dir-meta">PL：${esc([...n.players].join("、"))}</div>`:""}
      ${n.hos.size?`<div class="library-dir-meta">HO：${esc([...n.hos].join("、"))}</div>`:""}
      ${n.relations.size?`<div class="library-dir-meta">自PCとの関係：${esc([...n.relations].join("、"))}</div>`:""}
@@ -2163,7 +2259,7 @@ function renderPcRelationshipGraph(pc){
 }
 function openPcRelationshipGraph(pcId){
  activePcRelationId=pcId;
- const pc=pcs.find(x=>x.id===pcId);
+ const pc=anyPcById(pcId);
  if(!pc)return;
  q("pcRelationModal").hidden=false;
  renderPcRelationshipGraph(pc);

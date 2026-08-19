@@ -379,6 +379,37 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 }
 </style>
 
+
+<style>
+/* v0.2.33.7 — PC detail/edit in LIBRARY */
+.library-dir-thumb.pc-fullbody-thumb{
+  width:88px;height:112px;object-fit:contain;object-position:center top;
+  background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:10px;
+}
+.pc-library-detail{
+  margin-top:12px;padding-top:12px;border-top:1px solid var(--line);clear:both;display:grid;gap:10px;
+}
+.pc-library-detail[hidden]{display:none}
+.pc-library-detail-grid{display:grid;grid-template-columns:minmax(180px,.7fr) minmax(0,1.3fr);gap:14px}
+.pc-library-art{
+  border:1px solid var(--line);border-radius:10px;padding:10px;background:rgba(255,255,255,.015);
+}
+.pc-library-art img{
+  display:block;width:100%;max-height:520px;object-fit:contain;object-position:center top;
+  background:rgba(255,255,255,.02);border-radius:8px;
+}
+.pc-library-info{display:grid;gap:7px}
+.pc-library-info-row{font-size:13px}
+.pc-library-edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pc-library-edit textarea{min-height:100px}
+.pc-library-edit-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pc-library-edit-actions button{width:auto}
+@media(max-width:760px){
+  .pc-library-detail-grid,.pc-library-edit-grid{grid-template-columns:1fr}
+  .library-dir-thumb.pc-fullbody-thumb{width:72px;height:96px}
+}
+</style>
+
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -491,7 +522,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.6.1</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.7</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -523,6 +554,36 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
       PCを選ぶと、同卓シナリオ・HO・登録済みの関係を確認できます。
     </div>
     <div id="pcRelationDetail" class="pc-rel-detail"></div>
+  </div>
+</div>
+
+
+<div id="pcLibraryEditor" class="lib-cover-editor" hidden>
+  <div class="lib-cover-panel" style="width:min(860px,96vw)">
+    <div class="row">
+      <div><strong>PC情報を編集</strong><div class="small muted">LIBRARYから直接編集できます。</div></div>
+      <button type="button" id="pcLibraryEditorClose">閉じる</button>
+    </div>
+    <input type="hidden" id="pcLibraryEditId">
+    <div class="pc-library-edit-grid">
+      <div><label>PC名</label><input id="pcLibraryName"></div>
+      <div><label>読み方</label><input id="pcLibraryReading"></div>
+      <div><label>システム</label><input id="pcLibrarySystem"></div>
+      <div><label>職業・肩書き</label><input id="pcLibraryJob"></div>
+    </div>
+    <label>立ち絵URL</label><input id="pcLibraryImage" type="url" placeholder="https://...">
+    <label>キャラクターシートURL</label><input id="pcLibrarySheet" type="url" placeholder="https://...">
+    <div class="pc-library-edit-grid">
+      <div><label>立ち絵サービス</label><input id="pcLibraryArtService" placeholder="Picrew / 自作 / 依頼 など"></div>
+      <div><label>メーカー・作者名</label><input id="pcLibraryArtMaker"></div>
+    </div>
+    <label>メーカー・配布元URL</label><input id="pcLibraryArtUrl" type="url" placeholder="https://...">
+    <label>立ち絵メモ</label><input id="pcLibraryArtNote">
+    <label>紹介</label><textarea id="pcLibraryBio"></textarea>
+    <div class="pc-library-edit-actions">
+      <button type="button" id="pcLibraryEditorSave">保存</button>
+      <button type="button" id="pcLibraryEditorCancel">キャンセル</button>
+    </div>
   </div>
 </div>
 
@@ -1772,6 +1833,75 @@ function closePcRelationshipGraph(){
  q("pcRelationDetail").innerHTML="";
 }
 
+
+function openPcLibraryEditor(id){
+ const pc=pcs.find(x=>x.id===id);if(!pc)return;
+ q("pcLibraryEditId").value=pc.id;
+ q("pcLibraryName").value=pc.name||"";
+ q("pcLibraryReading").value=pc.reading||"";
+ q("pcLibrarySystem").value=pc.system||"";
+ q("pcLibraryJob").value=pc.job||"";
+ q("pcLibraryImage").value=pc.image||"";
+ q("pcLibrarySheet").value=pc.sheet||"";
+ q("pcLibraryArtService").value=pc.artService||"";
+ q("pcLibraryArtMaker").value=pc.artMaker||"";
+ q("pcLibraryArtUrl").value=pc.artUrl||"";
+ q("pcLibraryArtNote").value=pc.artNote||"";
+ q("pcLibraryBio").value=pc.bio||"";
+ q("pcLibraryEditor").hidden=false;
+}
+function closePcLibraryEditor(){q("pcLibraryEditor").hidden=true}
+function savePcLibraryEditor(){
+ const id=q("pcLibraryEditId").value,idx=pcs.findIndex(x=>x.id===id);
+ if(idx<0)return;
+ const name=q("pcLibraryName").value.trim();
+ if(!name)return alert("PC名を入力してください。");
+ const old=pcs[idx];
+ pcs[idx]={...old,
+   name,
+   reading:q("pcLibraryReading").value.trim(),
+   system:q("pcLibrarySystem").value.trim(),
+   job:q("pcLibraryJob").value.trim(),
+   image:q("pcLibraryImage").value.trim(),
+   sheet:q("pcLibrarySheet").value.trim(),
+   artService:q("pcLibraryArtService").value.trim(),
+   artMaker:q("pcLibraryArtMaker").value.trim(),
+   artUrl:q("pcLibraryArtUrl").value.trim(),
+   artNote:q("pcLibraryArtNote").value.trim(),
+   bio:q("pcLibraryBio").value.trim()
+ };
+ if(TRPG39.savePCs)TRPG39.savePCs(pcs);
+ if(old.name!==name){
+   data=data.map(x=>String(x.pcId||"")===id||String(x.pcName||"").trim()===String(old.name||"").trim()
+     ?TRPG39.normalizeAlbum({...x,pcId:id,pcName:name})
+     :x);
+   persist();
+ }
+ closePcLibraryEditor();
+ render();
+}
+function pcLibraryDetailHtml(pc,st){
+ const art=[pc.artService,pc.artMaker].filter(Boolean).join(" ／ ");
+ return `<div class="pc-library-detail" id="pc-library-detail-${esc(pc.id)}" hidden>
+   <div class="pc-library-detail-grid">
+     <div class="pc-library-art">
+       ${pc.image?`<img src="${esc(pc.image)}" alt="${esc(pc.name)}">`:`<div class="player-history-placeholder" style="aspect-ratio:3/4">🌺</div>`}
+     </div>
+     <div class="pc-library-info">
+       <div><strong>${esc(pc.name)}</strong>${pc.reading?` <span class="small muted">（${esc(pc.reading)}）</span>`:""}</div>
+       ${pc.system?`<div class="pc-library-info-row">システム：${esc(pc.system)}</div>`:""}
+       ${pc.job?`<div class="pc-library-info-row">職業・肩書き：${esc(pc.job)}</div>`:""}
+       ${pc.bio?`<div class="pc-library-info-row">${esc(pc.bio)}</div>`:""}
+       ${pc.sheet?`<div><a class="link" href="${esc(pc.sheet)}" target="_blank" rel="noopener">キャラクターシートを開く</a></div>`:""}
+       ${art?`<div class="pc-library-info-row">立ち絵：${esc(art)}</div>`:""}
+       ${pc.artUrl?`<div><a class="link" href="${esc(pc.artUrl)}" target="_blank" rel="noopener">立ち絵の配布元・メーカー</a></div>`:""}
+       ${pc.artNote?`<div class="small muted">${esc(pc.artNote)}</div>`:""}
+       <div class="pc-library-info-row">参加 ${st.count}シナリオ${st.first?` ／ 初卓 ${esc(st.first)}`:""}</div>
+     </div>
+   </div>
+ </div>`;
+}
+
 function renderPcView(){
  const term=q("search").value.trim().toLowerCase(),
  rows=pcs.map(x=>({x,st:pcStats(x.name)}))
@@ -1782,7 +1912,7 @@ function renderPcView(){
  q("list").classList.remove("library-grid");
  q("list").innerHTML=`<div class="library-directory-grid">${
    rows.length?rows.map(({x,st})=>`<article class="library-dir-card">
-     ${x.image?`<img class="library-dir-thumb" src="${esc(x.image)}" alt="">`:""}
+     ${x.image?`<img class="library-dir-thumb pc-fullbody-thumb" src="${esc(x.image)}" alt="">`:""}
      <div class="library-dir-title">${esc(x.name)}</div>
      <div class="library-dir-meta">${esc(x.system||"")}${x.job?` ／ ${esc(x.job)}`:""}</div>
      <div class="library-dir-meta">参加 ${st.count}シナリオ${st.first?` ／ 初卓 ${esc(st.first)}`:""}</div>
@@ -1792,14 +1922,25 @@ function renderPcView(){
        </div>`).join(""):'<div class="small muted">参加記録はまだありません。</div>'
      }</div>
      <div class="lib-parent-actions">
+       <button type="button" data-pc-detail="${esc(x.id)}">PC詳細</button>
        <button type="button" class="pc-rel-button" data-pc-relation="${esc(x.id)}">同卓関係図</button>
-       <a class="link" href="../pcs/index.html?focus=${encodeURIComponent(x.id)}">PC情報を編集</a>
+       <button type="button" data-pc-edit-inline="${esc(x.id)}">編集</button>
      </div>
+     ${pcLibraryDetailHtml(x,st)}
    </article>`).join(""):'<div class="empty">該当するPCがありません。</div>'
  }</div>`;
 
+ document.querySelectorAll("[data-pc-detail]").forEach(b=>{
+   b.onclick=()=>{
+     const el=document.getElementById(`pc-library-detail-${b.dataset.pcDetail}`);
+     if(el)el.hidden=!el.hidden;
+   };
+ });
  document.querySelectorAll("[data-pc-relation]").forEach(b=>{
    b.onclick=()=>openPcRelationshipGraph(b.dataset.pcRelation);
+ });
+ document.querySelectorAll("[data-pc-edit-inline]").forEach(b=>{
+   b.onclick=()=>openPcLibraryEditor(b.dataset.pcEditInline);
  });
 }
 
@@ -2219,6 +2360,12 @@ q("pcRelationModal").addEventListener("click",e=>{
 document.addEventListener("keydown",e=>{
  if(e.key==="Escape"&&!q("pcRelationModal").hidden)closePcRelationshipGraph();
 });
+
+
+q("pcLibraryEditorClose").onclick=closePcLibraryEditor;
+q("pcLibraryEditorCancel").onclick=closePcLibraryEditor;
+q("pcLibraryEditorSave").onclick=savePcLibraryEditor;
+q("pcLibraryEditor").addEventListener("click",e=>{if(e.target===q("pcLibraryEditor"))closePcLibraryEditor()});
 
 reset();hideEditor();render();{const p=new URLSearchParams(location.search),sid=p.get("scenario")||"";if(p.get("new")==="1"){addForScenario(sid)}}
 })();

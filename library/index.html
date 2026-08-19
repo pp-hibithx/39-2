@@ -749,7 +749,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.2.1</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.2.2</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -3131,7 +3131,10 @@ q("bgmLibraryClose").onclick=()=>{q("bgmLibraryDialog").close();bgmLibraryTarget
 
 q("pcRelAddRelation").onclick=openPcRelRelationForm;
 q("pcRelAddEvent").onclick=openPcRelEventForm;
-q("pcRelRelationSave").onclick=saveManualPcRelation;
+q("pcRelRelationSave").addEventListener("click",e=>{
+ e.preventDefault();
+ saveManualPcRelation();
+});
 q("pcRelRelationCancel").onclick=()=>{editingRelationId="";q("pcRelRelationForm").hidden=true};
 q("pcRelEventSave").onclick=savePcEvent;
 q("pcRelEventCancel").onclick=()=>{editingEventId="";q("pcRelEventForm").hidden=true};

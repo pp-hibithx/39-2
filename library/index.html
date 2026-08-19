@@ -749,7 +749,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.2.2</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.2.3</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -782,12 +782,15 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 <div id="pcRelRelationForm" class="pc-event-form" hidden>
   <strong>PC同士の関係を追加</strong>
   <div class="pc-event-grid">
+    <div><label>PL A</label><select id="pcRelPlA"></select></div>
+    <div><label>PL B</label><select id="pcRelPlB"></select></div>
     <div><label>PC A</label><select id="pcRelPcA"></select></div>
     <div><label>PC B</label><select id="pcRelPcB"></select></div>
     <div><label>関係</label><input id="pcRelRelationName" placeholder="恋人・相棒・知人など"></div>
     <div><label>由来</label><input id="pcRelRelationSource" placeholder="別セッション／設定上／継続再会など"></div>
     <div><label>時系列メモ</label><input id="pcRelRelationTime" placeholder="過去／現在／未来／IFなど"></div>
   </div>
+  <div class="pc-rel-search-note">先にPLを選ぶと、その人のPCだけに絞れます。「自分」も選択できます。</div>
   <div class="row" style="margin-top:8px"><button type="button" id="pcRelRelationSave">保存</button><button type="button" id="pcRelRelationCancel">キャンセル</button></div>
 </div>
 <div id="pcRelEventForm" class="pc-event-form" hidden>
@@ -2017,6 +2020,33 @@ function anyPcById(id){
 function pcOwnerText(p){
  return p?.ownerType==="self"?"自分":(p?.ownerLabel||"同卓PC");
 }
+
+function relationOwnerKey(p){
+ return p?.ownerType==="self" ? "__self__" : (p?.playerId ? `id:${p.playerId}` : `name:${String(p?.plName||p?.ownerLabel||"同卓PC")}`);
+}
+function relationOwnerLabel(p){
+ return p?.ownerType==="self" ? "自分" : (p?.plName || String(p?.ownerLabel||"同卓PC").replace(/^PL：/,""));
+}
+function relationOwnerOptions(){
+ const seen=new Map();
+ allLibraryPcs().forEach(p=>{
+   const key=relationOwnerKey(p);
+   if(!seen.has(key))seen.set(key,relationOwnerLabel(p));
+ });
+ return [...seen.entries()].sort((a,b)=>{
+   if(a[0]==="__self__")return -1;
+   if(b[0]==="__self__")return 1;
+   return String(a[1]).localeCompare(String(b[1]),"ja");
+ });
+}
+function pcsForRelationOwner(ownerKey){
+ return allLibraryPcs().filter(p=>relationOwnerKey(p)===ownerKey);
+}
+function ownerKeyForPcId(pcId){
+ const p=anyPcById(pcId);
+ return p?relationOwnerKey(p):"";
+}
+
 function pcChoiceLabel(p){
  return `${p.name}［${pcOwnerText(p)}］`;
 }
@@ -2024,6 +2054,7 @@ function pcChoiceLabel(p){
 let activePcRelationId="";
 let editingRelationId="";
 let editingEventId="";
+const PC_REL_EXTRAS_KEY="trpg39_pc_relation_extras";
 function pcRelExtras(){
  try{return JSON.parse(localStorage.getItem("trpg39_pc_relation_extras")||'{"relations":[],"events":[]}')}
  catch(e){return {relations:[],events:[]}}
@@ -2041,14 +2072,34 @@ function openPcRelRelationForm(editId=""){
  const focus=anyPcById(activePcRelationId); if(!focus)return;
  q("pcRelEventForm").hidden=true;q("pcRelRelationForm").hidden=false;
  editingRelationId=editId||"";
- const dir=allLibraryPcs();
- const opts=dir.map(p=>`<option value="${esc(p.id)}">${esc(pcChoiceLabel(p))}</option>`).join("");
- q("pcRelPcA").innerHTML=opts;
- q("pcRelPcB").innerHTML=opts;
+
  const extras=pcRelExtras(),existing=(extras.relations||[]).find(r=>r.id===editingRelationId);
- q("pcRelPcA").value=existing?.a||focus.id;
- const other=dir.find(p=>p.id!==focus.id);
- q("pcRelPcB").value=existing?.b||(other?.id||focus.id);
+ const owners=relationOwnerOptions();
+ const ownerHtml=owners.map(([k,label])=>`<option value="${esc(k)}">${esc(label)}</option>`).join("");
+ q("pcRelPlA").innerHTML=ownerHtml;
+ q("pcRelPlB").innerHTML=ownerHtml;
+
+ const aId=existing?.a||focus.id;
+ const all=allLibraryPcs();
+ const fallbackB=all.find(p=>p.id!==aId)?.id||aId;
+ const bId=existing?.b||fallbackB;
+
+ q("pcRelPlA").value=ownerKeyForPcId(aId)||owners[0]?.[0]||"";
+ q("pcRelPlB").value=ownerKeyForPcId(bId)||owners[0]?.[0]||"";
+
+ const refresh=(side,selectedId="")=>{
+   const owner=q(`pcRelPl${side}`).value;
+   const list=pcsForRelationOwner(owner);
+   const sel=q(`pcRelPc${side}`);
+   sel.innerHTML=list.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+   if(selectedId&&list.some(p=>p.id===selectedId))sel.value=selectedId;
+ };
+ refresh("A",aId);
+ refresh("B",bId);
+
+ q("pcRelPlA").onchange=()=>refresh("A");
+ q("pcRelPlB").onchange=()=>refresh("B");
+
  q("pcRelRelationName").value=existing?.relation||"";
  q("pcRelRelationSource").value=existing?.source||"";
  q("pcRelRelationTime").value=existing?.time||"";

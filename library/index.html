@@ -633,6 +633,23 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 /* v0.2.35.2 — graph navigation */
 .pc-rel-center-btn{width:auto;margin-top:8px}
 </style>
+
+<style>
+/* v0.2.35.3 — legacy run merge repair */
+.lib-run-card{position:relative}
+.lib-run-merge-check{
+  position:absolute;left:9px;top:9px;z-index:4;
+  width:20px;height:20px;accent-color:var(--accent);
+}
+.lib-run-repair{
+  margin:10px 0 4px;padding:10px 12px;border:1px dashed var(--line);
+  border-radius:10px;background:rgba(255,255,255,.012)
+}
+.lib-run-repair-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.lib-run-repair button{width:auto}
+.lib-run-repair-note{font-size:11px;color:var(--muted);margin-top:5px}
+</style>
+
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -749,7 +766,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.2.3</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.3</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1636,6 +1653,7 @@ function runCardHtml(g,r){
  const dates=r.items.map(x=>x.date).filter(Boolean).sort();
  const range=dates.length?(dates[0]+(dates.length>1&&dates.at(-1)!==dates[0]?`〜${dates.at(-1)}`:"")):"";
  return `<article class="lib-run-card" data-run-focus="${esc(r.id)}" tabindex="0">
+   <input type="checkbox" class="lib-run-merge-check" data-run-merge="${esc(r.id)}" aria-label="${esc(r.label||"開催記録")}を統合対象に選択">
    <div class="lib-run-card-thumb-wrap">${images[0]?`<img class="lib-run-card-thumb" src="${esc(images[0])}" alt="" loading="lazy" style="object-position:50% ${runCoverY(r.id)}%"><button type="button" class="lib-cover-adjust" data-cover-adjust="${esc(r.id)}" data-cover-image="${esc(images[0])}">位置を調整</button>`:`<div class="lib-run-card-placeholder">🌺</div>`}</div>
    <div class="lib-run-card-body">
      <div class="lib-run-card-title">${esc(r.label||"開催記録")}</div>
@@ -1890,7 +1908,13 @@ function focusedGroupHtml(g){
  <div class="lib-parent-actions">${g.scenarioId?`<a class="link" href="../scenario/index.html?focus=${encodeURIComponent(g.scenarioId)}">SCENARIOを見る</a>`:""}<button type="button" data-add-scenario="${esc(g.scenarioId)}" data-add-title="${esc(g.title)}">＋ 新しい陣</button></div>
  ${focusedRun
    ? runDetailHtml(g,focusedRun)
-   : `<div class="lib-run-grid">${filteredRunsForGroup(g).map(r=>runCardHtml(g,r)).join("")}</div>`
+   : `${(g.runs||[]).length>1?`<div class="lib-run-repair">
+       <div class="lib-run-repair-row">
+         <strong>旧データの陣をまとめる</strong>
+         <button type="button" id="mergeSelectedRuns">選んだ陣を同じ陣にまとめる</button>
+       </div>
+       <div class="lib-run-repair-note">同じ卓なのに日付ごとに別の陣になっている記録を2件以上選んで統合します。実際に別陣のものは選ばないでください。</div>
+     </div>`:""}<div class="lib-run-grid">${filteredRunsForGroup(g).map(r=>runCardHtml(g,r)).join("")}</div>`
  }`;
 }
 function pcStats(name){
@@ -3079,6 +3103,89 @@ function updateCoverPreview(){q("coverPreviewImage").style.objectPosition=`50% $
 function openCoverEditor(runId,imageUrl){coverEditingRunId=runId;coverEditingY=runCoverY(runId);q("coverPreviewImage").src=imageUrl;updateCoverPreview();q("coverEditor").hidden=false}
 function closeCoverEditor(){q("coverEditor").hidden=true;coverEditingRunId=""}
 function bindCoverAdjustButtons(){document.querySelectorAll("[data-cover-adjust]").forEach(b=>{b.onclick=e=>{e.preventDefault();e.stopPropagation();openCoverEditor(b.dataset.coverAdjust,b.dataset.coverImage)}})}
+
+function mergeLegacyRuns(scenarioKey,runIds){
+ const ids=[...new Set((runIds||[]).filter(Boolean))];
+ if(ids.length<2)return alert("まとめる陣を2件以上選んでください。");
+
+ const allGroups=groupData(data),g=allGroups.find(x=>x.key===scenarioKey);
+ if(!g)return alert("シナリオの記録を確認できませんでした。");
+ const picked=(g.runs||[]).filter(r=>ids.includes(r.id));
+ if(picked.length<2)return alert("まとめる陣を2件以上選んでください。");
+
+ const records=picked.flatMap(r=>r.items||[]).slice().sort(bySessionStart);
+ if(!records.length)return;
+
+ const dates=records.map(x=>x.date).filter(Boolean).sort();
+ const range=dates.length?(dates[0]+(dates.length>1&&dates.at(-1)!==dates[0]?`〜${dates.at(-1)}`:"")):"";
+ if(!confirm(`${picked.length}件の陣を1つにまとめます。${range?`\n日程：${range}`:""}\n\n各日の記録・画像・参加者情報は残ります。よろしいですか？`))return;
+
+ // Keep the first chronological run ID as the destination.
+ const targetRun=picked.slice().sort((a,b)=>bySessionStart(a.items[0]||{},b.items[0]||{}))[0];
+ const targetRunId=targetRun.id || TRPG39.uuid();
+ const targetLabel=String(targetRun.items?.find(x=>x.runLabel)?.runLabel||targetRun.label||"").trim();
+
+ const recordIds=new Set(records.map(x=>x.id));
+ const eventIds=new Set(records.map(x=>x.eventId).filter(Boolean));
+
+ data=data.map(x=>{
+   if(!recordIds.has(x.id))return x;
+   return TRPG39.normalizeAlbum({...x,runId:targetRunId,runLabel:targetLabel});
+ });
+ persist();
+
+ // Calendar: linked dates must also become the same run.
+ let evs=TRPG39.loadEvents(),linked=evs.filter(e=>eventIds.has(e.id)||records.some(a=>a.id===e.linkedAlbumId));
+ linked=linked.slice().sort((a,b)=>String(a.start||"").localeCompare(String(b.start||"")));
+ let mainDay=0;
+ const dayByDate=new Map();
+ for(const e of linked){
+   if((e.sessionKind||"main")!=="main")continue;
+   const ds=String(e.start||"").slice(0,10);
+   if(!dayByDate.has(ds))dayByDate.set(ds,++mainDay);
+ }
+ evs=evs.map(e=>{
+   if(!linked.some(v=>v.id===e.id))return e;
+   const kind=e.sessionKind||"main",ds=String(e.start||"").slice(0,10);
+   return TRPG39.normalizeEvent({...e,
+     runId:targetRunId,
+     runLabel:targetLabel,
+     sessionDay:kind==="main"?(dayByDate.get(ds)||e.sessionDay||1):(e.sessionDay||1)
+   });
+ });
+ TRPG39.saveEvents(evs);
+
+ // Move article pages from the old run IDs into the destination, so nothing becomes inaccessible.
+ const pagesAll=loadRunArticlePages(),mergedPages=[];
+ ids.forEach(id=>{
+   const arr=Array.isArray(pagesAll[id])?pagesAll[id]:[];
+   mergedPages.push(...arr);
+   if(id!==targetRunId)delete pagesAll[id];
+ });
+ if(mergedPages.length){
+   const seen=new Set(),unique=[];
+   mergedPages.forEach(p=>{const k=p.id||JSON.stringify(p);if(seen.has(k))return;seen.add(k);unique.push(p)});
+   pagesAll[targetRunId]=unique;
+   saveRunArticlePages(pagesAll);
+ }
+
+ focusedRunId="";
+ alert(`${picked.length}件を同じ陣にまとめました。`);
+ render();
+}
+function bindRunMergeRepair(){
+ const btn=q("mergeSelectedRuns");if(!btn)return;
+ document.querySelectorAll("[data-run-merge]").forEach(cb=>{
+   cb.onclick=e=>e.stopPropagation();
+   cb.onkeydown=e=>e.stopPropagation();
+ });
+ btn.onclick=e=>{
+   e.preventDefault();e.stopPropagation();
+   const ids=[...document.querySelectorAll("[data-run-merge]:checked")].map(x=>x.dataset.runMerge);
+   mergeLegacyRuns(focusedScenarioKey,ids);
+ };
+}
+
 function render(){
  syncLibraryView();
  if(libraryView==="pc"){renderPcView();return}
@@ -3103,9 +3210,10 @@ function render(){
    q("libraryBackToGrid").onclick=()=>{focusedScenarioKey="";focusedRunId="";render()};
    q("backToRuns")?.addEventListener("click",()=>{focusedRunId="";render()});
    document.querySelectorAll("[data-run-focus]").forEach(card=>{
-     card.onclick=()=>{focusedRunId=card.dataset.runFocus;render()};
-     card.onkeydown=e=>{if(e.key==="Enter"){focusedRunId=card.dataset.runFocus;render()}};
+     card.onclick=e=>{if(e.target.closest("[data-run-merge]"))return;focusedRunId=card.dataset.runFocus;render()};
+     card.onkeydown=e=>{if(e.key==="Enter"&&!e.target.closest("[data-run-merge]")){focusedRunId=card.dataset.runFocus;render()}};
    });
+   bindRunMergeRepair();
    bindCoverAdjustButtons();
    bindArticlePageButtons();hydrateLocalArticleAudio(q("list"));
  }else{

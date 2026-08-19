@@ -469,6 +469,32 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .pc-variant-detail-label{font-size:11px;margin-top:4px}
 </style>
 
+
+<style>
+/* v0.2.33.8 — PC in-universe timeline */
+.pc-scenario-list{display:grid;gap:6px}
+.pc-timeline-row{
+  display:grid;grid-template-columns:auto minmax(0,1fr) minmax(90px,130px);
+  gap:7px;align-items:center;padding:7px 8px;
+  border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.012)
+}
+.pc-timeline-row.dragging{opacity:.45}
+.pc-timeline-row.drag-over{outline:2px solid var(--accent);outline-offset:1px}
+.pc-timeline-handle{
+  cursor:grab;user-select:none;font-size:18px;line-height:1;color:var(--muted);padding:4px
+}
+.pc-timeline-handle:active{cursor:grabbing}
+.pc-timeline-title{min-width:0}
+.pc-timeline-label{
+  width:100%;box-sizing:border-box;font-size:12px;padding:6px 7px
+}
+.pc-timeline-help{font-size:11px;color:var(--muted);margin:6px 0 2px}
+@media(max-width:620px){
+ .pc-timeline-row{grid-template-columns:auto minmax(0,1fr)}
+ .pc-timeline-label{grid-column:2}
+}
+</style>
+
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -581,7 +607,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.7.2</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.8</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1953,6 +1979,75 @@ function pcLibraryDetailHtml(pc,st){
  </div>`;
 }
 
+
+function pcTimelineKey(pcId){return `trpg39_pc_timeline_${pcId}`}
+function loadPcTimeline(pcId){
+ try{
+   const v=JSON.parse(localStorage.getItem(pcTimelineKey(pcId))||"{}");
+   return v&&typeof v==="object"?v:{};
+ }catch(e){return {}}
+}
+function savePcTimeline(pcId,v){
+ localStorage.setItem(pcTimelineKey(pcId),JSON.stringify(v||{}));
+}
+function pcScenarioTimelineId(s){
+ return String(s.scenarioId||`title:${s.title||""}`);
+}
+function orderedPcScenarios(pcId,scenarios){
+ const state=loadPcTimeline(pcId),order=Array.isArray(state.order)?state.order:[];
+ const rank=new Map(order.map((id,i)=>[id,i]));
+ return scenarios.slice().sort((a,b)=>{
+   const ai=rank.has(pcScenarioTimelineId(a))?rank.get(pcScenarioTimelineId(a)):999999;
+   const bi=rank.has(pcScenarioTimelineId(b))?rank.get(pcScenarioTimelineId(b)):999999;
+   return ai-bi;
+ });
+}
+function pcTimelineLabel(pcId,scenario){
+ const state=loadPcTimeline(pcId),labels=state.labels||{};
+ return labels[pcScenarioTimelineId(scenario)]||"";
+}
+function setPcTimelineLabel(pcId,scenarioId,label){
+ const state=loadPcTimeline(pcId);
+ state.labels=state.labels||{};
+ if(String(label||"").trim())state.labels[scenarioId]=String(label).trim();
+ else delete state.labels[scenarioId];
+ savePcTimeline(pcId,state);
+}
+function setPcTimelineOrder(pcId,ids){
+ const state=loadPcTimeline(pcId);
+ state.order=ids;
+ savePcTimeline(pcId,state);
+}
+function wirePcTimeline(card,pcId){
+ const list=card.querySelector(".pc-scenario-list");
+ if(!list)return;
+ let dragged=null;
+ list.querySelectorAll(".pc-timeline-row").forEach(row=>{
+   row.addEventListener("dragstart",e=>{
+     dragged=row;row.classList.add("dragging");
+     if(e.dataTransfer)e.dataTransfer.effectAllowed="move";
+   });
+   row.addEventListener("dragend",()=>{
+     row.classList.remove("dragging");
+     list.querySelectorAll(".pc-timeline-row").forEach(x=>x.classList.remove("drag-over"));
+     const ids=[...list.querySelectorAll(".pc-timeline-row")].map(x=>x.dataset.timelineId);
+     setPcTimelineOrder(pcId,ids);
+     dragged=null;
+   });
+   row.addEventListener("dragover",e=>{
+     e.preventDefault();
+     if(!dragged||dragged===row)return;
+     row.classList.add("drag-over");
+     const rect=row.getBoundingClientRect(),after=e.clientY>rect.top+rect.height/2;
+     list.insertBefore(dragged,after?row.nextSibling:row);
+   });
+   row.addEventListener("dragleave",()=>row.classList.remove("drag-over"));
+   row.addEventListener("drop",e=>{e.preventDefault();row.classList.remove("drag-over")});
+   const label=row.querySelector(".pc-timeline-label");
+   if(label)label.addEventListener("change",()=>setPcTimelineLabel(pcId,row.dataset.timelineId,label.value));
+ });
+}
+
 function renderPcView(){
  const term=q("search").value.trim().toLowerCase(),
  rows=pcs.map(x=>({x,st:pcStats(x.name)}))
@@ -1962,30 +2057,40 @@ function renderPcView(){
  q("summary").textContent=`PC ${rows.length}人`;
  q("list").classList.remove("library-grid");
  q("list").innerHTML=`<div class="library-directory-grid">${
-   rows.length?rows.map(({x,st})=>`<article class="library-dir-card">
-     ${x.image?`<img class="library-dir-thumb pc-fullbody-thumb" src="${esc(x.image)}" alt="">`:""}
-     <div class="library-dir-title">${esc(x.name)}</div>
-     <div class="library-dir-meta">${esc(x.system||"")}${x.job?` ／ ${esc(x.job)}`:""}</div>
-     <div class="library-dir-meta">参加 ${st.count}シナリオ${st.first?` ／ 初卓 ${esc(st.first)}`:""}</div>
+   rows.length?rows.map(({x,st})=>{
+     const timelineScenarios=orderedPcScenarios(x.id,st.scenarios);
+     return `<article class="library-dir-card" data-pc-card="${esc(x.id)}">
+       ${x.image?`<img class="library-dir-thumb pc-fullbody-thumb" src="${esc(x.image)}" alt="">`:""}
+       <div class="library-dir-title">${esc(x.name)}</div>
+       <div class="library-dir-meta">${esc(x.system||"")}${x.job?` ／ ${esc(x.job)}`:""}</div>
+       <div class="library-dir-meta">参加 ${st.count}シナリオ${st.first?` ／ 初卓 ${esc(st.first)}`:""}</div>
 
-     <details class="pc-scenario-toggle">
-       <summary>通過シナリオ ${st.scenarios.length}件</summary>
-       <div class="pc-scenario-list">
-         ${st.scenarios.length?st.scenarios.map(s=>`<div class="history-row">
-           <a class="link" href="?view=scenario${s.scenarioId?`&scenario=${encodeURIComponent(s.scenarioId)}`:""}&pc=${encodeURIComponent(x.name)}">${esc(s.title)}</a>
-         </div>`).join(""):'<div class="small muted">参加記録はまだありません。</div>'}
+       <details class="pc-scenario-toggle">
+         <summary>通過シナリオ ${timelineScenarios.length}件</summary>
+         <div class="pc-timeline-help">☰ をドラッグしてPC本人の時系列順に並べ替え。右欄には「10年前」「現在」「未来」「IF」など自由に入力できます。</div>
+         <div class="pc-scenario-list">
+           ${timelineScenarios.length?timelineScenarios.map(sc=>{
+             const tid=pcScenarioTimelineId(sc),label=pcTimelineLabel(x.id,sc);
+             return `<div class="pc-timeline-row" draggable="true" data-timeline-id="${esc(tid)}">
+               <span class="pc-timeline-handle" title="ドラッグして並べ替え">☰</span>
+               <div class="pc-timeline-title"><a class="link" href="?view=scenario${sc.scenarioId?`&scenario=${encodeURIComponent(sc.scenarioId)}`:""}&pc=${encodeURIComponent(x.name)}">${esc(sc.title)}</a></div>
+               <input class="pc-timeline-label" value="${esc(label)}" placeholder="時系列メモ">
+             </div>`;
+           }).join(""):'<div class="small muted">参加記録はまだありません。</div>'}
+         </div>
+       </details>
+
+       <div class="lib-parent-actions">
+         <button type="button" data-pc-detail="${esc(x.id)}">PC詳細</button>
+         <button type="button" class="pc-rel-button" data-pc-relation="${esc(x.id)}">同卓関係図</button>
+         <button type="button" data-pc-edit-inline="${esc(x.id)}">編集</button>
        </div>
-     </details>
-
-     <div class="lib-parent-actions">
-       <button type="button" data-pc-detail="${esc(x.id)}">PC詳細</button>
-       <button type="button" class="pc-rel-button" data-pc-relation="${esc(x.id)}">同卓関係図</button>
-       <button type="button" data-pc-edit-inline="${esc(x.id)}">編集</button>
-     </div>
-     ${pcLibraryDetailHtml(x,st)}
-   </article>`).join(""):'<div class="empty">該当するPCがありません。</div>'
+       ${pcLibraryDetailHtml(x,st)}
+     </article>`;
+   }).join(""):'<div class="empty">該当するPCがありません。</div>'
  }</div>`;
 
+ document.querySelectorAll("[data-pc-card]").forEach(card=>wirePcTimeline(card,card.dataset.pcCard));
  document.querySelectorAll("[data-pc-detail]").forEach(b=>{
    b.onclick=()=>{
      const el=document.getElementById(`pc-library-detail-${b.dataset.pcDetail}`);

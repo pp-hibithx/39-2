@@ -620,6 +620,14 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .participant-pc-add{margin:8px 0 0 128px;width:auto}.participant-pc-remove{width:auto}
 @media(max-width:760px){.participant-person{grid-template-columns:1fr}.participant-pcs,.participant-pc-add{margin-left:0}.participant-pc-row{grid-template-columns:1fr}}
 </style>
+
+<style>
+/* v0.2.35.1 — self participant can have multiple PCs */
+.self-pc-list{display:grid;gap:7px;margin-top:8px}
+.self-pc-row{display:grid;grid-template-columns:minmax(140px,.75fr) minmax(220px,1.25fr) auto;gap:8px;align-items:end}
+.self-pc-remove,#addSelfPc{width:auto}
+@media(max-width:760px){.self-pc-row{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -690,9 +698,13 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
     <h3>自分</h3>
     <div class="lib-form-grid">
       <div><label>自分の役割</label><select id="role"><option>PL</option><option>KP</option><option>SKP</option><option>見学</option><option>その他</option></select></div>
-      <div><label>自分のHO <span class="small muted">（PL時・任意）</span></label><input id="selfHo" placeholder="HO1 / 探偵 など"></div>
-      <div><label>自PC</label><select id="pcSelect"><option value="">直接入力</option></select><input id="pc" placeholder="自分のPC名"></div>
     </div>
+    <div id="selfPcRows" class="self-pc-list"></div>
+    <button id="addSelfPc" type="button">＋ 自PCを追加</button>
+    <p class="small muted">PLの複数PC、KP時のKPC、SKPが担当するPCなど、必要な数だけ追加できます。PCを出さない場合は空のままで大丈夫です。</p>
+    <input id="selfHo" type="hidden">
+    <select id="pcSelect" hidden><option value="">直接入力</option></select>
+    <input id="pc" type="hidden">
   </div>
 
   <div class="lib-form-section">
@@ -732,7 +744,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.0</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.1</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1114,9 +1126,50 @@ function setParticipantRows(rows=[]){
  if(groups.length)groups.forEach(g=>addParticipantRow(g,{placeholder:false}));
  else addParticipantRow({}, {placeholder:true});
 }
+
+const SELF_PC_ROWS_KEY="trpg39_library_self_pc_rows_v1";
+function loadSelfPcRowsMap(){try{return JSON.parse(localStorage.getItem(SELF_PC_ROWS_KEY)||"{}")||{}}catch(e){return {}}}
+function saveSelfPcRowsMap(v){localStorage.setItem(SELF_PC_ROWS_KEY,JSON.stringify(v||{}))}
+function storedSelfPcRows(record){
+ if(!record)return [];
+ const map=loadSelfPcRowsMap(),saved=Array.isArray(map[record.id])?map[record.id]:[];
+ if(saved.length)return saved;
+ if(record.pcName||record.selfHo)return [{pcName:record.pcName||"",ho:record.selfHo||"",pcId:record.pcId||""}];
+ return [];
+}
+function setStoredSelfPcRows(recordId,rows){
+ const map=loadSelfPcRowsMap();
+ if(rows?.length)map[recordId]=rows;else delete map[recordId];
+ saveSelfPcRowsMap(map);
+}
+function addSelfPcRow(v={}){
+ const row=document.createElement("div");row.className="self-pc-row";
+ row.innerHTML=`<div><label>HO / 役割</label><input class="selfPcHo" value="${esc(v.ho||"")}" placeholder="HO1 / KPC など"></div>
+ <div><label>自PC</label><select class="selfPcSelect"><option value="">直接入力</option></select><input class="selfPcName" value="${esc(v.pcName||"")}" placeholder="自分のPC名"></div>
+ <button type="button" class="danger self-pc-remove">削除</button>`;
+ q("selfPcRows").appendChild(row);
+ const own=TRPG39.loadPCs?TRPG39.loadPCs():pcs,sel=row.querySelector(".selfPcSelect"),inp=row.querySelector(".selfPcName");
+ sel.innerHTML='<option value="">直接入力</option>'+own.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ja")).map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+ if(v.pcId&&own.some(p=>p.id===v.pcId)){sel.value=v.pcId;const p=own.find(p=>p.id===v.pcId);if(p)inp.value=p.name||inp.value}
+ sel.onchange=()=>{const p=own.find(p=>p.id===sel.value);if(p)inp.value=p.name||""};
+ row.querySelector(".self-pc-remove").onclick=()=>row.remove();
+}
+function setSelfPcRows(rows=[]){q("selfPcRows").innerHTML="";(rows||[]).forEach(addSelfPcRow)}
+function getSelfPcRows(){
+ return [...q("selfPcRows").querySelectorAll(".self-pc-row")].map(r=>({
+   ho:r.querySelector(".selfPcHo").value.trim(),
+   pcName:r.querySelector(".selfPcName").value.trim(),
+   pcId:r.querySelector(".selfPcSelect").value||""
+ })).filter(r=>r.ho||r.pcName);
+}
+function recordHasSelfPc(record,name){
+ const k=String(name||"").normalize("NFKC").trim().toLowerCase();
+ return storedSelfPcRows(record).some(r=>String(r.pcName||"").normalize("NFKC").trim().toLowerCase()===k);
+}
+
 function reset(prefillScenarioId=""){
  q("editId").value="";
- ["title","date","startTime","endTime","system","selfHo","pc","image","comment","spoilerBody","runId","runLabel"].forEach(x=>q(x).value="");q("sessionKind").value="main";
+ ["title","date","startTime","endTime","system","selfHo","pc","image","comment","spoilerBody","runId","runLabel"].forEach(x=>q(x).value="");setSelfPcRows([]);q("sessionKind").value="main";
  q("status").value="done";q("facilitatorPresence").value="present";q("facilitatorTermMode").value="auto";q("facilitatorTermCustom").value="";q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
  q("externalLinks").innerHTML="";addLinkRow();q("rememberParticipantHo").checked=false;setParticipantRows();updateImagePreview();fillScenarioSelect();fillPCSelect();
  q("scenarioSelect").value=prefillScenarioId||"";syncScenarioSearchLabel();
@@ -1177,14 +1230,20 @@ function save(){
  });
  const participants=rows.map(r=>r.plName).filter(Boolean);
  const participantIds=rows.filter(r=>r.plName).map(r=>r.playerId||"");
- const ownPcName=q("pc").value.trim();
- const ownPcId=(()=>{const sid=q("pcSelect").value;if(sid)return sid;if(!ownPcName)return "";const pc=TRPG39.ensurePC?TRPG39.ensurePC(ownPcName,{system:q("system").value.trim()}):null;return pc?.id||""})();
+ const selfPcRows=getSelfPcRows().map(r=>{
+   let pcId=r.pcId||"";
+   if(!pcId&&r.pcName){const p=TRPG39.ensurePC?TRPG39.ensurePC(r.pcName,{system:q("system").value.trim()}):null;pcId=p?.id||""}
+   return {...r,pcId};
+ });
+ const primarySelf=selfPcRows[0]||{pcName:"",ho:"",pcId:""};
+ const ownPcName=primarySelf.pcName||"",ownPcId=primarySelf.pcId||"";
+ q("pc").value=ownPcName;q("selfHo").value=primarySelf.ho||"";
  let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,runId,runLabel,date,start,end,status:q("status").value,
    articleBody:old?.articleBody||"",
-   spoilerBody:q("spoilerBody")?.value.trim()||"",spoiler:"",system:q("system").value.trim(),facilitatorLabel:facilitatorConfig({}).label,facilitatorless:q("facilitatorPresence").value==="less",role:q("role").value,selfHo:q("selfHo").value.trim(),pcName:ownPcName,pcId:ownPcId,
+   spoilerBody:q("spoilerBody")?.value.trim()||"",spoiler:"",system:q("system").value.trim(),facilitatorLabel:facilitatorConfig({}).label,facilitatorless:q("facilitatorPresence").value==="less",role:q("role").value,selfHo:primarySelf.ho||"",pcName:ownPcName,pcId:ownPcId,
    participants,participantIds,participantRows:rows,
    imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
- let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);
+ let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);setStoredSelfPcRows(item.id,selfPcRows);
  if(item.start){
    let evs=TRPG39.loadEvents(),eventId=item.eventId||TRPG39.uuid();
    const ei=evs.findIndex(e=>e.id===eventId),base=ei>=0?evs[ei]:{};
@@ -1202,7 +1261,7 @@ function save(){
 }
 function edit(id){
  let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";const st=splitLibraryDateTime(x.start||x.date||""),en=splitLibraryDateTime(x.end||"");q("date").value=x.date||st.date||"";q("startTime").value=st.time||"";q("endTime").value=en.time||"";q("sessionKind").value=sessionKindForRecord(x);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setParticipantRows(rowsFromRecord(x));q("rememberParticipantHo").checked=getParticipantHoTemplate(x.scenarioId,x.title).length>0;q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
+ q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";const st=splitLibraryDateTime(x.start||x.date||""),en=splitLibraryDateTime(x.end||"");q("date").value=x.date||st.date||"";q("startTime").value=st.time||"";q("endTime").value=en.time||"";q("sessionKind").value=sessionKindForRecord(x);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setSelfPcRows(storedSelfPcRows(x));setParticipantRows(rowsFromRecord(x));q("rememberParticipantHo").checked=getParticipantHoTemplate(x.scenarioId,x.title).length>0;q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -1313,20 +1372,17 @@ function reportRowsWithSelf(x){
  const selfRole=String(x.role||"").trim();
  if(selfRole){
    const selfName=localStorage.getItem("39x2_self_sns_name_v1")||"自分";
-   const selfCandidate=rows.find(r=>String(r.plName||"").trim()==="自分");
-   rows.push({role:selfRole,ho:x.selfHo||selfCandidate?.ho||"",plName:selfName,pcName:selfRole==="PL"?(x.pcName||""):"",relation:"",_self:true});
-   if(selfCandidate)rows.splice(rows.indexOf(selfCandidate),1);
+   const selfCandidateRows=rows.filter(r=>String(r.plName||"").trim()==="自分");
+   selfCandidateRows.forEach(r=>rows.splice(rows.indexOf(r),1));
+   const ownRows=storedSelfPcRows(x);
+   if(ownRows.length)ownRows.forEach(r=>rows.push({role:selfRole,ho:r.ho||"",plName:selfName,pcName:r.pcName||"",relation:"",_self:true}));
+   else rows.push({role:selfRole,ho:x.selfHo||"",plName:selfName,pcName:x.pcName||"",relation:"",_self:true});
  }
-
  const visible=[],anonPl=[];
  rows.forEach(r=>{
-   const role=String(r.role||"PL").toUpperCase();
-   const hidden=!!r._excluded&&!r._self;
-   const hasName=!!String(r.plName||"").trim()&&!hidden;
+   const role=String(r.role||"PL").toUpperCase(),hidden=!!r._excluded&&!r._self,hasName=!!String(r.plName||"").trim()&&!hidden;
    if(role==="PL"&&!hasName){anonPl.push(r);return}
-   if(["KP","DL","GM"].includes(role)&&!hasName){
-     visible.push({...r,plName:"",_anonymousFacilitator:true});return;
-   }
+   if(["KP","DL","GM"].includes(role)&&!hasName){visible.push({...r,plName:"",_anonymousFacilitator:true});return}
    if(hasName||r._self)visible.push(r);
  });
  if(anonPl.length)visible.push({role:"_anonymousPL",plName:`PL：他${anonPl.length}名`,_anonymousSummary:true});
@@ -1831,7 +1887,7 @@ function focusedGroupHtml(g){
 }
 function pcStats(name){
  const key=String(name||"").trim();
- const xs=data.filter(x=>String(x.pcName||"").trim()===key);
+ const xs=data.filter(x=>String(x.pcName||"").trim()===key||recordHasSelfPc(x,key));
  const runs=new Map(),scenarioKeys=new Set(),dates=[];
  xs.forEach(x=>{
    if(x.date)dates.push(x.date);
@@ -2209,13 +2265,19 @@ function buildPcRelationshipGraph(pc){
    const date=records.map(r=>r.date).filter(Boolean).sort()[0]||"";
    const people=new Map();
 
-   const self=ensureNode(focusName,{ho:base.selfHo||""});
+   const selfRow=storedSelfPcRows(base).find(r=>pcRelNameKey(r.pcName)===focusKey)||{ho:base.selfHo||""};
+   const self=ensureNode(focusName,{ho:selfRow.ho||""});
    if(!self.scenarios.has(scenarioId||scenario)){
-     self.scenarios.set(scenarioId||scenario,{
-       title:scenario,scenarioId,date,ho:base.selfHo||"",role:base.role||""
-     });
+     self.scenarios.set(scenarioId||scenario,{title:scenario,scenarioId,date,ho:selfRow.ho||"",role:base.role||""});
    }
-   people.set(focusKey,{name:focusName,ho:base.selfHo||"",relation:"",plName:""});
+   people.set(focusKey,{name:focusName,ho:selfRow.ho||"",relation:"",plName:""});
+   storedSelfPcRows(base).forEach(sr=>{
+     const nm=String(sr.pcName||"").trim(),kk=pcRelNameKey(nm);
+     if(!nm||kk===focusKey)return;
+     const nn=ensureNode(nm,{ho:sr.ho||"",plName:"自分"});
+     if(!nn.scenarios.has(scenarioId||scenario))nn.scenarios.set(scenarioId||scenario,{title:scenario,scenarioId,date,ho:sr.ho||"",role:base.role||""});
+     if(!people.has(kk))people.set(kk,{name:nm,ho:sr.ho||"",relation:"",plName:"自分"});
+   });
 
    for(const rec of records){
      for(const row of pcRelRows(rec)){
@@ -2998,7 +3060,7 @@ q("openLibraryEditor").onclick=()=>{reset();showEditor();q("libraryEditor").scro
 q("search").oninput=()=>{focusedScenarioKey="";focusedRunId="";focusedPlayerId="";render()};
 q("playerListSort").onchange=()=>{playerListSort=q("playerListSort").value;render()};
 q("playerArchiveFilter").onchange=()=>{playerArchiveFilter=q("playerArchiveFilter").value;focusedPlayerId="";render()};q("filter").onchange=()=>{focusedScenarioKey="";focusedRunId="";render()};q("archiveFilter").onchange=()=>{focusedScenarioKey="";focusedRunId="";render()};
-document.querySelectorAll("[data-library-view]").forEach(b=>b.onclick=()=>{libraryView=b.dataset.libraryView||"scenario";focusedScenarioKey="";focusedPlayerId="";playerListSort="name";playerListSort="name";playerArchiveFilter="active";playerDetailRoleFilter="all";playerDetailSystemFilter="all";focusedRunId="";const u=new URL(location.href);u.searchParams.set("view",libraryView);u.searchParams.delete("scenario");u.searchParams.delete("pc");u.searchParams.delete("player");history.replaceState(null,"",u);render()});q("addExternalLink").onclick=()=>addLinkRow();q("addParticipantRow").onclick=()=>addParticipantRow();
+document.querySelectorAll("[data-library-view]").forEach(b=>b.onclick=()=>{libraryView=b.dataset.libraryView||"scenario";focusedScenarioKey="";focusedPlayerId="";playerListSort="name";playerListSort="name";playerArchiveFilter="active";playerDetailRoleFilter="all";playerDetailSystemFilter="all";focusedRunId="";const u=new URL(location.href);u.searchParams.set("view",libraryView);u.searchParams.delete("scenario");u.searchParams.delete("pc");u.searchParams.delete("player");history.replaceState(null,"",u);render()});q("addExternalLink").onclick=()=>addLinkRow();q("addSelfPc").onclick=()=>addSelfPcRow({});q("addParticipantRow").onclick=()=>addParticipantRow();
 q("coverCancel").onclick=closeCoverEditor;
 q("coverReset").onclick=()=>{coverEditingY=50;updateCoverPreview()};
 q("coverSave").onclick=()=>{

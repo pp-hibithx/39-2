@@ -555,13 +555,30 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .pc-event-form{border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0;background:rgba(255,255,255,.015)}
 .pc-event-form[hidden]{display:none}
 .pc-event-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pc-event-checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px}
+.pc-event-checks{display:grid;grid-template-columns:1fr;gap:6px;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px}
 .pc-event-check{display:flex;gap:7px;align-items:center;font-size:12px}
 .pc-rel-node.event circle{stroke-dasharray:5 4;stroke-width:2.5}
 .pc-rel-node.event .node-name{font-size:11px}
 .pc-rel-edge.event-edge{stroke-dasharray:5 4;stroke-opacity:.5}
 .pc-rel-edge.manual-edge{stroke-opacity:.55}
 @media(max-width:700px){.pc-event-grid{grid-template-columns:1fr}}
+</style>
+
+
+<style>
+/* v0.2.34.2 — EVENT ↔ PC context */
+.pc-event-person{
+  display:grid;grid-template-columns:auto minmax(120px,1fr) minmax(110px,.8fr) minmax(110px,.8fr);
+  gap:7px;align-items:center;padding:7px;border:1px solid var(--line);border-radius:8px;
+}
+.pc-event-person input[type="checkbox"]{margin:0}
+.pc-event-person-name{font-size:12px;font-weight:600;min-width:0}
+.pc-event-person input[type="text"]{font-size:12px;padding:6px 7px}
+.pc-event-person:not(.selected) .pc-event-person-context{opacity:.45}
+@media(max-width:760px){
+ .pc-event-person{grid-template-columns:auto minmax(0,1fr)}
+ .pc-event-person-context{grid-column:2}
+}
 </style>
 
 </head>
@@ -676,7 +693,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.34.1</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.34.2</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -724,7 +741,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
     <div><label>時系列メモ</label><input id="pcRelEventTime" placeholder="過去／現在／未来／IFなど"></div>
   </div>
   <label>説明</label><input id="pcRelEventNote" placeholder="複数章を通して同じ黒幕を追っていた、など">
-  <label>関与PC</label>
+  <label>関与PC <span class="small muted">— PCごとに「同期」「関連事件を追っていた」などの関わり方と、そのPC視点の時系列を付けられます。</span></label>
   <div id="pcRelEventPcChecks" class="pc-event-checks"></div>
   <div class="row" style="margin-top:8px"><button type="button" id="pcRelEventSave">保存</button><button type="button" id="pcRelEventCancel">キャンセル</button></div>
 </div>
@@ -1835,7 +1852,18 @@ function openPcRelRelationForm(){
 function openPcRelEventForm(){
  q("pcRelRelationForm").hidden=true;q("pcRelEventForm").hidden=false;
  q("pcRelEventName").value="";q("pcRelEventTime").value="";q("pcRelEventNote").value="";
- q("pcRelEventPcChecks").innerHTML=pcs.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja")).map(p=>`<label class="pc-event-check"><input type="checkbox" value="${esc(p.id)}" ${p.id===activePcRelationId?"checked":""}> ${esc(p.name)}</label>`).join("");
+ q("pcRelEventPcChecks").innerHTML=pcs.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja")).map(p=>`
+   <div class="pc-event-person ${p.id===activePcRelationId?"selected":""}" data-event-pc="${esc(p.id)}">
+     <input class="pc-event-person-check" type="checkbox" value="${esc(p.id)}" ${p.id===activePcRelationId?"checked":""}>
+     <div class="pc-event-person-name">${esc(p.name)}</div>
+     <input class="pc-event-person-context" type="text" data-event-role placeholder="関わり方（同期など）">
+     <input class="pc-event-person-context" type="text" data-event-time placeholder="PC視点の時系列">
+   </div>`).join("");
+ q("pcRelEventPcChecks").querySelectorAll(".pc-event-person").forEach(row=>{
+   const cb=row.querySelector(".pc-event-person-check");
+   const sync=()=>row.classList.toggle("selected",cb.checked);
+   cb.addEventListener("change",sync);sync();
+ });
 }
 function saveManualPcRelation(){
  const a=q("pcRelPcA").value,b=q("pcRelPcB").value;
@@ -1859,10 +1887,21 @@ function saveManualPcRelation(){
 }
 function savePcEvent(){
  const name=q("pcRelEventName").value.trim();if(!name)return alert("出来事名を入力してください。");
- const pcIds=[...q("pcRelEventPcChecks").querySelectorAll('input:checked')].map(x=>x.value);
- if(!pcIds.length)return alert("関与PCを1人以上選んでください。");
+ const participants=[...q("pcRelEventPcChecks").querySelectorAll(".pc-event-person")].filter(row=>row.querySelector(".pc-event-person-check").checked).map(row=>({
+   pcId:row.dataset.eventPc,
+   role:row.querySelector("[data-event-role]").value.trim(),
+   time:row.querySelector("[data-event-time]").value.trim()
+ }));
+ if(!participants.length)return alert("関与PCを1人以上選んでください。");
  const x=pcRelExtras();x.events=x.events||[];
- x.events.push({id:TRPG39.uuid(),name,time:q("pcRelEventTime").value.trim(),note:q("pcRelEventNote").value.trim(),pcIds});
+ x.events.push({
+   id:TRPG39.uuid(),
+   name,
+   time:q("pcRelEventTime").value.trim(),
+   note:q("pcRelEventNote").value.trim(),
+   pcIds:participants.map(p=>p.pcId),
+   participants
+ });
  savePcRelExtras(x);q("pcRelEventForm").hidden=true;renderPcRelationshipGraph(pcById(activePcRelationId));
 }
 
@@ -2014,7 +2053,7 @@ function buildPcRelationshipGraph(pc){
      if(!touches)return;
      const ek=`event:${ev.id}`;
      eventKeys.add(ev.id);
-     eventNodes.push({key:ek,name:ev.name,isEvent:true,time:ev.time||"",note:ev.note||"",pcIds:ev.pcIds||[]});
+     eventNodes.push({key:ek,name:ev.name,isEvent:true,time:ev.time||"",note:ev.note||"",pcIds:ev.pcIds||[],participants:Array.isArray(ev.participants)?ev.participants:[]});
      (ev.pcIds||[]).forEach(pid=>{
        const p=pcById(pid);if(!p)return;
        const before=nodes.size,n=ensureNode(p.name);
@@ -2051,7 +2090,13 @@ function showPcRelationNodeDetail(graph,key){
  const connections=graph.edges.filter(e=>e.a===key||e.b===key);
  if(n.isEvent){
    const linked=connections.map(e=>graph.nodes.find(x=>x.key===(e.a===key?e.b:e.a))).filter(Boolean);
-   q("pcRelationDetail").innerHTML=`<div class="pc-rel-detail-card"><strong>出来事：${esc(n.name)}</strong>${n.time?`<div class="library-dir-meta">時系列：${esc(n.time)}</div>`:""}${n.note?`<div style="margin-top:6px">${esc(n.note)}</div>`:""}<div class="library-dir-meta" style="margin-top:6px">関与PC：${linked.map(x=>esc(x.name)).join("、")}</div></div>`;
+   const participantMap=new Map((n.participants||[]).map(p=>[p.pcId,p]));
+   const rows=linked.map(x=>{
+     const p=pcs.find(pc=>pcRelNameKey(pc.name)===x.key);
+     const ctx=p?participantMap.get(p.id):null;
+     return `<div class="history-row"><strong>${esc(x.name)}</strong>${ctx?.role?` ／ ${esc(ctx.role)}`:""}${ctx?.time?` <span class="small muted">｜${esc(ctx.time)}</span>`:""}</div>`;
+   }).join("");
+   q("pcRelationDetail").innerHTML=`<div class="pc-rel-detail-card"><strong>出来事：${esc(n.name)}</strong>${n.time?`<div class="library-dir-meta">出来事全体の時系列：${esc(n.time)}</div>`:""}${n.note?`<div style="margin-top:6px">${esc(n.note)}</div>`:""}<div style="margin-top:8px"><strong>関与PC</strong>${rows||'<div class="small muted">登録なし</div>'}</div></div>`;
    return;
  }
  const scenarios=[...n.scenarios.values()].sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));

@@ -225,7 +225,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-form-section{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
 .lib-form-section:first-of-type{margin-top:8px}
 .lib-form-section h3{margin:0 0 10px}
-.participant-head,.participant-row{display:grid;grid-template-columns:100px minmax(80px,.7fr) minmax(120px,1fr) minmax(120px,1fr) minmax(130px,1fr) auto;gap:8px;align-items:end}
+.participant-head,.participant-row{display:grid;grid-template-columns:100px minmax(80px,.7fr) minmax(140px,1fr) minmax(140px,1fr) auto;gap:8px;align-items:end}
 .participant-head{font-size:12px;color:var(--muted);padding:0 2px 4px}
 .participant-row{padding:8px 0;border-top:1px solid var(--line)}
 .participant-row label{display:none}
@@ -351,7 +351,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 <style>
 /* v0.2.33.6.1 — participant picker / alignment fix */
 .participant-head,.participant-row{
-  grid-template-columns:100px minmax(110px,.75fr) minmax(180px,1.15fr) minmax(180px,1.15fr) minmax(170px,1fr) auto;
+  grid-template-columns:100px minmax(110px,.75fr) minmax(190px,1.15fr) minmax(190px,1.15fr) auto;
   align-items:start;
 }
 .participant-row > div{min-width:0}
@@ -688,9 +688,9 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   <div class="lib-form-section">
     <div class="row"><div><h3>参加メンバー</h3><p class="small muted">役割・HO・PL・PCを必要な人数だけ追加できます。HOは自由入力です。</p></div><button id="addParticipantRow" type="button">＋ 参加者を追加</button></div>
     <label class="checkline" style="margin:6px 0 10px"><input id="rememberParticipantHo" type="checkbox"> KP/DL/GM時、このシナリオのHO構成を次の陣にも引き継ぐ <span class="small muted">（PL名・PC名は引き継ぎません）</span></label>
-    <div class="participant-head"><span>役割</span><span>HO</span><span>PL</span><span>PC</span><span>自PCとの関係</span><span></span></div>
+    <div class="participant-head"><span>役割</span><span>HO</span><span>PL</span><span>PC</span><span></span></div>
     <div id="participantRows"></div>
-    <p class="small muted">PLAYERS管理をONにしている場合、PL名はPLAYERSへ自動登録され、その人が使用したPC・自PCとの関係も同卓履歴から確認できます。他PLのPCはPCページには追加されません。</p>
+    <p class="small muted">PLAYERS管理をONにしている場合、PL名はPLAYERSへ自動登録され、その人が使用したPCも同卓履歴から確認できます。PC同士の関係はLIBRARYのPC関係図で管理します。他PLのPCはPCページには追加されません。</p>
   </div>
 
   <div class="lib-form-section">
@@ -722,7 +722,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.34.5.1</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.34.6</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1046,7 +1046,6 @@ function addParticipantRow(v={},opts={}){
  <div><label>HO</label><input class="partHo" value="${esc(ho)}" placeholder="HO1 / 探偵 など"></div>
  <div class="participant-field-wrap"><label>PL</label><input class="partPl" value="${esc(pl)}" placeholder="PL名を検索・選択" autocomplete="off"><div class="participant-picker-results partPlResults"></div></div>
  <div class="participant-field-wrap"><label>PC</label><input class="partPc" value="${esc(pc)}" placeholder="PC名を検索・選択" autocomplete="off"><div class="participant-picker-results partPcResults"></div><div class="small muted partPcHint"></div></div>
- <div><label>自PCとの関係</label><input class="partRelation" value="${esc(relation)}" placeholder="相棒・友人など"></div>
  <button type="button" class="danger participant-remove">削除</button>`;
  const plInput=row.querySelector(".partPl"),pcInput=row.querySelector(".partPc"),plResults=row.querySelector(".partPlResults"),pcResults=row.querySelector(".partPcResults"),pcHint=row.querySelector(".partPcHint");
 
@@ -1105,9 +1104,9 @@ function getParticipantRows(){
    ho:r.querySelector(".partHo").value.trim(),
    plName:r.querySelector(".partPl").value.trim(),
    pcName:r.querySelector(".partPc").value.trim(),
-   relation:r.querySelector(".partRelation").value.trim(),
+   relation:"",
    _placeholder:r.dataset.placeholder==="1"
- })).filter(r=>!r._placeholder||r.plName||r.pcName||r.ho||r.relation).map(({_placeholder,...r})=>r);
+ })).filter(r=>!r._placeholder||r.plName||r.pcName||r.ho).map(({_placeholder,...r})=>r);
 }
 function rowsFromRecord(x){
  if(Array.isArray(x?.participantRows)&&x.participantRows.length)return x.participantRows;
@@ -1507,7 +1506,7 @@ function participantHtml(x){
    const pc=r.pcName?` / ${esc(r.pcName)}`:"";
    if(role==="SKP")body.push(`<div>SKP：${name}${pc}</div>`);
    else if(role==="見学")body.push(`<div>見学：${name}${pc}</div>`);
-   else if(role==="PL")body.push(`<div>${r.ho?`<strong>${esc(r.ho)}</strong>　`:"PL："}${name}${pc}${r.relation?` <span class="small muted">（自PCとの関係：${esc(r.relation)}）</span>`:""}</div>`);
+   else if(role==="PL")body.push(`<div>${r.ho?`<strong>${esc(r.ho)}</strong>　`:"PL："}${name}${pc}</div>`);
    else body.push(`<div>${r.ho?`${esc(r.ho)}　`:""}${name}${pc}</div>`);
  });
 
@@ -1515,7 +1514,7 @@ function participantHtml(x){
    body.push(`<div class="muted">PL：他${anonPl.length}名</div>`);
    anonPl.forEach(r=>{
      if(r.pcName){
-       body.push(`<div>${r.ho?`<strong>${esc(r.ho)}</strong>　`:""}PC：${esc(r.pcName)}${r.relation?` <span class="small muted">（自PCとの関係：${esc(r.relation)}）</span>`:""}</div>`);
+       body.push(`<div>${r.ho?`<strong>${esc(r.ho)}</strong>　`:""}PC：${esc(r.pcName)}</div>`);
      }
    });
  }
@@ -2134,7 +2133,10 @@ function renderPcRelManageList(){
 
 function buildPcRelationshipGraph(pc){
  const focusName=String(pc?.name||"").trim(),focusKey=pcRelNameKey(focusName);
- const relevant=data.filter(x=>pcRelNameKey(x.pcName)===focusKey);
+ const relevant=data
+   .filter(x=>pcRelNameKey(x.pcName)===focusKey)
+   .slice()
+   .sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
  const nodes=new Map(),edges=new Map(),runs=new Map();
 
  function ensureNode(name,extra={}){
@@ -2154,7 +2156,7 @@ function buildPcRelationshipGraph(pc){
      });
    }
    const n=nodes.get(key);
-   if(extra.ho)n.hos.add(String(extra.ho));
+   if(extra.ho && !n.hos.size)n.hos.add(String(extra.ho));
    if(extra.relation)n.relations.add(String(extra.relation));
    if(extra.plName)n.players.add(String(extra.plName));
    return n;
@@ -2237,7 +2239,7 @@ function buildPcRelationshipGraph(pc){
        }
        if(!people.has(key)){
          people.set(key,{
-           name:pcName,ho:row.ho||"",relation:row.relation||"",plName:row.plName||""
+           name:pcName,ho:row.ho||"",relation:"",plName:row.plName||""
          });
        }else{
          const p=people.get(key);

@@ -800,7 +800,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.4.2</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.4.3</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -831,8 +831,8 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
       </div>
     </div>
     <div class="player-rel-controls">
-      <label><input type="checkbox" id="playerRelationShowAllEdges"> 全体のつながりを表示</label>
-      <span class="player-rel-frequency-note">通常は中心人物との線だけを表示。よく同卓する人ほど中心に近くなります。</span>
+      <label><input type="checkbox" id="playerRelationShowAllEdges"> 同卓者同士の線を強調</label>
+      <span class="player-rel-frequency-note">中心人物との線を強調しつつ、同卓者同士の線も薄く表示します。1陣だけの人ほど外側に配置します。</span>
     </div>
     <div id="playerRelationStage" class="player-rel-stage"></div>
     <div class="pc-rel-legend">線の太さ＝同卓した陣数。複数日卓は1陣として数えます。人物を選ぶと同卓陣を確認できます。</div>
@@ -3167,10 +3167,9 @@ function renderPlayerRelationshipGraph(focusId){
    return;
  }
 
- const W=1040,H=650,cx=W/2,cy=H/2,pos=new Map();
+ const W=1120,H=720,cx=W/2,cy=H/2,pos=new Map();
  pos.set(focusId,{x:cx,y:cy});
 
- // Frequency from focus -> each person.
  const frequency=new Map();
  graph.edges.forEach(e=>{
    if(e.a===focusId)frequency.set(e.b,e.count);
@@ -3180,57 +3179,63 @@ function renderPlayerRelationshipGraph(focusId){
  const others=graph.nodes.filter(n=>n.id!==focusId)
    .sort((a,b)=>(frequency.get(b.id)||0)-(frequency.get(a.id)||0)||String(a.name).localeCompare(String(b.name),"ja"));
 
- const maxCount=Math.max(1,...others.map(n=>frequency.get(n.id)||1));
- const rings=[
-   {min:maxCount*.60,r:145},
-   {min:maxCount*.25,r:220},
-   {min:0,r:285}
+ // Explicit distance bands. 1-run contacts are pushed farthest out.
+ const bands=[
+   {test:c=>c>=20,r:155},
+   {test:c=>c>=10,r:215},
+   {test:c=>c>=5,r:270},
+   {test:c=>c>=2,r:320},
+   {test:c=>c<=1,r:350}
  ];
- const ringGroups=rings.map(()=>[]);
+ const groups=bands.map(()=>[]);
  others.forEach(n=>{
    const c=frequency.get(n.id)||1;
-   let idx=rings.findIndex(r=>c>=r.min);
-   if(idx<0)idx=rings.length-1;
-   ringGroups[idx].push(n);
+   let idx=bands.findIndex(b=>b.test(c));
+   if(idx<0)idx=bands.length-1;
+   groups[idx].push(n);
  });
 
- ringGroups.forEach((group,ri)=>{
+ groups.forEach((group,gi)=>{
    if(!group.length)return;
-   const baseR=rings[ri].r;
+   const baseR=bands[gi].r;
    group.forEach((n,i)=>{
-     const angle=-Math.PI/2+(Math.PI*2*i/group.length);
-     const wobble=(i%2?8:-8);
-     pos.set(n.id,{
-       x:cx+Math.cos(angle)*(baseR+wobble),
-       y:cy+Math.sin(angle)*(baseR+wobble)
-     });
+     // Offset each ring so labels do not line up radially.
+     const offset=(gi%2?Math.PI/group.length:0);
+     const angle=-Math.PI/2+offset+(Math.PI*2*i/group.length);
+     const r=baseR+(i%2?5:-5);
+     pos.set(n.id,{x:cx+Math.cos(angle)*r,y:cy+Math.sin(angle)*r});
    });
  });
 
- const visibleEdges=playerRelationShowAllEdges
-   ? graph.edges
-   : graph.edges.filter(e=>e.a===focusId||e.b===focusId);
-
- const edgeSvg=visibleEdges.map(e=>{
+ const edgeSvg=graph.edges.map(e=>{
    const a=pos.get(e.a),b=pos.get(e.b);if(!a||!b)return "";
-   const width=Math.min(8,1.5+Math.max(0,e.count-1)*1.15);
-   const opacity=Math.min(.78,.32+Math.max(0,e.count-1)*.07);
+   const isFocusEdge=e.a===focusId||e.b===focusId;
+   const baseWidth=Math.min(8,1.5+Math.max(0,e.count-1)*1.15);
+   let width,opacity;
+   if(isFocusEdge){
+     width=baseWidth;
+     opacity=Math.min(.80,.34+Math.max(0,e.count-1)*.07);
+   }else{
+     // Keep community structure visible, but don't let it turn into a hairball.
+     width=playerRelationShowAllEdges?Math.min(5,1+Math.max(0,e.count-1)*.7):Math.min(2.4,.7+Math.max(0,e.count-1)*.35);
+     opacity=playerRelationShowAllEdges?Math.min(.46,.16+Math.max(0,e.count-1)*.04):Math.min(.22,.07+Math.max(0,e.count-1)*.025);
+   }
    return `<line class="player-rel-edge" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" style="stroke-width:${width};stroke-opacity:${opacity}"></line>`;
  }).join("");
 
  const nodeSvg=graph.nodes.map(n=>{
-   const p=pos.get(n.id),isFocus=n.id===focusId,r=isFocus?56:40;
+   const p=pos.get(n.id),isFocus=n.id===focusId,r=isFocus?58:38;
    const rawLabel=n.self?`自分｜${n.name}`:n.name;
    const label=rawLabel.length>11?rawLabel.slice(0,10)+"…":rawLabel;
    const count=isFocus?"":frequency.get(n.id)||0;
-   const sub=count?`<text y="18" style="font-size:10px;opacity:.7">${count}陣</text>`:"";
+   const sub=count?`<text y="17" style="font-size:10px;opacity:.72">${count}陣</text>`:"";
    return `<g class="player-rel-node ${isFocus?"focus":""} ${n.self?"self":""}" data-player-rel-node="${esc(n.id)}" transform="translate(${p.x} ${p.y})">
-     <circle r="${r}"></circle><text y="${count?-4:2}">${esc(label)}</text>${sub}
+     <circle r="${r}"></circle><text y="${count?-5:2}">${esc(label)}</text>${sub}
    </g>`;
  }).join("");
 
  q("playerRelationTitle").textContent=`${focus.name}｜同卓者関係図`;
- q("playerRelationSummary").textContent=`直接同卓 ${Math.max(0,graph.nodes.length-1)}人 ／ 表示線 ${visibleEdges.length}本`;
+ q("playerRelationSummary").textContent=`直接同卓 ${Math.max(0,graph.nodes.length-1)}人 ／ 関係線 ${graph.edges.length}本`;
  q("playerRelationStage").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(focus.name)}の同卓者関係図">${edgeSvg}${nodeSvg}</svg>`;
  q("playerRelationStage").querySelectorAll("[data-player-rel-node]").forEach(el=>el.onclick=()=>showPlayerRelationNodeDetail(graph,el.dataset.playerRelNode));
  q("playerRelationShowAllEdges").checked=playerRelationShowAllEdges;

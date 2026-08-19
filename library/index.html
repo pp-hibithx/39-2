@@ -628,6 +628,11 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .self-pc-remove,#addSelfPc{width:auto}
 @media(max-width:760px){.self-pc-row{grid-template-columns:1fr}}
 </style>
+
+<style>
+/* v0.2.35.2 — graph navigation */
+.pc-rel-center-btn{width:auto;margin-top:8px}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -744,7 +749,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.1</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.2</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -2418,6 +2423,7 @@ function showPcRelationNodeDetail(graph,key){
      ${n.relations.size?`<div class="library-dir-meta">中心PCとの関係：${esc([...n.relations].join("、"))}</div>`:""}
      <div class="library-dir-meta">接続 ${connections.length}PC</div>
      ${manualConnections?`<div style="margin-top:8px"><strong>登録したPC関係</strong>${manualConnections}</div>`:""}
+     ${n.pcRefId?`<button type="button" class="pc-rel-center-btn" data-center-pc="${esc(n.pcRefId)}">このPCを中心に見る</button>`:""}
      ${n.registeredId?`<div style="margin-top:8px"><a class="link" href="../pcs/index.html?focus=${encodeURIComponent(n.registeredId)}">PC情報を見る</a></div>`:""}
    </div>
    <div class="pc-rel-detail-card">
@@ -2429,6 +2435,15 @@ function showPcRelationNodeDetail(graph,key){
      </div>`).join(""):'<div class="small muted">記録なし</div>'}
    </div>
  </div>`;
+
+ const centerBtn=q("pcRelationDetail").querySelector("[data-center-pc]");
+ if(centerBtn)centerBtn.onclick=()=>{
+   const next=anyPcById(centerBtn.dataset.centerPc);
+   if(!next)return;
+   activePcRelationId=next.id;
+   renderPcRelationshipGraph(next);
+   renderPcRelManageList();
+ };
 }
 function renderPcRelationshipGraph(pc){
  const graph=buildPcRelationshipGraph(pc);

@@ -610,6 +610,16 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .pc-rel-manage-empty{font-size:12px;color:var(--muted)}
 </style>
 
+<style>
+/* v0.2.35.0 — participant -> multiple PCs */
+.participant-head{display:none!important}
+.participant-row{display:block!important;border:1px solid var(--line);border-radius:10px;padding:10px!important;margin-bottom:8px}
+.participant-person{display:grid;grid-template-columns:120px minmax(180px,1fr) auto;gap:8px;align-items:end}
+.participant-pcs{display:grid;gap:6px;margin:8px 0 0 128px}
+.participant-pc-row{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(180px,1.2fr) auto;gap:7px;align-items:end}
+.participant-pc-add{margin:8px 0 0 128px;width:auto}.participant-pc-remove{width:auto}
+@media(max-width:760px){.participant-person{grid-template-columns:1fr}.participant-pcs,.participant-pc-add{margin-left:0}.participant-pc-row{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -686,7 +696,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   </div>
 
   <div class="lib-form-section">
-    <div class="row"><div><h3>参加メンバー</h3><p class="small muted">役割・HO・PL・PCを必要な人数だけ追加できます。HOは自由入力です。</p></div><button id="addParticipantRow" type="button">＋ 参加者を追加</button></div>
+    <div class="row"><div><h3>参加メンバー</h3><p class="small muted">参加者ごとに役割を選び、必要な数だけPCを追加できます。PL・KP・SKP・見学は複数人登録できます。</p></div><button id="addParticipantRow" type="button">＋ 参加者を追加</button></div>
     <label class="checkline" style="margin:6px 0 10px"><input id="rememberParticipantHo" type="checkbox"> KP/DL/GM時、このシナリオのHO構成を次の陣にも引き継ぐ <span class="small muted">（PL名・PC名は引き継ぎません）</span></label>
     <div class="participant-head"><span>役割</span><span>HO</span><span>PL</span><span>PC</span><span></span></div>
     <div id="participantRows"></div>
@@ -722,7 +732,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.34.6</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.0</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1040,73 +1050,53 @@ function updateImagePreview(){const u=q("image").value.trim();q("imagePreview").
 function addParticipantRow(v={},opts={}){
  const row=document.createElement("div");row.className="participant-row";
  row.dataset.placeholder=opts.placeholder?"1":"0";
- const role=String(v.role||"PL"),ho=String(v.ho||""),pl=String(v.plName||v.name||""),pc=String(v.pcName||""),relation=String(v.relation||"");
+ const role=String(v.role||"PL"),pl=String(v.plName||v.name||"");
  const cfg=facilitatorConfig({});
- row.innerHTML=`<div><label>役割</label><select class="partRole">${roleOptions(role,cfg.label)}</select></div>
- <div><label>HO</label><input class="partHo" value="${esc(ho)}" placeholder="HO1 / 探偵 など"></div>
- <div class="participant-field-wrap"><label>PL</label><input class="partPl" value="${esc(pl)}" placeholder="PL名を検索・選択" autocomplete="off"><div class="participant-picker-results partPlResults"></div></div>
- <div class="participant-field-wrap"><label>PC</label><input class="partPc" value="${esc(pc)}" placeholder="PC名を検索・選択" autocomplete="off"><div class="participant-picker-results partPcResults"></div><div class="small muted partPcHint"></div></div>
- <button type="button" class="danger participant-remove">削除</button>`;
- const plInput=row.querySelector(".partPl"),pcInput=row.querySelector(".partPc"),plResults=row.querySelector(".partPlResults"),pcResults=row.querySelector(".partPcResults"),pcHint=row.querySelector(".partPcHint");
-
- function currentPlayers(){
-   return players
-     .filter(p=>!p.excluded&&!p.archived&&p.name)
-     .slice()
-     .sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ja"));
- }
+ row.innerHTML=`<div class="participant-person">
+   <div><label>役割</label><select class="partRole">${roleOptions(role,cfg.label)}</select></div>
+   <div class="participant-field-wrap"><label>参加者</label><input class="partPl" value="${esc(pl)}" placeholder="参加者名を検索・選択" autocomplete="off"><div class="participant-picker-results partPlResults"></div></div>
+   <button type="button" class="danger participant-remove">参加者を削除</button>
+ </div><div class="participant-pcs"></div><button type="button" class="participant-pc-add">＋ PC追加</button>`;
+ const plInput=row.querySelector(".partPl"),plResults=row.querySelector(".partPlResults"),pcBox=row.querySelector(".participant-pcs");
+ function currentPlayers(){return players.filter(p=>!p.excluded&&!p.archived&&p.name).slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ja"))}
  function playerPcCandidates(){
-   const plName=plInput.value.trim(),key=String(plName).normalize("NFKC").trim().toLowerCase();
-   if(!key)return [];
+   const key=plInput.value.trim().normalize("NFKC").toLowerCase();if(!key)return [];
    const names=new Set();
-   data.forEach(rec=>{
-     rowsFromRecord(rec).forEach(r=>{
-       const playerHit=r.playerId&&players.find(p=>p.id===r.playerId);
-       const same=(playerHit&&String(playerHit.name||"").normalize("NFKC").trim().toLowerCase()===key)
-         ||String(r.plName||"").normalize("NFKC").trim().toLowerCase()===key;
-       if(same&&String(r.pcName||"").trim())names.add(String(r.pcName).trim());
-     });
-   });
+   data.forEach(rec=>rowsFromRecord(rec).forEach(r=>{
+     const playerHit=r.playerId&&players.find(p=>p.id===r.playerId);
+     const same=(playerHit&&String(playerHit.name||"").normalize("NFKC").trim().toLowerCase()===key)||String(r.plName||"").normalize("NFKC").trim().toLowerCase()===key;
+     if(same&&String(r.pcName||"").trim())names.add(String(r.pcName).trim());
+   }));
    return [...names].sort((a,b)=>a.localeCompare(b,"ja"));
  }
- function closePickers(){plResults.classList.remove("open");pcResults.classList.remove("open")}
- function renderPlPicker(){
-   const term=plInput.value.trim().normalize("NFKC").toLowerCase();
-   const rows=currentPlayers().filter(p=>!term||[p.name,p.publicName,p.socialName].filter(Boolean).join(" ").normalize("NFKC").toLowerCase().includes(term)).slice(0,40);
-   plResults.innerHTML=rows.length?rows.map(p=>`<button type="button" class="participant-picker-item" data-pl-choice="${esc(p.name)}">${esc(p.name)}${p.socialName&&p.socialName!==p.name?` <span class="small muted">(${esc(p.socialName)})</span>`:""}</button>`).join(""):'<div class="participant-picker-empty">一致する同卓者がいません。新しい名前をそのまま入力できます。</div>';
-   plResults.classList.add("open");
-   plResults.querySelectorAll("[data-pl-choice]").forEach(b=>b.onclick=()=>{plInput.value=b.dataset.plChoice;plResults.classList.remove("open");refreshPcHint();renderPcPicker(false)});
+ function addPc(pc={}){
+   const pr=document.createElement("div");pr.className="participant-pc-row";
+   pr.innerHTML=`<div><label>HO / 役割</label><input class="partPcHo" value="${esc(pc.ho||"")}" placeholder="HO1 / KPC など"></div>
+   <div class="participant-field-wrap"><label>PC</label><input class="partPcName" value="${esc(pc.pcName||"")}" placeholder="PC名を検索・入力" autocomplete="off"><div class="participant-picker-results partPcResults"></div></div>
+   <button type="button" class="danger participant-pc-remove">削除</button>`;
+   pcBox.appendChild(pr);
+   const inp=pr.querySelector(".partPcName"),res=pr.querySelector(".partPcResults");
+   const render=()=>{const term=inp.value.trim().normalize("NFKC").toLowerCase(),names=playerPcCandidates().filter(n=>!term||n.normalize("NFKC").toLowerCase().includes(term));res.innerHTML=names.length?names.map(n=>`<button type="button" class="participant-picker-item" data-pc-choice="${esc(n)}">${esc(n)}</button>`).join(""):'<div class="participant-picker-empty">候補がありません。新しいPC名をそのまま入力できます。</div>';res.classList.add("open");res.querySelectorAll("[data-pc-choice]").forEach(b=>b.onclick=()=>{inp.value=b.dataset.pcChoice;res.classList.remove("open")})};
+   inp.addEventListener("focus",render);inp.addEventListener("input",render);
+   pr.querySelector(".participant-pc-remove").onclick=()=>pr.remove();
  }
- function renderPcPicker(open=true){
-   const term=pcInput.value.trim().normalize("NFKC").toLowerCase();
-   const names=playerPcCandidates().filter(name=>!term||name.normalize("NFKC").toLowerCase().includes(term));
-   pcResults.innerHTML=names.length?names.map(name=>`<button type="button" class="participant-picker-item" data-pc-choice="${esc(name)}">${esc(name)}</button>`).join(""):'<div class="participant-picker-empty">${plInput.value.trim()?"このPLの登録済みPCはありません。新しいPC名をそのまま入力できます。":"先にPLを選ぶと、その人のPC候補が出ます。"}</div>';
-   if(open)pcResults.classList.add("open");else pcResults.classList.remove("open");
- }
- function refreshPcHint(){
-   const names=playerPcCandidates();
-   pcHint.textContent=plInput.value.trim()?(names.length?`このPLの登録済みPC：${names.length}人`:"このPLのPCはまだ未登録です。新しい名前を入力できます。"):"";
- }
- plInput.addEventListener("focus",renderPlPicker);
- plInput.addEventListener("input",()=>{renderPlPicker();refreshPcHint();pcInput.value="";pcResults.classList.remove("open")});
- plInput.addEventListener("change",refreshPcHint);
- pcInput.addEventListener("focus",()=>renderPcPicker(true));
- pcInput.addEventListener("input",()=>renderPcPicker(true));
- pcResults.addEventListener("click",e=>{const b=e.target.closest("[data-pc-choice]");if(!b)return;pcInput.value=b.dataset.pcChoice;pcResults.classList.remove("open")});
- document.addEventListener("click",e=>{if(!row.contains(e.target))closePickers()});
- refreshPcHint();
+ const pcs0=Array.isArray(v.pcs)?v.pcs:((v.pcName||v.ho)?[{pcName:v.pcName||"",ho:v.ho||""}]:[]);
+ pcs0.forEach(addPc);
+ row.querySelector(".participant-pc-add").onclick=()=>addPc({});
+ function renderPl(){const term=plInput.value.trim().normalize("NFKC").toLowerCase(),rows=currentPlayers().filter(p=>!term||[p.name,p.publicName,p.socialName].filter(Boolean).join(" ").normalize("NFKC").toLowerCase().includes(term)).slice(0,40);plResults.innerHTML=rows.length?rows.map(p=>`<button type="button" class="participant-picker-item" data-pl-choice="${esc(p.name)}">${esc(p.name)}</button>`).join(""):'<div class="participant-picker-empty">一致する参加者がいません。新しい名前をそのまま入力できます。</div>';plResults.classList.add("open");plResults.querySelectorAll("[data-pl-choice]").forEach(b=>b.onclick=()=>{plInput.value=b.dataset.plChoice;plResults.classList.remove("open")})}
+ plInput.addEventListener("focus",renderPl);plInput.addEventListener("input",renderPl);
  row.querySelector(".participant-remove").onclick=()=>row.remove();
  q("participantRows").appendChild(row);
 }
 function getParticipantRows(){
- return [...q("participantRows").querySelectorAll(".participant-row")].map(r=>({
-   role:r.querySelector(".partRole").value,
-   ho:r.querySelector(".partHo").value.trim(),
-   plName:r.querySelector(".partPl").value.trim(),
-   pcName:r.querySelector(".partPc").value.trim(),
-   relation:"",
-   _placeholder:r.dataset.placeholder==="1"
- })).filter(r=>!r._placeholder||r.plName||r.pcName||r.ho).map(({_placeholder,...r})=>r);
+ const out=[];
+ [...q("participantRows").querySelectorAll(".participant-row")].forEach(r=>{
+   const role=r.querySelector(".partRole").value,plName=r.querySelector(".partPl").value.trim();
+   const pcRows=[...r.querySelectorAll(".participant-pc-row")].map(pr=>({ho:pr.querySelector(".partPcHo").value.trim(),pcName:pr.querySelector(".partPcName").value.trim()})).filter(p=>p.ho||p.pcName);
+   if(pcRows.length)pcRows.forEach(p=>out.push({role,ho:p.ho,plName,pcName:p.pcName,relation:""}));
+   else if(plName||r.dataset.placeholder!=="1")out.push({role,ho:"",plName,pcName:"",relation:""});
+ });
+ return out;
 }
 function rowsFromRecord(x){
  if(Array.isArray(x?.participantRows)&&x.participantRows.length)return x.participantRows;
@@ -1114,9 +1104,14 @@ function rowsFromRecord(x){
 }
 function refreshParticipantPlayerList(){}
 function setParticipantRows(rows=[]){
- refreshParticipantPlayerList();
- q("participantRows").innerHTML="";
- if(rows.length)rows.forEach(v=>addParticipantRow(v,{placeholder:false}));
+ refreshParticipantPlayerList();q("participantRows").innerHTML="";
+ const groups=[],map=new Map();
+ (rows||[]).forEach((r,i)=>{
+   const key=`${r.role||"PL"}||${String(r.plName||"").trim()}`;
+   let g=map.get(key);if(!g){g={role:r.role||"PL",plName:r.plName||"",pcs:[]};map.set(key,g);groups.push(g)}
+   if(r.pcName||r.ho)g.pcs.push({pcName:r.pcName||"",ho:r.ho||""});
+ });
+ if(groups.length)groups.forEach(g=>addParticipantRow(g,{placeholder:false}));
  else addParticipantRow({}, {placeholder:true});
 }
 function reset(prefillScenarioId=""){

@@ -443,6 +443,32 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 }
 </style>
 
+
+<style>
+/* v0.2.33.7.2 — PC detail content / scenario toggle */
+.pc-scenario-toggle{
+  margin-top:10px;border-top:1px solid var(--line);padding-top:8px;clear:both;
+}
+.pc-scenario-toggle summary{
+  cursor:pointer;list-style:none;font-weight:600;font-size:13px;
+  display:flex;justify-content:space-between;gap:8px;align-items:center;
+}
+.pc-scenario-toggle summary::-webkit-details-marker{display:none}
+.pc-scenario-toggle summary::after{content:"▼";font-size:11px;color:var(--muted)}
+.pc-scenario-toggle[open] summary::after{content:"▲"}
+.pc-scenario-list{margin-top:6px}
+.pc-detail-empty{font-size:12px;color:var(--muted)}
+.pc-variant-detail-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:8px
+}
+.pc-variant-detail-card{border:1px solid var(--line);border-radius:8px;padding:6px}
+.pc-variant-detail-card img{
+  width:100%;aspect-ratio:3/4;object-fit:contain;object-position:center top;
+  border-radius:6px;background:rgba(255,255,255,.02)
+}
+.pc-variant-detail-label{font-size:11px;margin-top:4px}
+</style>
+
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -555,7 +581,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.7.1</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.33.7.2</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1915,23 +1941,15 @@ function savePcLibraryEditor(){
 }
 function pcLibraryDetailHtml(pc,st){
  const art=[pc.artService,pc.artMaker].filter(Boolean).join(" ／ ");
+ const variants=Array.isArray(pc.variants)?pc.variants.filter(v=>v&&v.url):[];
+ const hasExtra=!!(pc.bio||pc.sheet||art||pc.artUrl||pc.artNote||variants.length);
  return `<div class="pc-library-detail" id="pc-library-detail-${esc(pc.id)}" hidden>
-   <div class="pc-library-detail-grid">
-     <div class="pc-library-art">
-       ${pc.image?`<img src="${esc(pc.image)}" alt="${esc(pc.name)}">`:`<div class="player-history-placeholder" style="aspect-ratio:3/4">🌺</div>`}
-     </div>
-     <div class="pc-library-info">
-       <div><strong>${esc(pc.name)}</strong>${pc.reading?` <span class="small muted">（${esc(pc.reading)}）</span>`:""}</div>
-       ${pc.system?`<div class="pc-library-info-row">システム：${esc(pc.system)}</div>`:""}
-       ${pc.job?`<div class="pc-library-info-row">職業・肩書き：${esc(pc.job)}</div>`:""}
-       ${pc.bio?`<div class="pc-library-info-row">${esc(pc.bio)}</div>`:""}
-       ${pc.sheet?`<div><a class="link" href="${esc(pc.sheet)}" target="_blank" rel="noopener">キャラクターシートを開く</a></div>`:""}
-       ${art?`<div class="pc-library-info-row">立ち絵：${esc(art)}</div>`:""}
-       ${pc.artUrl?`<div><a class="link" href="${esc(pc.artUrl)}" target="_blank" rel="noopener">立ち絵の配布元・メーカー</a></div>`:""}
-       ${pc.artNote?`<div class="small muted">${esc(pc.artNote)}</div>`:""}
-       <div class="pc-library-info-row">参加 ${st.count}シナリオ${st.first?` ／ 初卓 ${esc(st.first)}`:""}</div>
-     </div>
-   </div>
+   ${hasExtra?`<div class="pc-library-info">
+     ${pc.bio?`<div class="pc-library-info-row"><strong>紹介</strong><div style="margin-top:4px;white-space:pre-wrap">${esc(pc.bio)}</div></div>`:""}
+     ${pc.sheet?`<div class="pc-library-info-row"><strong>キャラクターシート</strong><div style="margin-top:4px"><a class="link" href="${esc(pc.sheet)}" target="_blank" rel="noopener">キャラクターシートを開く</a></div></div>`:""}
+     ${(art||pc.artUrl||pc.artNote)?`<div class="pc-library-info-row"><strong>立ち絵情報</strong>${art?`<div style="margin-top:4px">${esc(art)}</div>`:""}${pc.artUrl?`<div><a class="link" href="${esc(pc.artUrl)}" target="_blank" rel="noopener">配布元・メーカーを開く</a></div>`:""}${pc.artNote?`<div class="small muted" style="margin-top:4px">${esc(pc.artNote)}</div>`:""}</div>`:""}
+     ${variants.length?`<div class="pc-library-info-row"><strong>立ち絵差分</strong><div class="pc-variant-detail-grid">${variants.map(v=>`<div class="pc-variant-detail-card"><img src="${esc(v.url)}" alt=""><div class="pc-variant-detail-label">${esc(v.label||"差分")}</div></div>`).join("")}</div></div>`:""}
+   </div>`:`<div class="pc-detail-empty">追加のPC情報はまだ登録されていません。</div>`}
  </div>`;
 }
 
@@ -1949,11 +1967,16 @@ function renderPcView(){
      <div class="library-dir-title">${esc(x.name)}</div>
      <div class="library-dir-meta">${esc(x.system||"")}${x.job?` ／ ${esc(x.job)}`:""}</div>
      <div class="library-dir-meta">参加 ${st.count}シナリオ${st.first?` ／ 初卓 ${esc(st.first)}`:""}</div>
-     <div class="library-dir-history">${
-       st.scenarios.length?st.scenarios.map(s=>`<div class="history-row">
-         <a class="link" href="?view=scenario${s.scenarioId?`&scenario=${encodeURIComponent(s.scenarioId)}`:""}&pc=${encodeURIComponent(x.name)}">${esc(s.title)}</a>
-       </div>`).join(""):'<div class="small muted">参加記録はまだありません。</div>'
-     }</div>
+
+     <details class="pc-scenario-toggle">
+       <summary>通過シナリオ ${st.scenarios.length}件</summary>
+       <div class="pc-scenario-list">
+         ${st.scenarios.length?st.scenarios.map(s=>`<div class="history-row">
+           <a class="link" href="?view=scenario${s.scenarioId?`&scenario=${encodeURIComponent(s.scenarioId)}`:""}&pc=${encodeURIComponent(x.name)}">${esc(s.title)}</a>
+         </div>`).join(""):'<div class="small muted">参加記録はまだありません。</div>'}
+       </div>
+     </details>
+
      <div class="lib-parent-actions">
        <button type="button" data-pc-detail="${esc(x.id)}">PC詳細</button>
        <button type="button" class="pc-rel-button" data-pc-relation="${esc(x.id)}">同卓関係図</button>

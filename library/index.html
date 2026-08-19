@@ -591,6 +591,25 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 }
 </style>
 
+
+<style>
+/* v0.2.34.4 — relation / EVENT edit & delete */
+.pc-rel-manage{
+  margin-top:12px;border-top:1px solid var(--line);padding-top:10px
+}
+.pc-rel-manage h3{margin:0 0 8px}
+.pc-rel-manage-list{display:grid;gap:7px}
+.pc-rel-manage-row{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;align-items:center;padding:8px 10px;
+  border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.012)
+}
+.pc-rel-manage-meta{font-size:11px;color:var(--muted);margin-top:3px}
+.pc-rel-manage-actions{display:flex;gap:6px;flex-wrap:wrap}
+.pc-rel-manage-actions button{width:auto;font-size:12px}
+.pc-rel-manage-empty{font-size:12px;color:var(--muted)}
+</style>
+
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -703,7 +722,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.34.3</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.34.4</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -762,6 +781,10 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
       PCを選ぶと、同卓シナリオ・HO・登録済みの関係を確認できます。
     </div>
     <div id="pcRelationDetail" class="pc-rel-detail"></div>
+<div class="pc-rel-manage">
+  <h3>登録済みの関係・出来事</h3>
+  <div id="pcRelManageList" class="pc-rel-manage-list"></div>
+</div>
   </div>
 </div>
 
@@ -1915,40 +1938,52 @@ function pcChoiceLabel(p){
 }
 
 let activePcRelationId="";
+let editingRelationId="";
+let editingEventId="";
 function pcRelExtras(){
  try{return JSON.parse(localStorage.getItem("trpg39_pc_relation_extras")||'{"relations":[],"events":[]}')}
  catch(e){return {relations:[],events:[]}}
 }
 function savePcRelExtras(v){localStorage.setItem("trpg39_pc_relation_extras",JSON.stringify(v))}
 function pcById(id){return anyPcById(id)}
-function openPcRelRelationForm(){
+function openPcRelRelationForm(editId=""){
  const focus=anyPcById(activePcRelationId); if(!focus)return;
  q("pcRelEventForm").hidden=true;q("pcRelRelationForm").hidden=false;
+ editingRelationId=editId||"";
  const dir=allLibraryPcs();
  const opts=dir.map(p=>`<option value="${esc(p.id)}">${esc(pcChoiceLabel(p))}</option>`).join("");
  q("pcRelPcA").innerHTML=opts;
  q("pcRelPcB").innerHTML=opts;
- q("pcRelPcA").value=focus.id;
+ const extras=pcRelExtras(),existing=(extras.relations||[]).find(r=>r.id===editingRelationId);
+ q("pcRelPcA").value=existing?.a||focus.id;
  const other=dir.find(p=>p.id!==focus.id);
- q("pcRelPcB").value=other?.id||focus.id;
- q("pcRelRelationName").value="";
- q("pcRelRelationSource").value="";
- q("pcRelRelationTime").value="";
+ q("pcRelPcB").value=existing?.b||(other?.id||focus.id);
+ q("pcRelRelationName").value=existing?.relation||"";
+ q("pcRelRelationSource").value=existing?.source||"";
+ q("pcRelRelationTime").value=existing?.time||"";
 }
-function openPcRelEventForm(){
+function openPcRelEventForm(editId=""){
  q("pcRelRelationForm").hidden=true;q("pcRelEventForm").hidden=false;
- q("pcRelEventName").value="";q("pcRelEventTime").value="";q("pcRelEventNote").value="";
+ editingEventId=editId||"";
+ const extras=pcRelExtras(),existing=(extras.events||[]).find(ev=>ev.id===editingEventId);
+ q("pcRelEventName").value=existing?.name||"";
+ q("pcRelEventTime").value=existing?.time||"";
+ q("pcRelEventNote").value=existing?.note||"";
  q("pcRelEventSearch").value="";
+ const existingMap=new Map((existing?.participants||[]).map(p=>[p.pcId,p]));
+ const existingIds=new Set(existing?.pcIds||[]);
  const renderChoices=()=>{
    const term=q("pcRelEventSearch").value.trim().normalize("NFKC").toLowerCase();
    const dir=allLibraryPcs().filter(p=>!term||[p.name,p.plName,p.ownerLabel,p.system].filter(Boolean).join(" ").normalize("NFKC").toLowerCase().includes(term));
-   q("pcRelEventPcChecks").innerHTML=dir.map(p=>`
-     <div class="pc-event-person ${p.id===activePcRelationId?"selected":""}" data-event-pc="${esc(p.id)}">
-       <input class="pc-event-person-check" type="checkbox" value="${esc(p.id)}" ${p.id===activePcRelationId?"checked":""}>
+   q("pcRelEventPcChecks").innerHTML=dir.map(p=>{
+     const old=existingMap.get(p.id),checked=existing?existingIds.has(p.id):p.id===activePcRelationId;
+     return `<div class="pc-event-person ${checked?"selected":""}" data-event-pc="${esc(p.id)}">
+       <input class="pc-event-person-check" type="checkbox" value="${esc(p.id)}" ${checked?"checked":""}>
        <div class="pc-event-person-name">${esc(p.name)}<span class="pc-event-person-owner">［${esc(pcOwnerText(p))}］</span></div>
-       <input class="pc-event-person-context" type="text" data-event-role placeholder="関わり方（同期など）">
-       <input class="pc-event-person-context" type="text" data-event-time placeholder="PC視点の時系列">
-     </div>`).join("") || '<div class="small muted">一致するPCがありません。</div>';
+       <input class="pc-event-person-context" type="text" data-event-role value="${esc(old?.role||"")}" placeholder="関わり方（同期など）">
+       <input class="pc-event-person-context" type="text" data-event-time value="${esc(old?.time||"")}" placeholder="PC視点の時系列">
+     </div>`;
+   }).join("") || '<div class="small muted">一致するPCがありません。</div>';
    q("pcRelEventPcChecks").querySelectorAll(".pc-event-person").forEach(row=>{
      const cb=row.querySelector(".pc-event-person-check");
      const sync=()=>row.classList.toggle("selected",cb.checked);
@@ -1966,17 +2001,17 @@ function saveManualPcRelation(){
  const relation=q("pcRelRelationName").value.trim();
  const source=q("pcRelRelationSource").value.trim();
  const time=q("pcRelRelationTime").value.trim();
- const pair=[a,b].sort().join("||");
- const existing=x.relations.find(r=>[r.a,r.b].sort().join("||")===pair && String(r.relation||"")===relation);
- if(existing){
-   existing.source=source;
-   existing.time=time;
+ if(editingRelationId){
+   const i=x.relations.findIndex(r=>r.id===editingRelationId);
+   if(i>=0)x.relations[i]={...x.relations[i],a,b,relation,source,time};
  }else{
    x.relations.push({id:TRPG39.uuid(),a,b,relation,source,time});
  }
  savePcRelExtras(x);
+ editingRelationId="";
  q("pcRelRelationForm").hidden=true;
  renderPcRelationshipGraph(anyPcById(activePcRelationId));
+ renderPcRelManageList();
 }
 function savePcEvent(){
  const name=q("pcRelEventName").value.trim();if(!name)return alert("出来事名を入力してください。");
@@ -1987,15 +2022,85 @@ function savePcEvent(){
  }));
  if(!participants.length)return alert("関与PCを1人以上選んでください。");
  const x=pcRelExtras();x.events=x.events||[];
- x.events.push({
-   id:TRPG39.uuid(),
+ const payload={
    name,
    time:q("pcRelEventTime").value.trim(),
    note:q("pcRelEventNote").value.trim(),
    pcIds:participants.map(p=>p.pcId),
    participants
+ };
+ if(editingEventId){
+   const i=x.events.findIndex(ev=>ev.id===editingEventId);
+   if(i>=0)x.events[i]={...x.events[i],...payload};
+ }else{
+   x.events.push({id:TRPG39.uuid(),...payload});
+ }
+ savePcRelExtras(x);
+ editingEventId="";
+ q("pcRelEventForm").hidden=true;
+ renderPcRelationshipGraph(anyPcById(activePcRelationId));
+ renderPcRelManageList();
+}
+
+
+function relationTouchesVisibleFocus(r){
+ const focus=anyPcById(activePcRelationId);if(!focus)return false;
+ if(r.a===focus.id||r.b===focus.id)return true;
+ const graph=buildPcRelationshipGraph(focus);
+ const visibleIds=new Set(graph.nodes.filter(n=>!n.isEvent).map(n=>n.pcRefId).filter(Boolean));
+ return visibleIds.has(r.a)||visibleIds.has(r.b);
+}
+function eventTouchesVisibleFocus(ev){
+ const focus=anyPcById(activePcRelationId);if(!focus)return false;
+ if((ev.pcIds||[]).includes(focus.id))return true;
+ const graph=buildPcRelationshipGraph(focus);
+ const visibleIds=new Set(graph.nodes.filter(n=>!n.isEvent).map(n=>n.pcRefId).filter(Boolean));
+ return (ev.pcIds||[]).some(id=>visibleIds.has(id));
+}
+function deletePcRelation(id){
+ const x=pcRelExtras(),r=(x.relations||[]).find(v=>v.id===id);
+ if(!r)return;
+ if(!confirm("このPC同士の関係を削除しますか？"))return;
+ x.relations=(x.relations||[]).filter(v=>v.id!==id);
+ savePcRelExtras(x);
+ renderPcRelationshipGraph(anyPcById(activePcRelationId));
+ renderPcRelManageList();
+}
+function deletePcEvent(id){
+ const x=pcRelExtras(),ev=(x.events||[]).find(v=>v.id===id);
+ if(!ev)return;
+ if(!confirm(`出来事「${ev.name||""}」を削除しますか？`))return;
+ x.events=(x.events||[]).filter(v=>v.id!==id);
+ savePcRelExtras(x);
+ renderPcRelationshipGraph(anyPcById(activePcRelationId));
+ renderPcRelManageList();
+}
+function renderPcRelManageList(){
+ const box=q("pcRelManageList");if(!box)return;
+ const x=pcRelExtras();
+ const rels=(x.relations||[]).filter(relationTouchesVisibleFocus);
+ const evs=(x.events||[]).filter(eventTouchesVisibleFocus);
+ const rows=[];
+ rels.forEach(r=>{
+   const a=anyPcById(r.a),b=anyPcById(r.b);
+   if(!a||!b)return;
+   rows.push(`<div class="pc-rel-manage-row">
+     <div><strong>${esc(a.name)} ↔ ${esc(b.name)}</strong>${r.relation?`：${esc(r.relation)}`:""}<div class="pc-rel-manage-meta">${[r.source,r.time].filter(Boolean).map(esc).join(" ／ ")}</div></div>
+     <div class="pc-rel-manage-actions"><button type="button" data-manage-rel-edit="${esc(r.id)}">編集</button><button type="button" class="danger" data-manage-rel-del="${esc(r.id)}">削除</button></div>
+   </div>`);
  });
- savePcRelExtras(x);q("pcRelEventForm").hidden=true;renderPcRelationshipGraph(anyPcById(activePcRelationId));
+ evs.forEach(ev=>{
+   const names=(ev.pcIds||[]).map(id=>anyPcById(id)?.name).filter(Boolean);
+   rows.push(`<div class="pc-rel-manage-row">
+     <div><strong>EVENT：${esc(ev.name||"")}</strong><div class="pc-rel-manage-meta">${names.length?`関与PC：${esc(names.join("、"))}`:""}${ev.time?` ／ ${esc(ev.time)}`:""}</div></div>
+     <div class="pc-rel-manage-actions"><button type="button" data-manage-event-edit="${esc(ev.id)}">編集</button><button type="button" class="danger" data-manage-event-del="${esc(ev.id)}">削除</button></div>
+   </div>`);
+ });
+ box.innerHTML=rows.length?rows.join(""):'<div class="pc-rel-manage-empty">手動登録した関係・出来事はまだありません。</div>';
+ box.querySelectorAll("[data-manage-rel-edit]").forEach(b=>b.onclick=()=>openPcRelRelationForm(b.dataset.manageRelEdit));
+ box.querySelectorAll("[data-manage-rel-del]").forEach(b=>b.onclick=()=>deletePcRelation(b.dataset.manageRelDel));
+ box.querySelectorAll("[data-manage-event-edit]").forEach(b=>b.onclick=()=>openPcRelEventForm(b.dataset.manageEventEdit));
+ box.querySelectorAll("[data-manage-event-del]").forEach(b=>b.onclick=()=>deletePcEvent(b.dataset.manageEventDel));
 }
 
 function buildPcRelationshipGraph(pc){
@@ -2263,6 +2368,7 @@ function openPcRelationshipGraph(pcId){
  if(!pc)return;
  q("pcRelationModal").hidden=false;
  renderPcRelationshipGraph(pc);
+ renderPcRelManageList();
 }
 function closePcRelationshipGraph(){
  q("pcRelationModal").hidden=true;
@@ -2869,9 +2975,9 @@ q("bgmLibraryClose").onclick=()=>{q("bgmLibraryDialog").close();bgmLibraryTarget
 q("pcRelAddRelation").onclick=openPcRelRelationForm;
 q("pcRelAddEvent").onclick=openPcRelEventForm;
 q("pcRelRelationSave").onclick=saveManualPcRelation;
-q("pcRelRelationCancel").onclick=()=>q("pcRelRelationForm").hidden=true;
+q("pcRelRelationCancel").onclick=()=>{editingRelationId="";q("pcRelRelationForm").hidden=true};
 q("pcRelEventSave").onclick=savePcEvent;
-q("pcRelEventCancel").onclick=()=>q("pcRelEventForm").hidden=true;
+q("pcRelEventCancel").onclick=()=>{editingEventId="";q("pcRelEventForm").hidden=true};
 q("pcRelationClose").onclick=closePcRelationshipGraph;
 q("pcRelationModal").addEventListener("click",e=>{
  if(e.target===q("pcRelationModal"))closePcRelationshipGraph();

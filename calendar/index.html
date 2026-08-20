@@ -198,6 +198,15 @@
   z-index:999!important;
 }
 </style>
+
+<style>
+#scheduleConfirmSelected{
+  pointer-events:auto!important;
+  cursor:pointer!important;
+  position:relative!important;
+  z-index:999!important;
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -344,7 +353,7 @@
   <div id="scheduleMatchResults" class="schedule-match-results"></div>
   <div id="scheduleRoomOwnerActions" class="schedule-room-owner-actions" hidden>
     <button id="schedulePublishCandidates" type="button">選択した候補日を調整URLに掲載</button>
-    <button id="scheduleConfirmSelected" type="button">選択した日程で確定</button>
+    <button id="scheduleConfirmSelected" type="button" onclick="return window.SAKUMERU_CONFIRM_STANDALONE?.(event)">選択した日程で確定</button>
     <button id="scheduleReschedule" type="button" class="schedule-reschedule-button" onclick="return window.SAKUMERU_RESCHEDULE_STANDALONE?.(event)">リスケに戻す</button>
     <button id="scheduleRefreshRoom" type="button" class="text-action">回答・連絡を更新</button>
     <div id="scheduleRoomOwnerState" class="small muted"></div>
@@ -1173,7 +1182,7 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  $("scheduleMatchLoadSubmissions").onclick=loadCaseSubmissions;
  $("scheduleMatchRun").onclick=run;
  $("schedulePublishCandidates").onclick=publishCandidates;
- $("scheduleConfirmSelected").onclick=confirmSelectedDates;
+ /* confirm handled by standalone handler */
  {
    const rescheduleBtn=$("scheduleReschedule");
    if(rescheduleBtn){rescheduleBtn.disabled=false;rescheduleBtn.hidden=false;}
@@ -1207,6 +1216,109 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
       return;
     }
   },true);
+})();
+</script>
+
+<script>
+/* Standalone confirm handler.
+   Does not depend on schedule-room module local functions. */
+(()=>{
+  const CASE_KEY="trpg39.scheduleMatch.case.v1";
+  const CASES_KEY="trpg39.scheduleMatch.cases.v2";
+
+  const loadJSON=(key,fallback)=>{
+    try{
+      const v=JSON.parse(localStorage.getItem(key)||"");
+      return v ?? fallback;
+    }catch(_){return fallback}
+  };
+
+  const saveCaseLocal=(entry)=>{
+    if(!entry?.id)return;
+    const all=loadJSON(CASES_KEY,[]);
+    const arr=Array.isArray(all)?all:[];
+    const i=arr.findIndex(x=>x?.id===entry.id);
+    if(i>=0)arr[i]=entry;else arr.unshift(entry);
+    localStorage.setItem(CASES_KEY,JSON.stringify(arr));
+    localStorage.setItem(CASE_KEY,JSON.stringify(entry));
+  };
+
+  const currentCase=()=>{
+    const legacy=loadJSON(CASE_KEY,null);
+    if(legacy?.id)return legacy;
+    const all=loadJSON(CASES_KEY,[]);
+    return Array.isArray(all)&&all.length?all[0]:null;
+  };
+
+  window.SAKUMERU_CONFIRM_STANDALONE=async(e)=>{
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+
+    const checked=[...document.querySelectorAll(".schedule-confirm-check:checked")].map(x=>x.value);
+    if(!checked.length){
+      alert("確定する日を1日以上選択してください。");
+      return false;
+    }
+
+    const state=document.getElementById("scheduleRoomOwnerState")||
+                document.getElementById("scheduleMatchStatus");
+    if(state)state.textContent="日程を確定しています…";
+
+    try{
+      const saved=currentCase();
+      if(!saved?.id)throw new Error("日程調整案件が見つかりません。");
+      if(!(window.TRPG39Cloud&&TRPG39Cloud.getSharedPage&&TRPG39Cloud.updateSharedPage)){
+        throw new Error("共有データの読込・更新機能が利用できません。");
+      }
+
+      const p=await TRPG39Cloud.getSharedPage(saved.id);
+      if(!p||p.kind!=="calendar-schedule-match"){
+        throw new Error("日程すり合わせデータが見つかりません。");
+      }
+
+      const submissions=Array.isArray(p.submissions)?p.submissions:[];
+      const responses=Array.isArray(p.responses)?p.responses:[];
+      const names=[...new Set(submissions.map(x=>x.name).filter(Boolean))];
+
+      const notReady=checked.filter(date=>{
+        const rs=responses.filter(r=>r.date===date);
+        return !names.length || !names.every(name=>rs.some(r=>r.name===name&&r.answer==="○"));
+      });
+
+      if(notReady.length){
+        const ok=confirm(
+          `${notReady.join("、")} は全員○ではありません。\n\nそれでも確定しますか？`
+        );
+        if(!ok){
+          if(state)state.textContent="確定をキャンセルしました。";
+          return false;
+        }
+      }
+
+      const next={
+        ...p,
+        status:"確定済み",
+        confirmedDates:checked,
+        confirmedAt:new Date().toISOString(),
+        rescheduleMode:"",
+        updatedAt:new Date().toISOString()
+      };
+
+      await TRPG39Cloud.updateSharedPage(saved.id,next);
+      saveCaseLocal({id:saved.id,payload:next});
+
+      if(state)state.textContent=`${checked.length}日を確定しました。`;
+
+      alert(`${checked.length}日を確定しました。`);
+      location.reload();
+    }catch(err){
+      console.error("standalone confirm failed",err);
+      if(state)state.textContent="日程確定に失敗しました。";
+      alert("日程を確定できませんでした: "+(err?.message||err));
+    }
+
+    return false;
+  };
 })();
 </script>
 

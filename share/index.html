@@ -15,7 +15,7 @@
 .schedule-submit-block{display:grid;gap:9px}
 .schedule-submit-field{display:grid;gap:4px}
 .schedule-submit-field input{width:100%}
-#matchSubmitCopy{width:auto;justify-self:start}
+#matchSubmitCopy,#matchSubmitDirect{width:auto;justify-self:start}
 </style>
 </head>
 <body>
@@ -49,20 +49,51 @@
         <strong>自分の空き日共有URLを提出</strong>
         <div class="schedule-submit-field"><label>名前</label><input id="matchSubmitName" placeholder="表示名"></div>
         <div class="schedule-submit-field"><label>共有URL</label><input id="matchSubmitUrls" type="url" placeholder="https://.../share/index.html?id=..."></div>
-        <button id="matchSubmitCopy" type="button">提出テキストをコピー</button>
+        <button id="matchSubmitDirect" type="button">提出</button>
         <div id="matchSubmitState" class="small muted"></div>
       </div>`;
-    const b=document.getElementById("matchSubmitCopy");
-    if(b)b.onclick=async()=>{
-      const name=document.getElementById("matchSubmitName").value.trim()||"名前未設定";
+
+    const submit=document.getElementById("matchSubmitDirect");
+    if(submit)submit.onclick=async()=>{
+      const name=document.getElementById("matchSubmitName").value.trim();
       const url=document.getElementById("matchSubmitUrls").value.trim();
+      const state=document.getElementById("matchSubmitState");
+      if(!name)return alert("名前を入力してください。");
       if(!url)return alert("空き日共有URLを入力してください。");
-      const text=`${name}\n${url}`;
+
       try{
-        await navigator.clipboard.writeText(text);
-        document.getElementById("matchSubmitState").textContent="コピーしました。主催者へ送ってください。";
-      }catch(_){
-        prompt("この内容を主催者へ送ってください。",text);
+        submit.disabled=true;
+        state.textContent="提出しています…";
+
+        // Validate submitted URL first.
+        let availabilityId="";
+        try{
+          const u=new URL(url,location.href);
+          availabilityId=u.searchParams.get("id")||u.hash.replace(/^#/,"");
+        }catch(_){}
+        if(!availabilityId)throw new Error("共有URLを読み取れませんでした。");
+        const availability=await TRPG39Cloud.getSharedPage(availabilityId);
+        if(!availability||availability.kind!=="calendar-availability")throw new Error("空き日共有URLではありません。");
+
+        // Re-read coordinator payload just before writing to reduce stale updates.
+        const current=await TRPG39Cloud.getSharedPage(id);
+        if(!current||current.kind!=="calendar-schedule-match")throw new Error("日程すり合わせデータが見つかりません。");
+
+        const submissions=Array.isArray(current.submissions)?current.submissions.slice():[];
+        const key=name.normalize("NFKC").trim().toLowerCase();
+        const now=new Date().toISOString();
+        const row={name,availabilityUrl:url,availabilityId,submittedAt:now};
+        const idx=submissions.findIndex(x=>String(x.name||"").normalize("NFKC").trim().toLowerCase()===key);
+        if(idx>=0)submissions[idx]=row; else submissions.push(row);
+
+        await TRPG39Cloud.updateSharedPage(id,{...current,submissions,updatedAt:now});
+        state.textContent="提出しました。URLを更新した場合は、同じ名前で再提出すれば差し替わります。";
+      }catch(e){
+        console.error(e);
+        state.textContent="";
+        alert("提出できませんでした: "+(e.message||e));
+      }finally{
+        submit.disabled=false;
       }
     };
     return

@@ -34,6 +34,29 @@
   const payload=await TRPG39Cloud.getSharedPage(id);if(!payload)throw new Error("共有データが見つかりません");const p=Array.isArray(payload)?{kind:"scenario-list",items:payload}:payload;
   if(p.kind==="library-article"){unlockArticle(p);return}
   if(p.kind==="library-session"){box.innerHTML=`<h2>${esc(p.title||"LIBRARY")}</h2><div class="share-meta">${p.system?`<span class="badge">${esc(p.system)}</span>`:""}${p.date?`<span class="badge">${esc(p.date)}</span>`:""}</div>${p.image?`<img src="${esc(p.image)}" alt="" style="max-width:420px;width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:10px">`:""}${reportHtml(p)}${p.comment?`<div class="share-report-block"><strong>ひとこと</strong><p style="white-space:pre-wrap">${esc(p.comment)}</p></div>`:""}${p.spoiler?`<details class="share-spoiler"><summary>⚠ ネタバレ</summary><div class="spoiler-body">${esc(p.spoiler)}</div></details>`:""}`;return}
+  if(p.kind==="calendar-schedule-match"){
+    box.innerHTML=`<h2>${esc(p.title||"日程すり合わせ")}</h2>
+      ${p.scenario?`<div class="share-report-block"><strong>シナリオ</strong><div>${esc(p.scenario)}</div></div>`:""}
+      <div class="share-report-block"><strong>候補期間</strong><div>${esc(p.startDate||"")} ～ ${esc(p.endDate||"")}</div></div>
+      <div class="share-report-block">
+        <strong>自分の空き日共有URLを提出</strong>
+        <p class="small muted">現在は提出内容を主催者へ直接保存する前段階です。必要な月の空き日共有URLを1行ずつ入力し、「提出用テキストをコピー」で主催者へ送れます。</p>
+        <label>名前</label><input id="matchSubmitName" placeholder="表示名">
+        <label>空き日共有URL</label><textarea id="matchSubmitUrls" rows="5" placeholder="1行1URL"></textarea>
+        <button id="matchSubmitCopy" type="button" style="margin-top:8px">提出用テキストをコピー</button>
+      </div>
+      <div id="matchSubmitState" class="small muted"></div>`;
+    const b=document.getElementById("matchSubmitCopy");
+    if(b)b.onclick=async()=>{
+      const name=document.getElementById("matchSubmitName").value.trim()||"名前未設定";
+      const urls=document.getElementById("matchSubmitUrls").value.trim();
+      if(!urls)return alert("空き日共有URLを入力してください。");
+      const text=`${name}\n${urls}`;
+      try{await navigator.clipboard.writeText(text);document.getElementById("matchSubmitState").textContent="コピーしました。主催者へ送ってください。"}
+      catch(_){prompt("この内容を主催者へ送ってください。",text)}
+    };
+    return
+  }
   if(p.kind==="calendar-availability"){const days=p.days||[];box.innerHTML=`<h2>${esc(p.label||"空き日カレンダー")}</h2><div class="share-cal">${days.map(d=>`<div class="share-day"><div class="num">${esc(d.date)}</div><div class="${d.state==="free"?"free":"busy"}">${d.state==="free"?"○ 空き":"予定あり"}</div></div>`).join("")}</div>`;return}
   if(p.kind==="scenario-list"||p.kind==="scenarios"||Array.isArray(p.scenarios)||Array.isArray(p.items)){const items=Array.isArray(p.scenarios)?p.scenarios:(p.items||[]);box.innerHTML=`<h2>${esc(p.title||p.label||"SCENARIO")}</h2><div class="share-scenario-grid">${items.map(x=>`<article class="share-scenario-card">${x.thumbnailUrl||x.image||x.imageUrl?`<img class="share-scenario-thumb" src="${esc(x.thumbnailUrl||x.image||x.imageUrl)}" alt="">`:`<div class="share-scenario-placeholder">🌺</div>`}<div class="share-scenario-body"><div class="share-scenario-title">${esc(x.title||x.name||"名称未設定")}</div><div class="share-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}</div>${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}${(x.tags||[]).length?`<div class="share-tags">${x.tags.map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>`:""}</div></article>`).join("")}</div>`;return}
   if(p.kind==="scenario"||p.scenario){const x=p.scenario||p;box.innerHTML=`<h2>${esc(x.title||x.name||"SCENARIO")}</h2>${x.thumbnailUrl||x.image||x.imageUrl?`<img src="${esc(x.thumbnailUrl||x.image||x.imageUrl)}" alt="" style="max-width:520px;width:100%;border-radius:8px;border:1px solid var(--line)">`:""}${x.author?`<p><strong>作者</strong> ${esc(x.author)}</p>`:""}${x.description||x.memo?`<p style="white-space:pre-wrap">${esc(x.description||x.memo)}</p>`:""}`;return}

@@ -702,6 +702,18 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-x-report summary{cursor:pointer}
 .lib-x-report summary a{margin-left:4px}
 </style>
+
+<style>
+.lib-run-x-reports{
+  margin:12px 0 14px;padding:10px 12px;
+  border:1px solid var(--line);border-radius:10px;
+  background:rgba(255,255,255,.012)
+}
+.lib-run-x-reports h3{margin:0 0 6px}
+.lib-run-x-report{border-top:1px solid var(--line);padding:6px 0}
+.lib-run-x-report:first-child{border-top:0}
+.lib-run-x-report summary{cursor:pointer}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -822,7 +834,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.5.2</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.5.3</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1655,6 +1667,48 @@ function diceAnalysisHtml(x){
  return `<details class="lib-dice"><summary>🎲 ダイスログ解析結果${list.length>1?` (${list.length})`:""}</summary>${list.map(a=>{const cf=a.criticalFumble||{},growth=a.growth||[];return `<div class="lib-dice-card"><div class="small muted">${esc(a.label||"解析結果")}</div><div><b>クリティカル ${Number(cf.critical||0)}</b> ／ <b>ファンブル ${Number(cf.fumble||0)}</b> ／ 成長候補 ${growth.length}</div>${(a.bySpeaker||[]).map(r=>`<div class="small"><b>${esc(r.speaker)}</b>：クリ ${r.critical||0} ／ ファン ${r.fumble||0}</div>`).join("")}${growth.length?`<details><summary class="small">成長候補を見る</summary>${growth.map(g=>`<div class="small">${esc(g.speaker)}｜${esc(g.skill)}｜${esc(g.roll)}</div>`).join("")}</details>`:""}</div>`}).join("")}</details>`;
 }
 
+function xReportsForRun(run){
+ const seen=new Set(),rows=[];
+ (run?.items||[]).forEach(x=>{
+   const stored=getXReport(x.id);
+   const url=String(stored.url||x?.xReportUrl||"").trim();
+   const text=String(stored.text||x?.xReportText||"").trim();
+   if(!url&&!text)return;
+   const key=url||`${x.id}:${text}`;
+   if(seen.has(key))return;
+   seen.add(key);
+   rows.push({
+     id:x.id,
+     date:String(x.date||""),
+     url,text
+   });
+ });
+ rows.sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
+ return rows;
+}
+function xReportsRunHtml(run){
+ const rows=xReportsForRun(run);
+ if(!rows.length)return "";
+ return `<section class="lib-run-x-reports">
+   <h3>卓報告</h3>
+   <div class="lib-run-x-report-list">${rows.map((r,i)=>{
+     let link="";
+     if(r.url){
+       let label="卓報告URLを開く ↗";
+       try{
+         const u=new URL(r.url);
+         if(["x.com","www.x.com","twitter.com","www.twitter.com"].includes(u.hostname)&&/\/status\/\d+/.test(u.pathname))label="Xの卓報告を見る ↗";
+       }catch(_){}
+       link=`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+     }
+     return `<details class="lib-run-x-report"${rows.length===1?" open":""}>
+       <summary>${r.date?`${esc(r.date)} ／ `:""}${link||`卓報告 ${i+1}`}</summary>
+       ${r.text?`<div class="lib-child-note">${esc(r.text).replace(/\n/g,"<br>")}</div>`:""}
+     </details>`;
+   }).join("")}</div>
+ </section>`;
+}
+
 function xReportHtml(x){
  const stored=x?.id?getXReport(x.id):{url:"",text:""};
  const url=String(stored.url||x?.xReportUrl||"").trim(),text=String(stored.text||x?.xReportText||"").trim();
@@ -1802,6 +1856,7 @@ function runCardHtml(g,r){
    <div class="lib-run-card-body">
      <div class="lib-run-card-title">${esc(r.label||"開催記録")}</div>
      <div class="lib-run-card-meta">${r.items.length}日${range?` ／ ${esc(range)}`:""}</div>
+     ${xReportsForRun(r).length?`<div class="lib-run-card-images">卓報告 ${xReportsForRun(r).length}件</div>`:""}
      ${images.length?`<div class="lib-run-card-images">スクショ ${images.length}枚${images.length>1?` ／ ほか${images.length-1}枚`:""}</div>`:""}
    </div>
  </article>`;
@@ -2031,6 +2086,7 @@ function runDetailHtml(g,r){
    <div class="lib-run-detail-title">${esc(r.label||"開催記録")}${range?` <span class="small muted">${esc(range)}</span>`:""}</div>
  </div>
  <div class="lib-parent-actions"><button type="button" data-add-run="${esc(r.id)}" data-run-label="${esc(r.label)}" data-run-scenario="${esc(g.scenarioId)}">＋ この陣に日程</button><button type="button" data-archive-run="${esc(r.id)}" data-archived="${r.items.every(x=>x.archived)?"1":"0"}">${r.items.every(x=>x.archived)?"アーカイブから戻す":"アーカイブ"}</button></div>
+ ${xReportsRunHtml(r)}
  ${images.length?`<div class="lib-run-gallery">${images.map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>`:""}
  ${articlePagesHtml(r)}
  <div style="margin-top:14px">${r.items.map((x,i)=>`<article class="lib-child" id="record-${esc(x.id)}">
@@ -2038,7 +2094,7 @@ function runDetailHtml(g,r){
    <div>${(x.imageUrls||[])[0]?`<img class="lib-child-thumb" src="${esc((x.imageUrls||[])[0])}" alt="" loading="lazy">`:""}
      <div class="lib-child-title">${esc(x.pcName?`PC：${x.pcName}`:(displayRoleForRecord(x)||"開催記録"))}${x.selfHo?` <span class="badge">${esc(x.selfHo)}</span>`:""}</div>${x.articleBody?`<div class="lib-article-body">${esc(x.articleBody).replace(/\n/g,"<br>")}</div>`:""}${x.spoilerBody?`<details class="lib-spoiler"><summary>ネタバレを表示</summary><div class="spoiler-body">${esc(x.spoilerBody).replace(/\n/g,"<br>")}</div></details>`:""}
      <div class="lib-child-meta">${participantHtml(x)}<span class="badge lib-visibility">公開設定：${esc(vis[x.visibility]||"自分のみ")}</span></div>
-     ${x.comment?`<div class="lib-child-note">${esc(x.comment)}</div>`:""}${xReportHtml(x)}${diceAnalysisHtml(x)}${linksHtml(x)}
+     ${x.comment?`<div class="lib-child-note">${esc(x.comment)}</div>`:""}${diceAnalysisHtml(x)}${linksHtml(x)}
    </div>
    <div class="lib-child-actions"><button data-share="${x.id}">共有</button><button data-post-x="${x.id}">Xで卓報告</button><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div>
  </article>`).join("")}</div>`;

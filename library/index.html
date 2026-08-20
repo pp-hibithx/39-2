@@ -714,6 +714,32 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-run-x-report:first-child{border-top:0}
 .lib-run-x-report summary{cursor:pointer}
 </style>
+
+<style>
+/* v0.2.35.5.5 — grouped run records + aligned X-report participant rows */
+.participant-pl-row{
+ display:grid;
+ grid-template-columns:minmax(9.5em,auto) minmax(7em,auto) 1fr;
+ column-gap:.7em;align-items:baseline
+}
+.participant-ho{white-space:nowrap}
+.participant-name{white-space:nowrap}
+.participant-pc{min-width:0}
+.lib-session-groups{margin-top:14px;display:grid;gap:9px}
+.lib-session-group{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.lib-session-group>summary{
+ cursor:pointer;display:flex;align-items:center;gap:8px;padding:11px 13px;
+ background:rgba(255,255,255,.018);list-style:none
+}
+.lib-session-group>summary::-webkit-details-marker{display:none}
+.lib-session-group-arrow{margin-left:auto;font-size:11px;opacity:.65}
+.lib-session-group[open] .lib-session-group-arrow{transform:rotate(180deg)}
+.lib-session-group-body{padding:4px 10px 10px}
+.lib-session-group-body .lib-child:first-child{margin-top:6px}
+@media(max-width:700px){
+ .participant-pl-row{grid-template-columns:minmax(7.5em,auto) minmax(5.5em,auto) 1fr;column-gap:.45em}
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -834,7 +860,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.5.4</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.5.5</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1761,7 +1787,7 @@ function xReportsRunHtml(run){
        link=`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
      }
      return `<details class="lib-run-x-report"${rows.length===1?" open":""}>
-       <summary>${r.date?`${esc(r.date)} ／ `:""}${link||`卓報告 ${i+1}`}</summary>
+       <summary>${link||`卓報告 ${i+1}`}</summary>
        ${r.text?`<div class="lib-child-note">${esc(r.text).replace(/\n/g,"<br>")}</div>`:""}
      </details>`;
    }).join("")}</div>
@@ -1839,7 +1865,7 @@ function participantHtml(x){
    const pc=r.pcName?` / ${esc(r.pcName)}`:"";
    if(role==="SKP")body.push(`<div>SKP：${name}${pc}</div>`);
    else if(role==="見学")body.push(`<div>見学：${name}${pc}</div>`);
-   else if(role==="PL")body.push(`<div>${r.ho?`<strong>${esc(r.ho)}</strong>　`:"PL："}${name}${pc}</div>`);
+   else if(role==="PL")body.push(`<div class="participant-pl-row"><span class="participant-ho">${r.ho?`<strong>${esc(r.ho)}</strong>`:"PL"}</span><span class="participant-name">${name}</span>${r.pcName?`<span class="participant-pc">/ ${esc(r.pcName)}</span>`:""}</div>`);
    else body.push(`<div>${r.ho?`${esc(r.ho)}　`:""}${name}${pc}</div>`);
  });
 
@@ -2136,6 +2162,26 @@ function bindArticlePageButtons(){
  document.querySelectorAll('[data-block-add-bgm]').forEach(b=>b.onclick=()=>{const ed=document.getElementById(`articleEditor-${b.dataset.blockAddBgm}`);if(ed)addEditorBlock(ed,"bgm")});
 }
 
+
+function sessionRecordHtml(x,i){
+ return `<article class="lib-child" id="record-${esc(x.id)}">
+   <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}${x.start&&String(x.start).slice(11,16)?` ${esc(String(x.start).slice(11,16))}`:""}<br><span class="badge">${esc(sessionKindLabel[sessionKindForRecord(x)]||"本編")}</span> <span class="badge">${esc(statusLabel[x.status]||"完了")}</span></div>
+   <div>${(x.imageUrls||[])[0]?`<img class="lib-child-thumb" src="${esc((x.imageUrls||[])[0])}" alt="" loading="lazy">`:""}
+     <div class="lib-child-title">${esc(x.pcName?`PC：${x.pcName}`:(displayRoleForRecord(x)||"開催記録"))}${x.selfHo?` <span class="badge">${esc(x.selfHo)}</span>`:""}</div>${x.articleBody?`<div class="lib-article-body">${esc(x.articleBody).replace(/\n/g,"<br>")}</div>`:""}${x.spoilerBody?`<details class="lib-spoiler"><summary>ネタバレを表示</summary><div class="spoiler-body">${esc(x.spoilerBody).replace(/\n/g,"<br>")}</div></details>`:""}
+     <div class="lib-child-meta">${participantHtml(x)}<span class="badge lib-visibility">公開設定：${esc(vis[x.visibility]||"自分のみ")}</span></div>
+     ${x.comment?`<div class="lib-child-note">${esc(x.comment)}</div>`:""}${diceAnalysisHtml(x)}${linksHtml(x)}
+   </div>
+   <div class="lib-child-actions"><button data-share="${x.id}">共有</button><button data-post-x="${x.id}">Xで卓報告</button><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div>
+ </article>`;
+}
+function sessionGroupHtml(items,kind,label){
+ if(!items.length)return "";
+ const unit=kind==="main"?"日":"件";
+ return `<details class="lib-session-group">
+   <summary><strong>${esc(label)}</strong><span class="badge">${items.length}${unit}</span><span class="lib-session-group-arrow">▼</span></summary>
+   <div class="lib-session-group-body">${items.map((x,i)=>sessionRecordHtml(x,i)).join("")}</div>
+ </details>`;
+}
 function runDetailHtml(g,r){
  const images=[...new Set(r.items.flatMap(x=>x.imageUrls||[]).filter(Boolean))];
  const dates=r.items.map(x=>x.date).filter(Boolean).sort();
@@ -2148,15 +2194,12 @@ function runDetailHtml(g,r){
  ${xReportsRunHtml(r)}
  ${images.length?`<div class="lib-run-gallery">${images.map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>`:""}
  ${articlePagesHtml(r)}
- <div style="margin-top:14px">${r.items.map((x,i)=>`<article class="lib-child" id="record-${esc(x.id)}">
-   <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}${x.start&&String(x.start).slice(11,16)?` ${esc(String(x.start).slice(11,16))}`:""}<br><span class="badge">${esc(sessionKindLabel[sessionKindForRecord(x)]||"本編")}</span> <span class="badge">${esc(statusLabel[x.status]||"完了")}</span></div>
-   <div>${(x.imageUrls||[])[0]?`<img class="lib-child-thumb" src="${esc((x.imageUrls||[])[0])}" alt="" loading="lazy">`:""}
-     <div class="lib-child-title">${esc(x.pcName?`PC：${x.pcName}`:(displayRoleForRecord(x)||"開催記録"))}${x.selfHo?` <span class="badge">${esc(x.selfHo)}</span>`:""}</div>${x.articleBody?`<div class="lib-article-body">${esc(x.articleBody).replace(/\n/g,"<br>")}</div>`:""}${x.spoilerBody?`<details class="lib-spoiler"><summary>ネタバレを表示</summary><div class="spoiler-body">${esc(x.spoilerBody).replace(/\n/g,"<br>")}</div></details>`:""}
-     <div class="lib-child-meta">${participantHtml(x)}<span class="badge lib-visibility">公開設定：${esc(vis[x.visibility]||"自分のみ")}</span></div>
-     ${x.comment?`<div class="lib-child-note">${esc(x.comment)}</div>`:""}${diceAnalysisHtml(x)}${linksHtml(x)}
-   </div>
-   <div class="lib-child-actions"><button data-share="${x.id}">共有</button><button data-post-x="${x.id}">Xで卓報告</button><button data-edit="${x.id}">編集</button><button class="danger" data-del="${x.id}">削除</button></div>
- </article>`).join("")}</div>`;
+ <div class="lib-session-groups">
+   ${sessionGroupHtml(r.items.filter(x=>sessionKindForRecord(x)==="prelude"),"prelude","事前導入")}
+   ${sessionGroupHtml(r.items.filter(x=>sessionKindForRecord(x)==="main"),"main","本編")}
+   ${sessionGroupHtml(r.items.filter(x=>sessionKindForRecord(x)==="aftertalk"),"aftertalk","感想戦")}
+   ${sessionGroupHtml(r.items.filter(x=>!["prelude","main","aftertalk"].includes(sessionKindForRecord(x))),"other","その他")}
+ </div>`;
 }
 function focusedGroupHtml(g){
  const focusedRun=focusedRunId?(g.runs||[]).find(r=>r.id===focusedRunId):null;

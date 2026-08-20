@@ -109,6 +109,16 @@
  .schedule-match-save-player{padding-bottom:0}
 }
 </style>
+
+<style>
+.schedule-match-result-toggle{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
+.schedule-match-result-toggle button{width:auto}
+.schedule-match-day.all-free{border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.schedule-match-ok{margin-top:5px;font-size:12px;font-weight:700}
+.schedule-match-busy{margin-top:5px;font-size:12px}
+.schedule-match-unknown{margin-top:3px;font-size:11px;color:var(--muted)}
+.schedule-match-person-state{margin-top:3px}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -228,7 +238,8 @@
   <button id="scheduleMatchAddPerson" type="button" class="text-action">＋ 人を追加</button>
 
   <div class="schedule-match-actions">
-    <button id="scheduleMatchRun" type="button">共有URLを読み込んで照合</button>
+    <button id="scheduleMatchLoadSubmissions" type="button">提出済みを読み込む</button>
+    <button id="scheduleMatchRun" type="button">空き日を照合</button>
   </div>
 
   <div id="scheduleMatchStatus" class="small muted"></div>
@@ -503,26 +514,33 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
    try{return JSON.parse(localStorage.getItem(CASE_KEY)||"null")}catch(_){return null}
  }
  function saveCase(v){localStorage.setItem(CASE_KEY,JSON.stringify(v))}
- function currentCasePayload(){
+ function currentCasePayload(existing=null){
    return {
+     ...(existing||{}),
      kind:"calendar-schedule-match",
-     version:1,
+     version:2,
      title:$("scheduleMatchTitle").value.trim()||"日程すり合わせ",
      scenario:$("scheduleMatchScenario").value.trim(),
      startDate:$("scheduleMatchStart").value,
      endDate:$("scheduleMatchEnd").value,
-     createdAt:new Date().toISOString()
+     submissions:Array.isArray(existing?.submissions)?existing.submissions:[],
+     createdAt:existing?.createdAt||new Date().toISOString(),
+     updatedAt:new Date().toISOString()
    };
  }
  async function createOrUpdateCaseShare(){
-   const p=currentCasePayload();
-   if(!p.startDate||!p.endDate)return alert("開始日と終了日を入力してください。");
-   if(p.endDate<p.startDate)return alert("終了日は開始日以降にしてください。");
    if(!(window.TRPG39Cloud&&TRPG39Cloud.configured()))return alert("Supabase設定がありません。");
    const old=loadCase();
    try{
      $("scheduleMatchCreateShare").disabled=true;
      let id=old?.id||"";
+     let existing=null;
+     if(id&&TRPG39Cloud.getSharedPage){
+       try{existing=await TRPG39Cloud.getSharedPage(id)}catch(_){}
+     }
+     const p=currentCasePayload(existing);
+     if(!p.startDate||!p.endDate)return alert("開始日と終了日を入力してください。");
+     if(p.endDate<p.startDate)return alert("終了日は開始日以降にしてください。");
      if(id&&TRPG39Cloud.updateSharedPage){
        await TRPG39Cloud.updateSharedPage(id,p);
      }else{
@@ -552,9 +570,29 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
      <div class="schedule-match-url-cell"><label>共有URL</label><input class="schedule-match-urls" type="url" value="${String(v.urls||"").replace(/"/g,"&quot;")}" placeholder="https://.../share/index.html?id=..."></div>
      <label class="schedule-match-save-player"><input type="checkbox" class="schedule-match-save-player-check"> PLAYERSに保存</label>
      <button type="button" class="danger schedule-match-remove">削除</button>
-   </div>`;
+   </div><div class="schedule-match-person-state small muted">${v.submitted?"提出済み":""}</div>`;
    peopleBox.appendChild(row);
    row.querySelector(".schedule-match-remove").onclick=()=>row.remove();
+ }
+ async function loadCaseSubmissions(){
+   const saved=loadCase();
+   if(!saved?.id)return alert("先に日程すり合わせ用URLを発行してください。");
+   if(!(window.TRPG39Cloud&&TRPG39Cloud.getSharedPage))return alert("共有データ読込機能がありません。");
+   $("scheduleMatchStatus").textContent="提出状況を読み込んでいます…";
+   try{
+     const p=await TRPG39Cloud.getSharedPage(saved.id);
+     if(!p||p.kind!=="calendar-schedule-match")throw new Error("日程すり合わせデータが見つかりません。");
+     const submissions=Array.isArray(p.submissions)?p.submissions:[];
+     peopleBox.innerHTML="";
+     submissions.forEach(x=>addPerson({name:x.name||"",urls:x.availabilityUrl||"",submitted:true}));
+     if(!submissions.length)addPerson({});
+     $("scheduleMatchStatus").textContent=submissions.length?`${submissions.length}人が提出済みです。`:"まだ提出はありません。";
+     saveCase({id:saved.id,payload:p});
+   }catch(e){
+     console.error(e);
+     $("scheduleMatchStatus").textContent="";
+     alert("提出状況を読み込めませんでした: "+(e.message||e));
+   }
  }
  function sharedIdFromUrl(text){
    const raw=String(text||"").trim();
@@ -598,22 +636,54 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  }
  function renderResults(start,end,persons){
    const own=ownFreeMap(start,end);
-   const common=[],missing=[];
+   const rows=[];
    for(let d=new Date(start);d<=end;d=addDays(d,1)){
      const ds=localDate(d);
-     if(!own.get(ds))continue;
-     let all=true;
+     const busyNames=[];
+     const unknownNames=[];
+
+     if(!own.get(ds))busyNames.push("自分");
+
      for(const p of persons){
-       if(!p.days.has(ds)){all=false;missing.push(`${p.name}:${ds}`);break}
-       if(!p.days.get(ds)){all=false;break}
+       if(!p.days.has(ds))unknownNames.push(p.name);
+       else if(!p.days.get(ds))busyNames.push(p.name);
      }
-     if(all)common.push(new Date(d));
+
+     rows.push({
+       date:new Date(d),
+       ds,
+       busyNames,
+       unknownNames,
+       allFree:busyNames.length===0&&unknownNames.length===0
+     });
    }
+
    const result=$("scheduleMatchResults");
-   const uniqueMissing=[...new Set(missing)];
+   const common=rows.filter(x=>x.allFree);
+
+   const dayHtml=x=>`<div class="schedule-match-day ${x.allFree?"all-free":"has-busy"}">
+     <div><span class="date">${x.ds}</span><span class="weekday">(${weekday[x.date.getDay()]})</span></div>
+     ${x.allFree
+       ?`<div class="schedule-match-ok">○ 全員空き</div>`
+       :`${x.busyNames.length?`<div class="schedule-match-busy">× ${x.busyNames.map(n=>`${n}：予定あり`).join(" ／ ")}</div>`:""}
+          ${x.unknownNames.length?`<div class="schedule-match-unknown">？ ${x.unknownNames.join("・")}：共有データなし</div>`:""}`}
+   </div>`;
+
    result.innerHTML=`<div class="schedule-match-summary">全員が空いている日：${common.length}日</div>
-     ${common.length?`<div class="schedule-match-grid">${common.map(d=>`<div class="schedule-match-day"><span class="date">${localDate(d)}</span><span class="weekday">(${weekday[d.getDay()]})</span></div>`).join("")}</div>`:'<div class="schedule-match-empty">この期間では、全員共通の空き日は見つかりませんでした。</div>'}
-     ${uniqueMissing.length?`<div class="schedule-match-warning small muted">共有データがない日付は「空き」と推測せず候補から除外しました。必要な月の共有URLを追加してください。</div>`:""}`;
+     <div class="schedule-match-result-toggle">
+       <button type="button" data-match-view="free">全員空きのみ</button>
+       <button type="button" data-match-view="all">全日程</button>
+     </div>
+     <div class="schedule-match-grid" data-match-result-grid>
+       ${common.length?common.map(dayHtml).join(""):'<div class="schedule-match-empty">全員共通の空き日は見つかりませんでした。</div>'}
+     </div>`;
+
+   const grid=result.querySelector("[data-match-result-grid]");
+   result.querySelectorAll("[data-match-view]").forEach(b=>b.onclick=()=>{
+     const mode=b.dataset.matchView;
+     grid.innerHTML=(mode==="free"?common:rows).map(dayHtml).join("") ||
+       '<div class="schedule-match-empty">該当する日付はありません。</div>';
+   });
  }
  async function run(){
    const start=parseDate($("scheduleMatchStart").value),end=parseDate($("scheduleMatchEnd").value);
@@ -670,6 +740,7 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  $("scheduleMatchClose").onclick=()=>{panel.hidden=true};
  $("scheduleMatchAddPerson").onclick=()=>addPerson({});
  $("scheduleMatchCreateShare").onclick=createOrUpdateCaseShare;
+ $("scheduleMatchLoadSubmissions").onclick=loadCaseSubmissions;
  $("scheduleMatchRun").onclick=run;
 })();
 </script>

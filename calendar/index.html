@@ -518,6 +518,7 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
 (()=>{
  "use strict";
  const $=id=>document.getElementById(id);
+ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const panel=$("scheduleMatchPanel"),peopleBox=$("scheduleMatchPeople");
  if(!panel||!peopleBox)return;
 
@@ -820,6 +821,6 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
 })();
 </script>
 
-<!-- availability-share-v3 one-url / schedule-match-v2 compact -->
+<!-- availability-share-v3 one-url / schedule-match-v5.1 results-fix -->
 </body>
 </html>

@@ -32,6 +32,29 @@
 .confirmed-date{padding:7px 10px;border:1px solid var(--accent);border-radius:999px;font-weight:700}
 .candidate-answer-row.confirmed{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 </style>
+
+<style>
+.share-room-guide{margin:12px 0;padding:10px;border:1px solid var(--line);border-radius:10px}
+.share-room-steps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+.share-room-steps span{font-size:11px;color:var(--muted);padding:4px 7px;border:1px solid var(--line);border-radius:999px}
+.share-room-steps span.active{border-color:var(--accent);color:inherit;font-weight:700}
+.share-room-steps span.done{opacity:.6}
+.share-room-next{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 11px;border:1px solid var(--line);border-radius:9px}
+.share-room-next button,.share-primary-action{width:auto;min-width:150px}
+.candidate-answer-buttons{display:flex;gap:6px;flex-wrap:wrap}
+.candidate-answer-buttons button{width:auto}
+.candidate-answer-buttons button.selected{outline:2px solid var(--accent);font-weight:700}
+.room-message-list{display:grid;gap:7px;margin-top:12px}
+.room-message-thread{margin-left:calc(var(--reply-depth) * 18px)}
+.room-message-card{padding:9px 10px;border:1px solid var(--line);border-radius:9px}
+.room-message-head{display:flex;align-items:center;gap:7px}
+.room-message-text{margin-top:5px;white-space:pre-wrap;overflow-wrap:anywhere}
+.room-message-actions{display:flex;gap:8px;margin-top:5px}
+.room-message-actions button{width:auto;padding:3px 0;border:0;background:transparent}
+.replying-to{margin:8px 0;padding:6px 8px;border-left:3px solid var(--accent);font-size:12px}
+#roomMessageText{width:100%;resize:vertical}
+@media(max-width:650px){.share-room-next{flex-direction:column;align-items:stretch}.share-room-next button,.share-primary-action{width:100%}.candidate-answer-row{grid-template-columns:1fr}.room-message-thread{margin-left:calc(var(--reply-depth) * 10px)}}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav></div></header>
@@ -62,36 +85,117 @@
     const confirmed=Array.isArray(p.confirmedDates)?p.confirmedDates:[];
     const responses=Array.isArray(p.responses)?p.responses:[];
     const messages=Array.isArray(p.messages)?p.messages:[];
+    const EDIT_KEY="trpg39.scheduleRoom.commentKeys."+id;
+    const ANSWER_NAME_KEY="trpg39.scheduleRoom.name."+id;
+    const loadKeys=()=>{try{return JSON.parse(localStorage.getItem(EDIT_KEY)||"{}")}catch(_){return {}}};
+    const saveKeys=v=>localStorage.setItem(EDIT_KEY,JSON.stringify(v||{}));
+    const savedName=localStorage.getItem(ANSWER_NAME_KEY)||"";
+    const uid=()=>crypto?.randomUUID?crypto.randomUUID():"m_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(16))).map(x=>x.toString(16).padStart(2,"0")).join("");
+    const keys=loadKeys();
+
+    const ownResponseCount=savedName?responses.filter(r=>String(r.name||"")===savedName&&candidates.includes(r.date)).length:0;
+    const guide = confirmed.length
+      ? {step:"confirm",title:"日程が確定しました",sub:"確定日程を確認して、自分の予定表へ登録してください。",button:"確定日程を見る",target:"confirmedSchedule"}
+      : candidates.length
+        ? {step:"answer",title:"候補日に回答してください",sub:"各候補日に ○了承・△保留・×難しい を選びます。",button:"候補日に回答する",target:"candidateBlock"}
+        : submissions.length
+          ? {step:"wait",title:"候補日の掲載を待っています",sub:"空き日は提出済みです。必要なら連絡欄で主催者とやり取りできます。",button:"連絡欄を見る",target:"messageBlock"}
+          : {step:"submit",title:"まず空き日を提出してください",sub:"名前と自分の空き日共有URLを入力します。",button:"空き日を提出する",target:"submitBlock"};
+
+    const renderMessages=(items)=>{
+      const byParent=new Map(), roots=[];
+      items.forEach(m=>{
+        const pid=m.parentId||"";
+        if(pid){if(!byParent.has(pid))byParent.set(pid,[]);byParent.get(pid).push(m)}
+        else roots.push(m);
+      });
+      const sort=a=>a.slice().sort((x,y)=>String(x.at||"").localeCompare(String(y.at||"")));
+      const renderOne=(m,depth=0)=>{
+        const mine=!!keys[m.id] && (!m.editToken || keys[m.id]===m.editToken);
+        const children=sort(byParent.get(m.id)||[]);
+        return `<div class="room-message-thread" style="--reply-depth:${Math.min(depth,3)}">
+          <div class="room-message-card" data-message-id="${esc(m.id||"")}">
+            <div class="room-message-head"><strong>${esc(m.name||"")}</strong>${m.editedAt?'<span class="small muted">編集済み</span>':""}</div>
+            <div class="room-message-text">${esc(m.text||"")}</div>
+            <div class="room-message-actions">
+              <button type="button" class="text-action room-reply" data-message-id="${esc(m.id||"")}" data-message-name="${esc(m.name||"")}">返信</button>
+              ${mine?`<button type="button" class="text-action room-edit" data-message-id="${esc(m.id||"")}">編集</button><button type="button" class="text-action room-delete" data-message-id="${esc(m.id||"")}">削除</button>`:""}
+            </div>
+          </div>
+          ${children.map(c=>renderOne(c,depth+1)).join("")}
+        </div>`;
+      };
+      return sort(roots).map(m=>renderOne(m)).join("")||'<div class="small muted">まだ連絡はありません。</div>';
+    };
+
     box.innerHTML=`<h2>${esc(p.title||"日程すり合わせ")}</h2>
+      <div class="share-room-guide">
+        <div class="share-room-steps">
+          <span class="${guide.step==="submit"?"active":"done"}">1 空き日提出</span>
+          <span class="${guide.step==="answer"?"active":(guide.step==="confirm"?"done":"")}">2 候補回答</span>
+          <span class="${guide.step==="confirm"?"active":""}">3 確定</span>
+        </div>
+        <div class="share-room-next">
+          <div><div class="small muted">あなたがすること</div><strong>${guide.title}</strong><div class="small muted">${guide.sub}</div></div>
+          <button id="shareRoomNext" type="button">${guide.button}</button>
+        </div>
+      </div>
+
       ${p.scenario?`<div class="share-report-block"><strong>シナリオ</strong><div>${esc(p.scenario)}</div></div>`:""}
       <div class="share-report-block"><strong>候補期間</strong><div>${esc(p.startDate||"")} ～ ${esc(p.endDate||"")}</div></div>
       <div class="share-report-block"><strong>状態</strong><div>${esc(p.status||"調整中")}</div></div>
 
-      ${confirmed.length?`<div class="share-report-block confirmed-schedule-block">
+      ${confirmed.length?`<div id="confirmedSchedule" class="share-report-block confirmed-schedule-block">
         <strong>日程が確定しました</strong>
         <div class="confirmed-date-list">${confirmed.map(d=>`<div class="confirmed-date">${esc(d)}</div>`).join("")}</div>
         <div class="small muted">各自、自分のCALENDARや予定表への登録をお願いします。</div>
       </div>`:""}
 
-      <div class="share-report-block schedule-submit-block">
-        <strong>自分の空き日共有URLを提出</strong>
-        <div class="schedule-submit-field"><label>名前</label><input id="matchSubmitName" placeholder="表示名"></div>
+      <div id="submitBlock" class="share-report-block schedule-submit-block">
+        <strong>自分の空き日を提出</strong>
+        <div class="schedule-submit-field"><label>名前</label><input id="matchSubmitName" value="${esc(savedName)}" placeholder="表示名"></div>
         <div class="schedule-submit-field"><label>共有URL</label><input id="matchSubmitUrls" type="url" placeholder="https://.../share/index.html?id=..."></div>
-        <button id="matchSubmitDirect" type="button">提出</button>
-        <div id="matchSubmitState" class="small muted"></div>
+        <button id="matchSubmitDirect" type="button" class="share-primary-action">空き日を提出する</button>
+        <div id="matchSubmitState" class="small muted">${savedName&&submissions.some(x=>x.name===savedName)?"提出済み":""}</div>
       </div>
 
-      ${candidates.length?`<div class="share-report-block"><strong>候補日への回答</strong><div id="candidateAnswers">${candidates.map(d=>`<div class="candidate-answer-row ${confirmed.includes(d)?"confirmed":""}">
-        <span>${esc(d)}${confirmed.includes(d)?' <span class="badge">確定</span>':""}</span>
-        <div><button type="button" data-answer-date="${esc(d)}" data-answer="○">○ 了承</button><button type="button" data-answer-date="${esc(d)}" data-answer="△">△ 保留</button><button type="button" data-answer-date="${esc(d)}" data-answer="×">× 難しい</button></div>
-      </div>`).join("")}</div><div id="candidateAnswerState" class="small muted"></div></div>`:""}
+      ${candidates.length?`<div id="candidateBlock" class="share-report-block">
+        <strong>候補日への回答</strong>
+        <div class="small muted">日付ごとに現在の回答を選んでください。</div>
+        <div id="candidateAnswers">${candidates.map(d=>{
+          const mine=savedName?responses.find(r=>r.name===savedName&&r.date===d):null;
+          return `<div class="candidate-answer-row ${confirmed.includes(d)?"confirmed":""}">
+            <span class="candidate-date">${esc(d)}${confirmed.includes(d)?' <span class="badge">確定</span>':""}</span>
+            <div class="candidate-answer-buttons">
+              ${["○","△","×"].map(a=>`<button type="button" class="${mine?.answer===a?"selected":""}" data-answer-date="${esc(d)}" data-answer="${a}">${a==="○"?"○ 了承":a==="△"?"△ 保留":"× 難しい"}</button>`).join("")}
+            </div>
+          </div>`;
+        }).join("")}</div>
+        <div id="candidateAnswerState" class="small muted">${ownResponseCount?`${ownResponseCount}/${candidates.length}日 回答済み`:""}</div>
+      </div>`:""}
 
-      <div class="share-report-block"><strong>連絡</strong>
-        <div class="schedule-submit-field"><label>名前</label><input id="roomMessageName" placeholder="表示名"></div>
-        <div class="schedule-submit-field"><label>メッセージ</label><input id="roomMessageText" placeholder="例：9/12が難しくなりました。ごめんなさい！"></div>
-        <button id="roomMessageSend" type="button">送信</button>
-        <div class="room-message-list">${messages.slice().sort((a,b)=>String(a.at||"").localeCompare(String(b.at||""))).map(m=>`<div class="room-message"><strong>${esc(m.name||"")}</strong><span>${esc(m.text||"")}</span></div>`).join("")||'<div class="small muted">まだ連絡はありません。</div>'}</div>
+      <div id="messageBlock" class="share-report-block">
+        <strong>連絡</strong>
+        <div id="replyingTo" class="replying-to" hidden></div>
+        <input id="roomMessageParent" type="hidden" value="">
+        <div class="schedule-submit-field"><label>名前</label><input id="roomMessageName" value="${esc(savedName)}" placeholder="表示名"></div>
+        <div class="schedule-submit-field"><label>メッセージ</label><textarea id="roomMessageText" rows="3" placeholder="例：入力しました！／9/12が難しくなりました。"></textarea></div>
+        <button id="roomMessageSend" type="button" class="share-primary-action">送信</button>
+        <button id="roomReplyCancel" type="button" class="text-action" hidden>返信をやめる</button>
+        <div id="roomMessageList" class="room-message-list">${renderMessages(messages)}</div>
       </div>`;
+
+    document.getElementById("shareRoomNext")?.addEventListener("click",()=>{
+      document.getElementById(guide.target)?.scrollIntoView({behavior:"smooth",block:"center"});
+    });
+
+    const rememberName=name=>{
+      if(!name)return;
+      localStorage.setItem(ANSWER_NAME_KEY,name);
+      const m=document.getElementById("roomMessageName");
+      if(m&&!m.value)m.value=name;
+    };
 
     const submit=document.getElementById("matchSubmitDirect");
     if(submit)submit.onclick=async()=>{
@@ -106,32 +210,65 @@
         const current=await TRPG39Cloud.getSharedPage(id),subs=Array.isArray(current.submissions)?current.submissions.slice():[],key=name.normalize("NFKC").trim().toLowerCase(),row={name,availabilityUrl:url,availabilityId,submittedAt:new Date().toISOString()},i=subs.findIndex(x=>String(x.name||"").normalize("NFKC").trim().toLowerCase()===key);
         if(i>=0)subs[i]=row;else subs.push(row);
         await TRPG39Cloud.updateSharedPage(id,{...current,submissions:subs,updatedAt:new Date().toISOString()});
+        rememberName(name);
         state.textContent="提出しました。";
       }catch(e){console.error(e);state.textContent="";alert("提出できませんでした: "+(e.message||e))}finally{submit.disabled=false}
     };
 
     document.querySelectorAll("[data-answer-date]").forEach(b=>b.onclick=async()=>{
-      const name=document.getElementById("matchSubmitName").value.trim();
-      if(!name)return alert("上の名前欄に名前を入力してください。");
+      const name=document.getElementById("matchSubmitName").value.trim()||savedName;
+      if(!name)return alert("名前を入力してください。");
       try{
         const current=await TRPG39Cloud.getSharedPage(id),rs=Array.isArray(current.responses)?current.responses.slice():[],key=name.normalize("NFKC").trim().toLowerCase(),date=b.dataset.answerDate,answer=b.dataset.answer,i=rs.findIndex(x=>String(x.name||"").normalize("NFKC").trim().toLowerCase()===key&&x.date===date),row={name,date,answer,at:new Date().toISOString()};
         if(i>=0)rs[i]=row;else rs.push(row);
         await TRPG39Cloud.updateSharedPage(id,{...current,responses:rs,updatedAt:new Date().toISOString()});
+        rememberName(name);
+        b.parentElement.querySelectorAll("button").forEach(x=>x.classList.toggle("selected",x===b));
         document.getElementById("candidateAnswerState").textContent=`${date}：${answer} で回答しました。`;
       }catch(e){alert("回答を保存できませんでした: "+(e.message||e))}
     });
 
+    const setReply=(parentId,name)=>{
+      document.getElementById("roomMessageParent").value=parentId||"";
+      const r=document.getElementById("replyingTo"),c=document.getElementById("roomReplyCancel");
+      if(parentId){r.hidden=false;c.hidden=false;r.textContent=`${name}さんへ返信`;document.getElementById("roomMessageText").focus()}
+      else{r.hidden=true;c.hidden=true;r.textContent=""}
+    };
+    document.getElementById("roomReplyCancel").onclick=()=>setReply("","");
+
     const send=document.getElementById("roomMessageSend");
     if(send)send.onclick=async()=>{
-      const name=document.getElementById("roomMessageName").value.trim(),text=document.getElementById("roomMessageText").value.trim();
+      const name=document.getElementById("roomMessageName").value.trim()||savedName,text=document.getElementById("roomMessageText").value.trim(),parentId=document.getElementById("roomMessageParent").value;
       if(!name||!text)return alert("名前とメッセージを入力してください。");
       try{
         const current=await TRPG39Cloud.getSharedPage(id),msgs=Array.isArray(current.messages)?current.messages.slice():[];
-        msgs.push({name,text,at:new Date().toISOString()});
+        const messageId=uid(),editToken=token();
+        msgs.push({id:messageId,parentId:parentId||null,name,text,editToken,at:new Date().toISOString()});
         await TRPG39Cloud.updateSharedPage(id,{...current,messages:msgs,updatedAt:new Date().toISOString()});
+        const nextKeys=loadKeys();nextKeys[messageId]=editToken;saveKeys(nextKeys);rememberName(name);
         location.reload();
       }catch(e){alert("メッセージを送信できませんでした: "+(e.message||e))}
     };
+
+    document.querySelectorAll(".room-reply").forEach(b=>b.onclick=()=>setReply(b.dataset.messageId,b.dataset.messageName));
+    document.querySelectorAll(".room-edit").forEach(b=>b.onclick=async()=>{
+      const messageId=b.dataset.messageId,current=await TRPG39Cloud.getSharedPage(id),msgs=Array.isArray(current.messages)?current.messages.slice():[],i=msgs.findIndex(m=>m.id===messageId);
+      if(i<0)return;
+      const k=loadKeys()[messageId];if(!k||msgs[i].editToken!==k)return alert("このコメントはこのブラウザから編集できません。");
+      const text=prompt("コメントを編集",msgs[i].text||"");if(text===null)return;if(!text.trim())return alert("空のコメントにはできません。");
+      msgs[i]={...msgs[i],text:text.trim(),editedAt:new Date().toISOString()};
+      await TRPG39Cloud.updateSharedPage(id,{...current,messages:msgs,updatedAt:new Date().toISOString()});location.reload();
+    });
+    document.querySelectorAll(".room-delete").forEach(b=>b.onclick=async()=>{
+      const messageId=b.dataset.messageId;if(!confirm("このコメントを削除しますか？"))return;
+      const current=await TRPG39Cloud.getSharedPage(id),msgs=Array.isArray(current.messages)?current.messages.slice():[],m=msgs.find(x=>x.id===messageId),k=loadKeys()[messageId];
+      if(!m||!k||m.editToken!==k)return alert("このコメントはこのブラウザから削除できません。");
+      const removeIds=new Set([messageId]);let changed=true;
+      while(changed){changed=false;msgs.forEach(x=>{if(x.parentId&&removeIds.has(x.parentId)&&!removeIds.has(x.id)){removeIds.add(x.id);changed=true}})}
+      const next=msgs.filter(x=>!removeIds.has(x.id));
+      await TRPG39Cloud.updateSharedPage(id,{...current,messages:next,updatedAt:new Date().toISOString()});
+      const nextKeys=loadKeys();removeIds.forEach(x=>delete nextKeys[x]);saveKeys(nextKeys);location.reload();
+    });
     return
   }
   if(p.kind==="calendar-availability"){const days=p.days||[];box.innerHTML=`<h2>${esc(p.label||"空き日カレンダー")}</h2><div class="share-cal">${days.map(d=>`<div class="share-day"><div class="num">${esc(d.date)}</div><div class="${d.state==="free"?"free":"busy"}">${d.state==="free"?"○ 空き":"予定あり"}</div></div>`).join("")}</div>`;return}

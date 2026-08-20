@@ -742,13 +742,13 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 </style>
 
 <style>
-.library-thumb-picker{margin:10px 0 14px;padding:10px;border:1px solid var(--line);border-radius:10px}
-.library-thumb-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px;margin-top:8px}
-.library-thumb-choice{margin:0;padding:6px;border:1px solid var(--line);border-radius:9px}
-.library-thumb-choice.selected{outline:2px solid var(--accent);outline-offset:2px}
-.library-thumb-choice img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:7px;display:block}
-.library-thumb-choice figcaption{margin-top:6px}
-.library-thumb-choice button{width:100%;min-height:34px}
+.lib-thumb-chooser{margin:10px 0 14px;border:1px solid var(--line);border-radius:10px;padding:9px}
+.lib-thumb-chooser>summary{cursor:pointer;font-weight:700}
+.lib-thumb-chooser-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px;margin-top:9px}
+.lib-thumb-choice{display:grid;gap:5px;padding:6px;border:1px solid var(--line);border-radius:8px;background:transparent}
+.lib-thumb-choice.selected{outline:2px solid var(--accent);outline-offset:1px}
+.lib-thumb-choice img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:6px}
+.lib-thumb-choice span{font-size:12px}
 </style>
 </head>
 <body>
@@ -1144,40 +1144,23 @@ migrateRunIds();
 
 const persist=()=>TRPG39.saveAlbum(data);
 
-const LIBRARY_THUMB_STORE_KEY="trpg39.library.customThumbs.v1";
-function loadLibraryThumbStore(){try{return JSON.parse(localStorage.getItem(LIBRARY_THUMB_STORE_KEY)||"{}")||{}}catch(_){return {}}}
-function getLibraryThumb(groupKey){return String(loadLibraryThumbStore()[String(groupKey)]||"")}
-function setLibraryThumb(groupKey,url){
- const all=loadLibraryThumbStore(),k=String(groupKey);
- if(url)all[k]=String(url);else delete all[k];
- localStorage.setItem(LIBRARY_THUMB_STORE_KEY,JSON.stringify(all));
+const LIB_THUMB_KEY="trpg39.library.thumbSelection.v1";
+function libThumbMap(){try{return JSON.parse(localStorage.getItem(LIB_THUMB_KEY)||"{}")||{}}catch(_){return {}}}
+function selectedLibraryThumb(key){return String(libThumbMap()[String(key)]||"")}
+function saveLibraryThumb(key,url){
+ const m=libThumbMap(),k=String(key||"");
+ if(url)m[k]=String(url);else delete m[k];
+ localStorage.setItem(LIB_THUMB_KEY,JSON.stringify(m));
 }
-function groupScreenshots(g){
- return [...new Set((g?.items||[]).flatMap(x=>x.imageUrls||[]).filter(Boolean))];
+function libraryScreenshotChoices(g){
+ return [...new Set((g?.items||[]).flatMap(x=>Array.isArray(x.imageUrls)?x.imageUrls:[]).filter(Boolean))];
 }
-function libraryThumbPickerHtml(g){
- const images=groupScreenshots(g),selected=getLibraryThumb(g.key);
- if(!images.length)return `<div class="small muted">サムネに使えるスクショはまだありません。</div>`;
- return `<div class="library-thumb-picker">
-   <div class="small muted">LIBRARYのサムネに使うスクショを選べます。</div>
-   <div class="library-thumb-picker-grid">${images.map(u=>`<figure class="library-thumb-choice ${selected===u?"selected":""}">
-     <img src="${esc(u)}" alt="" loading="lazy">
-     <figcaption><button type="button" data-library-thumb="${esc(g.key)}" data-library-thumb-url="${esc(u)}">${selected===u?"✓ サムネ設定中":"サムネに設定"}</button></figcaption>
-   </figure>`).join("")}</div>
-   ${selected?`<button type="button" class="text-action" data-library-thumb-clear="${esc(g.key)}">サムネ設定を解除</button>`:""}
- </div>`;
-}
-function bindLibraryThumbButtons(){
- document.querySelectorAll("[data-library-thumb]").forEach(b=>b.onclick=e=>{
-   e.stopPropagation();
-   setLibraryThumb(b.dataset.libraryThumb,b.dataset.libraryThumbUrl||"");
-   render();
- });
- document.querySelectorAll("[data-library-thumb-clear]").forEach(b=>b.onclick=e=>{
-   e.stopPropagation();
-   setLibraryThumb(b.dataset.libraryThumbClear,"");
-   render();
- });
+function libraryThumbChooser(g){
+ const imgs=libraryScreenshotChoices(g),selected=selectedLibraryThumb(g.key);
+ if(!imgs.length)return "";
+ return `<details class="lib-thumb-chooser"><summary>LIBRARYサムネを選ぶ</summary>
+ <div class="lib-thumb-chooser-grid">${imgs.map(u=>`<button type="button" class="lib-thumb-choice ${selected===u?"selected":""}" data-lib-thumb-key="${esc(g.key)}" data-lib-thumb-url="${esc(u)}"><img src="${esc(u)}" alt="" loading="lazy"><span>${selected===u?"✓ 使用中":"このスクショを使う"}</span></button>`).join("")}</div>
+ ${selected?`<button type="button" class="text-action" data-lib-thumb-clear="${esc(g.key)}">サムネ設定を解除</button>`:""}</details>`;
 }
 
 
@@ -1941,14 +1924,14 @@ function roleCountForGroup(g,roles){
 function libraryGridCard(g){
  const kpRuns=roleCountForGroup(g,["KP","DL","GM","KPGM","SKP"]);
  const plRuns=roleCountForGroup(g,["PL"]);
- const libraryThumb=getLibraryThumb(g.key);
+ const chosenThumb=selectedLibraryThumb(g.key);
  const sub=[
    kpRuns?`進行 ${kpRuns}陣`:"",
    plRuns?`PL ${plRuns}陣`:"",
    g.lastDate?`最終 ${g.lastDate}`:""
  ].filter(Boolean).join(" ／ ");
  return `<article class="lib-grid-card" data-library-focus="${esc(g.key)}" tabindex="0">
-   <div class="lib-grid-thumb-wrap">${libraryThumb?`<img class="lib-grid-thumb" src="${esc(libraryThumb)}" alt="" loading="lazy">`:`<div class="lib-grid-placeholder">🌺</div>`}</div>
+   <div class="lib-grid-thumb-wrap">${chosenThumb?`<img class="lib-grid-thumb" src="${esc(chosenThumb)}" alt="" loading="lazy">`:`<div class="lib-grid-placeholder">🌺</div>`}</div>
    <div class="lib-grid-body">
      <div class="lib-grid-title">${esc(g.title)}</div>
      <div class="lib-grid-meta">${g.system?`<span class="badge">${esc(g.system)}</span>`:""}<span class="badge">${runCountForGroup(g)}陣</span><span class="badge">${g.items.length}記録</span></div>
@@ -2256,7 +2239,7 @@ function focusedGroupHtml(g){
    <div class="lib-focused-title">${esc(g.title)}</div>
  </div>
  <div class="lib-parent-actions">${g.scenarioId?`<a class="link" href="../scenario/index.html?focus=${encodeURIComponent(g.scenarioId)}">SCENARIOを見る</a>`:""}<button type="button" data-add-scenario="${esc(g.scenarioId)}" data-add-title="${esc(g.title)}">＋ 新しい陣</button></div>
- ${!focusedRun?libraryThumbPickerHtml(g):""}
+ ${!focusedRun?libraryThumbChooser(g):""}
  ${focusedRun
    ? runDetailHtml(g,focusedRun)
    : `${(g.runs||[]).length>1?`<div class="lib-run-repair">
@@ -3877,7 +3860,6 @@ function render(){
  if(focused){
    q("list").classList.remove("library-grid");
    q("list").innerHTML=playFilterTabsHtml()+focusedGroupHtml(focused);bindPlayFilterTabs();
- bindLibraryThumbButtons();
    q("libraryBackToGrid").onclick=()=>{focusedScenarioKey="";focusedRunId="";render()};
    q("backToRuns")?.addEventListener("click",()=>{focusedRunId="";render()});
    document.querySelectorAll("[data-run-focus]").forEach(card=>{
@@ -4002,6 +3984,14 @@ q("pcLibraryEditorClose").onclick=closePcLibraryEditor;
 q("pcLibraryEditorCancel").onclick=closePcLibraryEditor;
 q("pcLibraryEditorSave").onclick=savePcLibraryEditor;
 q("pcLibraryEditor").addEventListener("click",e=>{if(e.target===q("pcLibraryEditor"))closePcLibraryEditor()});
+
+
+document.addEventListener("click",e=>{
+ const choose=e.target.closest?.("[data-lib-thumb-key]");
+ if(choose){e.preventDefault();e.stopPropagation();saveLibraryThumb(choose.dataset.libThumbKey,choose.dataset.libThumbUrl||"");render();return}
+ const clear=e.target.closest?.("[data-lib-thumb-clear]");
+ if(clear){e.preventDefault();e.stopPropagation();saveLibraryThumb(clear.dataset.libThumbClear,"");render()}
+});
 
 reset();hideEditor();render();{const p=new URLSearchParams(location.search),sid=p.get("scenario")||"";if(p.get("new")==="1"){addForScenario(sid)}}
 })();

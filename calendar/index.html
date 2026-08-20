@@ -85,14 +85,14 @@
 .schedule-match-head{display:flex;justify-content:space-between;gap:12px;align-items:start}
 .schedule-match-head h2{margin:0 0 4px}
 .schedule-match-head button{width:auto}
-.schedule-match-range{display:grid;grid-template-columns:repeat(2,minmax(180px,260px));gap:10px;margin:14px 0}
+.schedule-match-case{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:10px;margin:14px 0}.schedule-match-range{display:grid;grid-template-columns:repeat(2,minmax(180px,260px));gap:10px;margin:14px 0}
 .schedule-match-note{margin-bottom:10px}
 .schedule-match-people{display:grid;gap:10px}
 .schedule-match-person{border:1px solid var(--line);border-radius:10px;padding:10px}
 .schedule-match-person-head{display:grid;grid-template-columns:minmax(160px,260px) auto;gap:8px;align-items:end}
 .schedule-match-person-head button{width:auto}
 .schedule-match-person textarea{min-height:74px;margin-top:7px}
-.schedule-match-actions{margin-top:12px}
+.schedule-match-share-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}.schedule-match-share-actions button{width:auto}.schedule-match-actions{margin-top:12px}
 .schedule-match-actions button{width:auto}
 .schedule-match-results{margin-top:12px}
 .schedule-match-summary{font-weight:700;margin:8px 0}
@@ -103,7 +103,7 @@
 .schedule-match-empty{padding:12px;border:1px dashed var(--line);border-radius:9px;color:var(--muted)}
 .schedule-match-warning{margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
 @media(max-width:650px){
- .schedule-match-range{grid-template-columns:1fr}
+ .schedule-match-case,.schedule-match-range{grid-template-columns:1fr}
  .schedule-match-person-head{grid-template-columns:1fr}
 }
 </style>
@@ -205,9 +205,17 @@
     <button id="scheduleMatchClose" type="button">閉じる</button>
   </div>
 
+  <div class="schedule-match-case">
+    <div><label>調整名</label><input id="scheduleMatchTitle" placeholder="例：テスト1"></div>
+    <div><label>シナリオ <span class="small muted">任意</span></label><input id="scheduleMatchScenario" placeholder="シナリオ名"></div>
+  </div>
   <div class="schedule-match-range">
     <div><label>開始日</label><input id="scheduleMatchStart" type="date"></div>
     <div><label>終了日</label><input id="scheduleMatchEnd" type="date"></div>
+  </div>
+  <div class="schedule-match-share-actions">
+    <button id="scheduleMatchCreateShare" type="button">日程すり合わせ用URLを発行</button>
+    <span id="scheduleMatchShareState" class="small muted"></span>
   </div>
 
   <div class="schedule-match-note small muted">
@@ -488,6 +496,45 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  const parseDate=s=>{const [y,m,d]=String(s||"").split("-").map(Number);return y&&m&&d?new Date(y,m-1,d):null};
  const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
  const weekday=["日","月","火","水","木","金","土"];
+ const CASE_KEY="trpg39.scheduleMatch.case.v1";
+ function loadCase(){
+   try{return JSON.parse(localStorage.getItem(CASE_KEY)||"null")}catch(_){return null}
+ }
+ function saveCase(v){localStorage.setItem(CASE_KEY,JSON.stringify(v))}
+ function currentCasePayload(){
+   return {
+     kind:"calendar-schedule-match",
+     version:1,
+     title:$("scheduleMatchTitle").value.trim()||"日程すり合わせ",
+     scenario:$("scheduleMatchScenario").value.trim(),
+     startDate:$("scheduleMatchStart").value,
+     endDate:$("scheduleMatchEnd").value,
+     createdAt:new Date().toISOString()
+   };
+ }
+ async function createOrUpdateCaseShare(){
+   const p=currentCasePayload();
+   if(!p.startDate||!p.endDate)return alert("開始日と終了日を入力してください。");
+   if(p.endDate<p.startDate)return alert("終了日は開始日以降にしてください。");
+   if(!(window.TRPG39Cloud&&TRPG39Cloud.configured()))return alert("Supabase設定がありません。");
+   const old=loadCase();
+   try{
+     $("scheduleMatchCreateShare").disabled=true;
+     let id=old?.id||"";
+     if(id&&TRPG39Cloud.updateSharedPage){
+       await TRPG39Cloud.updateSharedPage(id,p);
+     }else{
+       id=await TRPG39Cloud.createSharedPage(p);
+     }
+     saveCase({id,payload:p});
+     const url=new URL("../share/index.html",location.href);url.searchParams.set("id",id);
+     if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(url.href);
+     $("scheduleMatchShareState").textContent="同じURLを更新して使えます";
+     prompt("日程すり合わせ用URLを作成しました。参加者へ送ってください。",url.href);
+   }catch(e){
+     console.error(e);alert("日程すり合わせ用URLを作成できませんでした: "+(e.message||e));
+   }finally{$("scheduleMatchCreateShare").disabled=false}
+ }
 
  function defaultRange(){
    const start=new Date(),end=new Date(start);
@@ -593,12 +640,21 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
 
  $("scheduleMatchBtn").onclick=()=>{
    panel.hidden=false;
+   const saved=loadCase();
+   if(saved?.payload){
+     $("scheduleMatchTitle").value=saved.payload.title||"";
+     $("scheduleMatchScenario").value=saved.payload.scenario||"";
+     $("scheduleMatchStart").value=saved.payload.startDate||"";
+     $("scheduleMatchEnd").value=saved.payload.endDate||"";
+     if(saved.id)$("scheduleMatchShareState").textContent="共有URL発行済み";
+   }
    if(!$("scheduleMatchStart").value)defaultRange();
    if(!peopleBox.children.length){addPerson({name:"Aさん"});addPerson({name:"Bさん"})}
    panel.scrollIntoView({behavior:"smooth",block:"start"});
  };
  $("scheduleMatchClose").onclick=()=>{panel.hidden=true};
  $("scheduleMatchAddPerson").onclick=()=>addPerson({});
+ $("scheduleMatchCreateShare").onclick=createOrUpdateCaseShare;
  $("scheduleMatchRun").onclick=run;
 })();
 </script>

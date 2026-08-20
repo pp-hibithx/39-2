@@ -207,6 +207,43 @@
   z-index:999!important;
 }
 </style>
+
+<style>
+#scheduleMatchPanel .schedule-match-actions,
+#scheduleMatchPanel .schedule-room-owner-actions,
+#scheduleMatchPanel .schedule-match-share-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#scheduleMatchPanel button{min-height:40px;border-radius:9px}
+#scheduleMatchPanel #scheduleNextAction,
+#scheduleMatchPanel #scheduleMatchRun,
+#scheduleMatchPanel #schedulePublishCandidates,
+#scheduleMatchPanel #scheduleConfirmSelected,
+#scheduleMatchPanel #scheduleMatchCreateShare{
+ min-height:44px;padding:0 16px;font-weight:700;border:1px solid var(--accent);
+ background:color-mix(in srgb,var(--accent) 18%,var(--panel))
+}
+#scheduleMatchPanel #scheduleNextAction:hover,
+#scheduleMatchPanel #scheduleMatchRun:hover,
+#scheduleMatchPanel #schedulePublishCandidates:hover,
+#scheduleMatchPanel #scheduleConfirmSelected:hover,
+#scheduleMatchPanel #scheduleMatchCreateShare:hover{
+ background:color-mix(in srgb,var(--accent) 28%,var(--panel));transform:translateY(-1px)
+}
+#scheduleMatchPanel #scheduleMatchLoadSubmissions,
+#scheduleMatchPanel #scheduleRefreshRoom,
+#scheduleMatchPanel #scheduleReschedule,
+#scheduleMatchPanel #scheduleMatchAddPerson,
+#scheduleMatchPanel #scheduleMatchClose{
+ min-height:38px;padding:0 12px;border:1px solid var(--line);background:transparent
+}
+#scheduleMatchPanel #scheduleReschedule{border-style:dashed}
+#scheduleMatchPanel button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:650px){
+ #scheduleMatchPanel .schedule-match-actions,
+ #scheduleMatchPanel .schedule-room-owner-actions,
+ #scheduleMatchPanel .schedule-match-share-actions{display:grid;grid-template-columns:1fr}
+ #scheduleMatchPanel button{width:100%}
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">

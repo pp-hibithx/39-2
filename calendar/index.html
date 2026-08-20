@@ -136,6 +136,16 @@
 .schedule-unknown-details{opacity:.9}
 @media(max-width:650px){.schedule-result-row{grid-template-columns:1fr}.schedule-result-header{display:none}}
 </style>
+
+<style>
+.schedule-room-owner-actions{margin-top:12px;padding:10px;border:1px solid var(--line);border-radius:10px}
+.schedule-room-owner-actions>button{width:auto;margin-right:6px}
+.schedule-owner-candidate{padding:9px 0;border-top:1px solid var(--line)}
+.schedule-owner-candidate button{width:auto;margin-top:5px}
+.schedule-owner-messages{margin-top:10px}
+.schedule-room-message{display:grid;grid-template-columns:minmax(90px,150px) 1fr;gap:8px;padding:7px 0;border-top:1px solid var(--line)}
+.schedule-free-chip input{margin:0 3px 0 0}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -261,6 +271,12 @@
 
   <div id="scheduleMatchStatus" class="small muted"></div>
   <div id="scheduleMatchResults" class="schedule-match-results"></div>
+  <div id="scheduleRoomOwnerActions" class="schedule-room-owner-actions" hidden>
+    <button id="schedulePublishCandidates" type="button">選択した候補日を調整URLに掲載</button>
+    <button id="scheduleRefreshRoom" type="button" class="text-action">回答・連絡を更新</button>
+    <div id="scheduleRoomOwnerState" class="small muted"></div>
+    <div id="scheduleRoomResponses"></div>
+  </div>
 </section>
 
 </div></main>
@@ -667,7 +683,7 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
    const decidedRows=rows.filter(x=>x.unknownNames.length===0);
    const unknownRows=rows.filter(x=>x.unknownNames.length>0);
 
-   const freeChip=x=>`<span class="schedule-free-chip">${x.date.getMonth()+1}/${x.date.getDate()}<small>(${weekday[x.date.getDay()]})</small></span>`;
+   const freeChip=x=>`<label class="schedule-free-chip"><input type="checkbox" class="schedule-candidate-check" value="${x.ds}">${x.date.getMonth()+1}/${x.date.getDate()}<small>(${weekday[x.date.getDay()]})</small></label>`;
    const listRow=x=>`<div class="schedule-result-row">
      <div class="schedule-result-date">${x.ds}<span>(${weekday[x.date.getDay()]})</span></div>
      <div>${x.allFree?'<strong>○ 全員空き</strong>':'<strong>×</strong>'}</div>
@@ -694,7 +710,65 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
         <div class="schedule-result-table"><div class="schedule-result-row schedule-result-header"><div>日付</div><div>判定</div><div>データがない人</div></div>${unknownRows.map(unknownRow).join("")}</div>
       </details>`:""}
     </div>`;
+   $("scheduleRoomOwnerActions").hidden=false;
  }
+ async function getCurrentRoom(){
+   const saved=loadCase();
+   if(!saved?.id)throw new Error("日程すり合わせ用URLがまだありません。");
+   const p=await TRPG39Cloud.getSharedPage(saved.id);
+   if(!p||p.kind!=="calendar-schedule-match")throw new Error("日程すり合わせデータが見つかりません。");
+   return {id:saved.id,p};
+ }
+ async function publishCandidates(){
+   const dates=[...document.querySelectorAll(".schedule-candidate-check:checked")].map(x=>x.value);
+   if(!dates.length)return alert("掲載する候補日を1日以上選択してください。");
+   try{
+     const {id,p}=await getCurrentRoom();
+     const next={...p,candidateDates:dates,status:"候補確認中",updatedAt:new Date().toISOString()};
+     await TRPG39Cloud.updateSharedPage(id,next);
+     saveCase({id,payload:next});
+     $("scheduleRoomOwnerState").textContent=`${dates.length}日を候補として掲載しました。`;
+     await refreshRoom();
+   }catch(e){console.error(e);alert("候補日を掲載できませんでした: "+(e.message||e))}
+ }
+ async function refreshRoom(){
+   try{
+     const {id,p}=await getCurrentRoom();
+     const candidates=Array.isArray(p.candidateDates)?p.candidateDates:[];
+     const responses=Array.isArray(p.responses)?p.responses:[];
+     const messages=Array.isArray(p.messages)?p.messages:[];
+     const names=[...new Set((p.submissions||[]).map(x=>x.name).filter(Boolean))];
+     const byDate=new Map(candidates.map(d=>[d,[]]));
+     responses.forEach(r=>{if(byDate.has(r.date))byDate.get(r.date).push(r)});
+     const rows=candidates.map(d=>{
+       const rs=byDate.get(d)||[];
+       const detail=names.map(n=>{
+         const r=rs.find(x=>x.name===n);
+         return `${n} ${r?.answer||"未回答"}`;
+       }).join(" ／ ");
+       const allOk=names.length&&names.every(n=>rs.some(x=>x.name===n&&x.answer==="○"));
+       return `<div class="schedule-owner-candidate"><strong>${d}</strong> ${allOk?'<span class="badge">全員○</span>':""}<div class="small muted">${esc(detail||"回答待ち")}</div>${allOk?`<button type="button" class="schedule-calendar-register" data-date="${d}">この日をCALENDARに登録</button>`:""}</div>`;
+     }).join("");
+     const msgHtml=messages.slice().sort((a,b)=>String(a.at||"").localeCompare(String(b.at||""))).map(m=>`<div class="schedule-room-message"><strong>${esc(m.name||"")}</strong><span>${esc(m.text||"")}</span></div>`).join("");
+     $("scheduleRoomResponses").innerHTML=`<div class="schedule-owner-status"><strong>状態：</strong>${esc(p.status||"調整中")}</div>${rows||'<div class="small muted">候補日はまだ掲載していません。</div>'}${msgHtml?`<details class="schedule-owner-messages"><summary>連絡 ${messages.length}件</summary>${msgHtml}</details>`:""}`;
+     $("scheduleRoomOwnerActions").hidden=false;
+     $("scheduleRoomResponses").querySelectorAll(".schedule-calendar-register").forEach(b=>b.onclick=()=>registerCandidateToCalendar(b.dataset.date,p));
+   }catch(e){console.error(e);$("scheduleRoomOwnerState").textContent="調整状況を読み込めませんでした。"}
+ }
+ function registerCandidateToCalendar(date,p){
+   const btn=$("newEventBtn");
+   if(btn)btn.click();
+   setTimeout(()=>{
+     const modal=document.getElementById("eventModal")||document.querySelector(".modal:not([hidden])");
+     const inputs=[...document.querySelectorAll('input,textarea,select')];
+     const dateInput=inputs.find(x=>x.type==="date" && (x.id||"").toLowerCase().includes("date")) || inputs.find(x=>x.type==="date");
+     if(dateInput){dateInput.value=date;dateInput.dispatchEvent(new Event("change",{bubbles:true}))}
+     const titleInput=inputs.find(x=>/title|scenario/i.test(x.id||"") && x.tagName==="INPUT");
+     if(titleInput&&!titleInput.value)titleInput.value=p.scenario||p.title||"";
+     $("scheduleRoomOwnerState").textContent=`${date} を予定追加画面へ渡しました。内容を確認して保存してください。`;
+   },50);
+ }
+
  async function run(){
    const start=parseDate($("scheduleMatchStart").value),end=parseDate($("scheduleMatchEnd").value);
    if(!start||!end)return alert("開始日と終了日を入力してください。");
@@ -752,6 +826,8 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  $("scheduleMatchCreateShare").onclick=createOrUpdateCaseShare;
  $("scheduleMatchLoadSubmissions").onclick=loadCaseSubmissions;
  $("scheduleMatchRun").onclick=run;
+ $("schedulePublishCandidates").onclick=publishCandidates;
+ $("scheduleRefreshRoom").onclick=refreshRoom;
 })();
 </script>
 

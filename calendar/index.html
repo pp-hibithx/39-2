@@ -146,6 +146,18 @@
 .schedule-room-message{display:grid;grid-template-columns:minmax(90px,150px) 1fr;gap:8px;padding:7px 0;border-top:1px solid var(--line)}
 .schedule-free-chip input{margin:0 3px 0 0}
 </style>
+
+<style>
+.schedule-saved-cases{margin-bottom:12px;padding:10px;border:1px solid var(--line);border-radius:10px}
+.schedule-saved-title{display:flex;gap:8px;align-items:center;margin-bottom:7px}
+.schedule-saved-list{display:flex;flex-wrap:wrap;gap:7px}
+.schedule-saved-case{width:auto;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 10px}
+.schedule-saved-case small{color:var(--muted)}
+.schedule-saved-case.active{outline:2px solid var(--accent)}
+.schedule-owner-candidate-select{display:inline-flex;align-items:center;gap:6px;margin-right:6px}
+.schedule-owner-candidate.confirmed{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.schedule-confirmed-summary{margin:8px 0;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -236,6 +248,7 @@
 </section>
 
 <section id="scheduleMatchPanel" class="panel schedule-match-panel" hidden>
+  <div id="scheduleSavedCases" class="schedule-saved-cases"></div>
   <div class="schedule-match-head">
     <div>
       <h2>日程すり合わせ</h2>
@@ -273,6 +286,8 @@
   <div id="scheduleMatchResults" class="schedule-match-results"></div>
   <div id="scheduleRoomOwnerActions" class="schedule-room-owner-actions" hidden>
     <button id="schedulePublishCandidates" type="button">選択した候補日を調整URLに掲載</button>
+    <button id="scheduleConfirmSelected" type="button">選択した日程で確定</button>
+    <button id="scheduleReschedule" type="button" class="text-action">リスケに戻す</button>
     <button id="scheduleRefreshRoom" type="button" class="text-action">回答・連絡を更新</button>
     <div id="scheduleRoomOwnerState" class="small muted"></div>
     <div id="scheduleRoomResponses"></div>
@@ -544,10 +559,40 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
  const weekday=["日","月","火","水","木","金","土"];
  const CASE_KEY="trpg39.scheduleMatch.case.v1";
- function loadCase(){
+ const CASES_KEY="trpg39.scheduleMatch.cases.v2";
+ let activeCaseId="";
+
+ function loadLegacyCase(){
    try{return JSON.parse(localStorage.getItem(CASE_KEY)||"null")}catch(_){return null}
  }
- function saveCase(v){localStorage.setItem(CASE_KEY,JSON.stringify(v))}
+ function loadCases(){
+   try{
+     const v=JSON.parse(localStorage.getItem(CASES_KEY)||"[]");
+     if(Array.isArray(v))return v;
+   }catch(_){}
+   const legacy=loadLegacyCase();
+   return legacy?.id?[legacy]:[];
+ }
+ function saveCases(v){localStorage.setItem(CASES_KEY,JSON.stringify(Array.isArray(v)?v:[]))}
+ function loadCase(){
+   const cases=loadCases();
+   if(activeCaseId){
+     const hit=cases.find(x=>x.id===activeCaseId);
+     if(hit)return hit;
+   }
+   return cases[0]||loadLegacyCase();
+ }
+ function upsertCase(v){
+   if(!v?.id)return;
+   const all=loadCases();
+   const i=all.findIndex(x=>x.id===v.id);
+   if(i>=0)all[i]=v;else all.unshift(v);
+   saveCases(all);
+   localStorage.setItem(CASE_KEY,JSON.stringify(v)); // backward compatibility
+   activeCaseId=v.id;
+ }
+ function saveCase(v){upsertCase(v)}
+ 
  function currentCasePayload(existing=null){
    return {
      ...(existing||{}),
@@ -580,7 +625,7 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
      }else{
        id=await TRPG39Cloud.createSharedPage(p);
      }
-     saveCase({id,payload:p});
+     upsertCase({id,payload:p});
      const url=new URL("../share/index.html",location.href);url.searchParams.set("id",id);
      if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(url.href);
      $("scheduleMatchShareState").textContent="同じURLを更新して使えます";
@@ -590,7 +635,61 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
    }finally{$("scheduleMatchCreateShare").disabled=false}
  }
 
- function defaultRange(){
+ function statusLabelForCase(p){
+   const s=String(p?.status||"調整中");
+   if(s==="確定済み")return "確定済み";
+   if(s==="リスケ中")return "リスケ中";
+   if(s==="候補確認中")return "候補確認中";
+   return "調整中";
+ }
+ function renderSavedCases(){
+   const box=$("scheduleSavedCases");
+   if(!box)return;
+   const cases=loadCases();
+   if(!cases.length){
+     box.innerHTML="";
+     box.hidden=true;
+     return;
+   }
+   box.hidden=false;
+   box.innerHTML=`<div class="schedule-saved-title"><strong>日程調整案件</strong><span class="small muted">${cases.length}件</span></div>
+     <div class="schedule-saved-list">${cases.map(c=>{
+       const p=c.payload||{};
+       return `<button type="button" class="schedule-saved-case ${c.id===activeCaseId?"active":""}" data-case-id="${c.id}">
+         <span>${String(p.title||"日程すり合わせ")}</span>
+         <small>${statusLabelForCase(p)}${p.startDate?` ／ ${p.startDate}〜${p.endDate||""}`:""}</small>
+       </button>`;
+     }).join("")}</div>`;
+   box.querySelectorAll("[data-case-id]").forEach(b=>b.onclick=()=>openSavedCase(b.dataset.caseId));
+ }
+ async function openSavedCase(id){
+   const cases=loadCases(),saved=cases.find(x=>x.id===id);
+   if(!saved)return;
+   activeCaseId=id;
+   let p=saved.payload||{};
+   try{
+     if(window.TRPG39Cloud?.getSharedPage){
+       const latest=await TRPG39Cloud.getSharedPage(id);
+       if(latest?.kind==="calendar-schedule-match"){
+         p=latest;
+         upsertCase({id,payload:p});
+       }
+     }
+   }catch(e){console.warn("調整案件の最新取得に失敗",e)}
+   $("scheduleMatchTitle").value=p.title||"";
+   $("scheduleMatchScenario").value=p.scenario||"";
+   $("scheduleMatchStart").value=p.startDate||"";
+   $("scheduleMatchEnd").value=p.endDate||"";
+   $("scheduleMatchShareState").textContent=`${statusLabelForCase(p)} ／ 共有URL発行済み`;
+   peopleBox.innerHTML="";
+   (p.submissions||[]).forEach(x=>addPerson({name:x.name||"",urls:x.availabilityUrl||"",submitted:true}));
+   if(!peopleBox.children.length)addPerson({});
+   $("scheduleMatchStatus").textContent=(p.submissions||[]).length?`${p.submissions.length}人が提出済みです。`:"まだ提出はありません。";
+   $("scheduleRoomOwnerActions").hidden=false;
+   await refreshRoom();
+   renderSavedCases();
+ }
+  function defaultRange(){
    const start=new Date(),end=new Date(start);
    end.setMonth(end.getMonth()+3);
    $("scheduleMatchStart").value=localDate(start);
@@ -731,10 +830,50 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
      await refreshRoom();
    }catch(e){console.error(e);alert("候補日を掲載できませんでした: "+(e.message||e))}
  }
- async function refreshRoom(){
+ async function confirmSelectedDates(){
+   const dates=[...document.querySelectorAll(".schedule-confirm-check:checked")].map(x=>x.value);
+   if(!dates.length)return alert("確定する日を1日以上選択してください。");
    try{
      const {id,p}=await getCurrentRoom();
      const candidates=Array.isArray(p.candidateDates)?p.candidateDates:[];
+     const responses=Array.isArray(p.responses)?p.responses:[];
+     const names=[...new Set((p.submissions||[]).map(x=>x.name).filter(Boolean))];
+
+     const notReady=dates.filter(d=>{
+       const rs=responses.filter(r=>r.date===d);
+       return !names.length || !names.every(n=>rs.some(r=>r.name===n&&r.answer==="○"));
+     });
+     if(notReady.length){
+       if(!confirm(`${notReady.join("、")} は全員○ではありません。\nそれでも確定しますか？`))return;
+     }
+
+     const next={...p,confirmedDates:dates,status:"確定済み",confirmedAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+     await TRPG39Cloud.updateSharedPage(id,next);
+     upsertCase({id,payload:next});
+     $("scheduleRoomOwnerState").textContent=`${dates.length}日を確定しました。`;
+     await refreshRoom();
+   }catch(e){
+     console.error(e);
+     alert("日程を確定できませんでした: "+(e.message||e));
+   }
+ }
+
+ async function markRescheduling(){
+   try{
+     const {id,p}=await getCurrentRoom();
+     if(!confirm("この調整を「リスケ中」に戻しますか？確定日は残します。"))return;
+     const next={...p,status:"リスケ中",updatedAt:new Date().toISOString()};
+     await TRPG39Cloud.updateSharedPage(id,next);
+     upsertCase({id,payload:next});
+     await refreshRoom();
+   }catch(e){alert("リスケ状態に変更できませんでした: "+(e.message||e))}
+ }
+  async function refreshRoom(){
+   try{
+     const {id,p}=await getCurrentRoom();
+     upsertCase({id,payload:p});
+     const candidates=Array.isArray(p.candidateDates)?p.candidateDates:[];
+     const confirmed=Array.isArray(p.confirmedDates)?p.confirmedDates:[];
      const responses=Array.isArray(p.responses)?p.responses:[];
      const messages=Array.isArray(p.messages)?p.messages:[];
      const names=[...new Set((p.submissions||[]).map(x=>x.name).filter(Boolean))];
@@ -747,14 +886,33 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
          return `${n} ${r?.answer||"未回答"}`;
        }).join(" ／ ");
        const allOk=names.length&&names.every(n=>rs.some(x=>x.name===n&&x.answer==="○"));
-       return `<div class="schedule-owner-candidate"><strong>${d}</strong> ${allOk?'<span class="badge">全員○</span>':""}<div class="small muted">${esc(detail||"回答待ち")}</div>${allOk?`<button type="button" class="schedule-calendar-register" data-date="${d}">この日をCALENDARに登録</button>`:""}</div>`;
+       const isConfirmed=confirmed.includes(d);
+       return `<div class="schedule-owner-candidate ${isConfirmed?"confirmed":""}">
+         <label class="schedule-owner-candidate-select">
+           <input type="checkbox" class="schedule-confirm-check" value="${d}" ${isConfirmed?"checked":""}>
+           <strong>${d}</strong>
+         </label>
+         ${allOk?'<span class="badge">全員○</span>':""}
+         ${isConfirmed?'<span class="badge">確定</span>':""}
+         <div class="small muted">${esc(detail||"回答待ち")}</div>
+         ${isConfirmed?`<button type="button" class="schedule-calendar-register" data-date="${d}">この日をCALENDARに登録</button>`:""}
+       </div>`;
      }).join("");
      const msgHtml=messages.slice().sort((a,b)=>String(a.at||"").localeCompare(String(b.at||""))).map(m=>`<div class="schedule-room-message"><strong>${esc(m.name||"")}</strong><span>${esc(m.text||"")}</span></div>`).join("");
-     $("scheduleRoomResponses").innerHTML=`<div class="schedule-owner-status"><strong>状態：</strong>${esc(p.status||"調整中")}</div>${rows||'<div class="small muted">候補日はまだ掲載していません。</div>'}${msgHtml?`<details class="schedule-owner-messages"><summary>連絡 ${messages.length}件</summary>${msgHtml}</details>`:""}`;
+     $("scheduleRoomResponses").innerHTML=`<div class="schedule-owner-status"><strong>状態：</strong>${esc(p.status||"調整中")}</div>
+       ${confirmed.length?`<div class="schedule-confirmed-summary"><strong>確定日程：</strong>${confirmed.map(esc).join("、")}</div>`:""}
+       ${rows||'<div class="small muted">候補日はまだ掲載していません。</div>'}
+       ${msgHtml?`<details class="schedule-owner-messages"><summary>連絡 ${messages.length}件</summary>${msgHtml}</details>`:""}`;
      $("scheduleRoomOwnerActions").hidden=false;
      $("scheduleRoomResponses").querySelectorAll(".schedule-calendar-register").forEach(b=>b.onclick=()=>registerCandidateToCalendar(b.dataset.date,p));
-   }catch(e){console.error(e);$("scheduleRoomOwnerState").textContent="調整状況を読み込めませんでした。"}
+     $("scheduleRoomOwnerState").textContent=`${statusLabelForCase(p)}${confirmed.length?` ／ ${confirmed.length}日確定`:""}`;
+     renderSavedCases();
+   }catch(e){
+     console.error(e);
+     $("scheduleRoomOwnerState").textContent="調整状況を読み込めませんでした。";
+   }
  }
+
  function registerCandidateToCalendar(date,p){
    const btn=$("newEventBtn");
    if(btn)btn.click();
@@ -809,16 +967,15 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
 
  $("scheduleMatchBtn").onclick=()=>{
    panel.hidden=false;
+   renderSavedCases();
    const saved=loadCase();
-   if(saved?.payload){
-     $("scheduleMatchTitle").value=saved.payload.title||"";
-     $("scheduleMatchScenario").value=saved.payload.scenario||"";
-     $("scheduleMatchStart").value=saved.payload.startDate||"";
-     $("scheduleMatchEnd").value=saved.payload.endDate||"";
-     if(saved.id)$("scheduleMatchShareState").textContent="共有URL発行済み";
+   if(saved?.id){
+     activeCaseId=saved.id;
+     openSavedCase(saved.id);
+   }else{
+     if(!$("scheduleMatchStart").value)defaultRange();
+     if(!peopleBox.children.length){addPerson({name:"Aさん"});addPerson({name:"Bさん"})}
    }
-   if(!$("scheduleMatchStart").value)defaultRange();
-   if(!peopleBox.children.length){addPerson({name:"Aさん"});addPerson({name:"Bさん"})}
    panel.scrollIntoView({behavior:"smooth",block:"start"});
  };
  $("scheduleMatchClose").onclick=()=>{panel.hidden=true};
@@ -827,6 +984,8 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  $("scheduleMatchLoadSubmissions").onclick=loadCaseSubmissions;
  $("scheduleMatchRun").onclick=run;
  $("schedulePublishCandidates").onclick=publishCandidates;
+ $("scheduleConfirmSelected").onclick=confirmSelectedDates;
+ $("scheduleReschedule").onclick=markRescheduling;
  $("scheduleRefreshRoom").onclick=refreshRoom;
 })();
 </script>

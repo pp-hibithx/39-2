@@ -173,6 +173,22 @@
 <style>
 .schedule-participant-note{margin-top:6px}
 </style>
+
+<style>
+.schedule-reschedule-button{
+  width:auto!important;
+  pointer-events:auto!important;
+  cursor:pointer!important;
+  position:relative;
+  z-index:2;
+}
+</style>
+
+<style>
+#scheduleMatchPanel button{pointer-events:auto!important;position:relative;z-index:5}
+#scheduleMatchPanel::before,#scheduleMatchPanel::after,
+.schedule-match-panel::before,.schedule-match-panel::after{pointer-events:none!important}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -320,7 +336,7 @@
   <div id="scheduleRoomOwnerActions" class="schedule-room-owner-actions" hidden>
     <button id="schedulePublishCandidates" type="button">選択した候補日を調整URLに掲載</button>
     <button id="scheduleConfirmSelected" type="button">選択した日程で確定</button>
-    <button id="scheduleReschedule" type="button" class="text-action">リスケに戻す</button>
+    <button id="scheduleReschedule" type="button" class="schedule-reschedule-button">リスケに戻す</button>
     <button id="scheduleRefreshRoom" type="button" class="text-action">回答・連絡を更新</button>
     <div id="scheduleRoomOwnerState" class="small muted"></div>
     <div id="scheduleRoomResponses"></div>
@@ -900,10 +916,12 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  }
  async function getCurrentRoom(){
    const saved=loadCase();
-   if(!saved?.id)throw new Error("日程すり合わせ用URLがまだありません。");
-   const p=await TRPG39Cloud.getSharedPage(saved.id);
+   const caseId=activeCaseId||saved?.id||"";
+   if(!caseId)throw new Error("日程すり合わせ用URLがまだありません。");
+   if(!(window.TRPG39Cloud&&TRPG39Cloud.getSharedPage))throw new Error("共有データ読込機能がありません。");
+   const p=await TRPG39Cloud.getSharedPage(caseId);
    if(!p||p.kind!=="calendar-schedule-match")throw new Error("日程すり合わせデータが見つかりません。");
-   return {id:saved.id,p};
+   return {id:caseId,p};
  }
  async function publishCandidates(){
    const dates=[...document.querySelectorAll(".schedule-candidate-check:checked")].map(x=>x.value);
@@ -1135,8 +1153,47 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  $("scheduleMatchRun").onclick=run;
  $("schedulePublishCandidates").onclick=publishCandidates;
  $("scheduleConfirmSelected").onclick=confirmSelectedDates;
- $("scheduleReschedule").onclick=markRescheduling;
+ {
+   const rescheduleBtn=$("scheduleReschedule");
+   if(rescheduleBtn){rescheduleBtn.disabled=false;rescheduleBtn.hidden=false;}
+ }
  $("scheduleRefreshRoom").onclick=refreshRoom;
+ window.__SAKUMERU_RESCHEDULE__=markRescheduling;
+ document.addEventListener("sakumeru:reschedule",()=>markRescheduling());
+})();
+</script>
+
+<script>
+/* schedule controls recovery layer: capture phase, independent of local onclick wiring */
+(()=>{
+  const actions={
+    scheduleMatchClose:()=>{ const p=document.getElementById("scheduleMatchPanel"); if(p)p.hidden=true; },
+    scheduleMatchAddPerson:()=>{ document.getElementById("scheduleMatchPeople")?.insertAdjacentHTML("beforeend",'<div class="small muted">＋追加ボタンを検出しました。再読み込み後も反応しない場合は最新版を確認してください。</div>'); }
+  };
+
+  document.addEventListener("click",e=>{
+    const btn=e.target.closest?.("button");
+    if(!btn)return;
+
+    // Visible click diagnostic for the schedule room.
+    if(btn.closest("#scheduleMatchPanel")){
+      const state=document.getElementById("scheduleRoomOwnerState")||document.getElementById("scheduleMatchStatus");
+      if(state)state.dataset.lastClick=btn.id||btn.textContent.trim();
+    }
+
+    if(btn.id==="scheduleReschedule"){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const status=document.getElementById("scheduleRoomOwnerState");
+      if(status)status.textContent="リスケ処理を開始しています…";
+      if(typeof window.__SAKUMERU_RESCHEDULE__==="function"){
+        window.__SAKUMERU_RESCHEDULE__();
+      }else{
+        // Dispatch a custom event consumed by the main module.
+        document.dispatchEvent(new CustomEvent("sakumeru:reschedule"));
+      }
+    }
+  },true);
 })();
 </script>
 

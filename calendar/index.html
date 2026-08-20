@@ -189,6 +189,15 @@
 #scheduleMatchPanel::before,#scheduleMatchPanel::after,
 .schedule-match-panel::before,.schedule-match-panel::after{pointer-events:none!important}
 </style>
+
+<style>
+#scheduleReschedule{
+  pointer-events:auto!important;
+  cursor:pointer!important;
+  position:relative!important;
+  z-index:999!important;
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -336,7 +345,7 @@
   <div id="scheduleRoomOwnerActions" class="schedule-room-owner-actions" hidden>
     <button id="schedulePublishCandidates" type="button">選択した候補日を調整URLに掲載</button>
     <button id="scheduleConfirmSelected" type="button">選択した日程で確定</button>
-    <button id="scheduleReschedule" type="button" class="schedule-reschedule-button">リスケに戻す</button>
+    <button id="scheduleReschedule" type="button" class="schedule-reschedule-button" onclick="return window.SAKUMERU_RESCHEDULE_STANDALONE?.(event)">リスケに戻す</button>
     <button id="scheduleRefreshRoom" type="button" class="text-action">回答・連絡を更新</button>
     <div id="scheduleRoomOwnerState" class="small muted"></div>
     <div id="scheduleRoomResponses"></div>
@@ -1194,16 +1203,136 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
     }
 
     if(btn.id==="scheduleReschedule"){
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      if(typeof window.__SAKUMERU_RESCHEDULE__==="function"){
-        window.__SAKUMERU_RESCHEDULE__();
-      }else{
-        // Dispatch a custom event consumed by the main module.
-        document.dispatchEvent(new CustomEvent("sakumeru:reschedule"));
-      }
+      // handled by standalone inline/global reschedule handler
+      return;
     }
   },true);
+})();
+</script>
+
+<script>
+/* Standalone reschedule handler.
+   It intentionally does not depend on the schedule-room module's local functions. */
+(()=>{
+  const CASE_KEY="trpg39.scheduleMatch.case.v1";
+  const CASES_KEY="trpg39.scheduleMatch.cases.v2";
+
+  const loadJSON=(key,fallback)=>{
+    try{
+      const v=JSON.parse(localStorage.getItem(key)||"");
+      return v ?? fallback;
+    }catch(_){return fallback}
+  };
+
+  const saveCaseLocal=(entry)=>{
+    if(!entry?.id)return;
+    const all=loadJSON(CASES_KEY,[]);
+    const arr=Array.isArray(all)?all:[];
+    const i=arr.findIndex(x=>x?.id===entry.id);
+    if(i>=0)arr[i]=entry;else arr.unshift(entry);
+    localStorage.setItem(CASES_KEY,JSON.stringify(arr));
+    localStorage.setItem(CASE_KEY,JSON.stringify(entry));
+  };
+
+  const currentCase=()=>{
+    const legacy=loadJSON(CASE_KEY,null);
+    if(legacy?.id)return legacy;
+    const all=loadJSON(CASES_KEY,[]);
+    return Array.isArray(all)&&all.length?all[0]:null;
+  };
+
+  window.SAKUMERU_RESCHEDULE_STANDALONE=async(e)=>{
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+
+    const keepSchedule=confirm(
+      "リスケ方法を選びます。\n\n"+
+      "［OK］参加者変更だけ\n"+
+      "　→ 現在の日程と既存メンバーの○△×を残します。\n"+
+      "　　新しい参加者だけ回答すれば再確定できます。\n\n"+
+      "［キャンセル］日程変更\n"+
+      "　→ 候補日と○△×を解除して、全員で日程を決め直します。"
+    );
+
+    const state=document.getElementById("scheduleRoomOwnerState")||
+                document.getElementById("scheduleMatchStatus");
+    if(state)state.textContent=keepSchedule
+      ?"参加者変更としてリスケ処理中…"
+      :"日程変更としてリスケ処理中…";
+
+    try{
+      const saved=currentCase();
+      if(!saved?.id)throw new Error("日程調整案件が見つかりません。");
+      if(!(window.TRPG39Cloud&&TRPG39Cloud.getSharedPage&&TRPG39Cloud.updateSharedPage)){
+        throw new Error("共有データの読込・更新機能が利用できません。");
+      }
+
+      const p=await TRPG39Cloud.getSharedPage(saved.id);
+      if(!p||p.kind!=="calendar-schedule-match"){
+        throw new Error("日程すり合わせデータが見つかりません。");
+      }
+
+      const history=Array.isArray(p.confirmationHistory)?p.confirmationHistory.slice():[];
+      if((p.confirmedDates||[]).length){
+        history.push({
+          dates:[...(p.confirmedDates||[])],
+          confirmedAt:p.confirmedAt||"",
+          closedAt:new Date().toISOString(),
+          reason:keepSchedule?"参加者変更":"日程変更"
+        });
+      }
+
+      let next;
+      if(keepSchedule){
+        const retained=(p.confirmedDates||[]).length
+          ? [...p.confirmedDates]
+          : [...(p.candidateDates||[])];
+
+        next={
+          ...p,
+          status:"候補確認中",
+          rescheduleMode:"participants",
+          confirmationHistory:history,
+          confirmedDates:[],
+          confirmedAt:"",
+          candidateDates:retained,
+          responses:Array.isArray(p.responses)?p.responses:[],
+          updatedAt:new Date().toISOString()
+        };
+      }else{
+        next={
+          ...p,
+          status:"リスケ中",
+          rescheduleMode:"dates",
+          confirmationHistory:history,
+          confirmedDates:[],
+          confirmedAt:"",
+          candidateDates:[],
+          responses:[],
+          updatedAt:new Date().toISOString()
+        };
+      }
+
+      await TRPG39Cloud.updateSharedPage(saved.id,next);
+      saveCaseLocal({id:saved.id,payload:next});
+
+      if(state)state.textContent=keepSchedule
+        ?"参加者変更として再調整中です。既存回答を保持しました。"
+        :"日程変更としてリスケ中です。空き日を再照合してください。";
+
+      alert(keepSchedule
+        ?"参加者変更のリスケに切り替えました。新しい参加者だけ回答してください。"
+        :"日程変更のリスケに切り替えました。空き日を再照合してください。");
+
+      // Reload so every UI section reflects the updated shared state cleanly.
+      location.reload();
+    }catch(err){
+      console.error("standalone reschedule failed",err);
+      if(state)state.textContent="リスケ処理に失敗しました。";
+      alert("リスケ状態に変更できませんでした: "+(err?.message||err));
+    }
+    return false;
+  };
 })();
 </script>
 

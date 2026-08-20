@@ -60,6 +60,33 @@
 .reschedule-notice{border-color:var(--accent)}
 .room-message-actions .room-reply{font-weight:700}
 </style>
+
+<style>
+.share-room-next button,
+.share-primary-action,
+#matchSubmitDirect,
+#roomMessageSend{
+ min-height:44px;padding:0 16px;border-radius:9px;font-weight:700;
+ border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--panel))
+}
+.share-room-next button:hover,
+.share-primary-action:hover,
+#matchSubmitDirect:hover,
+#roomMessageSend:hover{
+ background:color-mix(in srgb,var(--accent) 28%,var(--panel));transform:translateY(-1px)
+}
+.candidate-answer-buttons button{
+ min-height:40px;padding:0 12px;border-radius:9px;border:1px solid var(--line)
+}
+.candidate-answer-buttons button.selected{
+ border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--panel))
+}
+.room-message-actions .text-action,#roomReplyCancel{min-height:32px}
+.share-report-block button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:650px){
+ .share-room-next button,.share-primary-action,#matchSubmitDirect,#roomMessageSend{width:100%}
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav></div></header>

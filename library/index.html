@@ -834,7 +834,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.5.3</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.5.4</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1107,6 +1107,55 @@ function migrateRunIds(){
 migrateRunIds();
 
 const persist=()=>TRPG39.saveAlbum(data);
+
+const RUN_ROSTER_STORE_KEY="trpg39.library.runRoster.v1";
+function loadRunRosterStore(){
+ try{return JSON.parse(localStorage.getItem(RUN_ROSTER_STORE_KEY)||"{}")||{}}catch(_){return {}}
+}
+function getRunRoster(runId){
+ const all=loadRunRosterStore(),v=all[String(runId)]||null;
+ if(!v)return null;
+ return {
+   role:String(v.role||"PL"),
+   selfPcs:Array.isArray(v.selfPcs)?v.selfPcs:[],
+   participants:Array.isArray(v.participants)?v.participants:[]
+ };
+}
+function setRunRoster(runId,roster){
+ if(!runId)return;
+ const all=loadRunRosterStore(),key=String(runId);
+ all[key]={
+   role:String(roster?.role||"PL"),
+   selfPcs:Array.isArray(roster?.selfPcs)?roster.selfPcs:[],
+   participants:Array.isArray(roster?.participants)?roster.participants:[]
+ };
+ localStorage.setItem(RUN_ROSTER_STORE_KEY,JSON.stringify(all));
+}
+function ensureRunRosterFromData(runId){
+ let roster=getRunRoster(runId);
+ if(roster)return roster;
+
+ const items=data.filter(x=>x.runId===runId).sort(bySessionStart);
+ if(!items.length)return null;
+
+ // Prefer a main-session record with the fullest participant composition.
+ const ranked=items.slice().sort((a,b)=>{
+   const ak=sessionKindForRecord(a)==="main"?10:0;
+   const bk=sessionKindForRecord(b)==="main"?10:0;
+   const ac=storedSelfPcRows(a).length+rowsFromRecord(a).length;
+   const bc=storedSelfPcRows(b).length+rowsFromRecord(b).length;
+   return (bk+bc)-(ak+ac)||bySessionStart(a,b);
+ });
+ const base=ranked[0];
+ roster={
+   role:base.role||"PL",
+   selfPcs:storedSelfPcRows(base),
+   participants:rowsFromRecord(base)
+ };
+ setRunRoster(runId,roster);
+ return roster;
+}
+
 const X_REPORT_STORE_KEY="trpg39.library.xReports.v1";
 function loadXReportStore(){
  try{return JSON.parse(localStorage.getItem(X_REPORT_STORE_KEY)||"{}")||{}}catch(_){return {}}
@@ -1381,6 +1430,13 @@ function save(){
    xReportUrl:q("xReportUrl").value.trim(),xReportText:q("xReportText").value.trim(),
    spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
  let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);setStoredSelfPcRows(item.id,selfPcRows);
+ if((q("sessionKind").value||"main")==="main"){
+   setRunRoster(item.runId,{
+     role:item.role||"PL",
+     selfPcs:selfPcRows,
+     participants:rows
+   });
+ }
  if(item.start){
    let evs=TRPG39.loadEvents(),eventId=item.eventId||TRPG39.uuid();
    const ei=evs.findIndex(e=>e.id===eventId),base=ei>=0?evs[ei]:{};
@@ -1634,34 +1690,37 @@ function addForRun(scenarioId,runId,runLabel=""){
  q("runLabel").value=runLabel||"";
 
  const runItems=data.filter(x=>x.runId===runId).sort(bySessionStart);
- const base=runItems.slice().sort((a,b)=>{
-   const ac=storedSelfPcRows(a).length+(rowsFromRecord(a).length?1:0);
-   const bc=storedSelfPcRows(b).length+(rowsFromRecord(b).length?1:0);
-   return bc-ac||bySessionStart(a,b);
- })[0];
+ const base=runItems[0];
+ const roster=ensureRunRosterFromData(runId);
 
  if(base){
-   q("role").value=base.role||"PL";
    q("system").value=base.system||"";
    q("visibility").value=base.visibility||"private";
+ }
 
-   // Same run = same table composition by default.
-   // Carry the full self PC/HO structure, not only the legacy primary PC.
+ if(roster){
+   q("role").value=roster.role||"PL";
+   setSelfPcRows(roster.selfPcs||[]);
+   const primary=(roster.selfPcs||[])[0]||{pcName:"",ho:"",pcId:""};
+   q("pc").value=primary.pcName||"";
+   q("selfHo").value=primary.ho||"";
+   fillPCSelect(primary.pcId||"");
+   setParticipantRows(roster.participants||[]);
+ }else if(base){
+   // Legacy fallback
+   q("role").value=base.role||"PL";
    const selfRows=storedSelfPcRows(base);
    setSelfPcRows(selfRows);
-
    const primary=selfRows[0]||{pcName:base.pcName||"",ho:base.selfHo||"",pcId:base.pcId||""};
    q("pc").value=primary.pcName||"";
    q("selfHo").value=primary.ho||"";
    fillPCSelect(primary.pcId||"");
-
-   // Participant members are also inherited from the existing run.
    setParticipantRows(rowsFromRecord(base));
  }
+
  showEditor();
  q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
-
 function diceAnalysisHtml(x){
  const list=x.diceAnalyses||[];if(!list.length)return "";
  return `<details class="lib-dice"><summary>🎲 ダイスログ解析結果${list.length>1?` (${list.length})`:""}</summary>${list.map(a=>{const cf=a.criticalFumble||{},growth=a.growth||[];return `<div class="lib-dice-card"><div class="small muted">${esc(a.label||"解析結果")}</div><div><b>クリティカル ${Number(cf.critical||0)}</b> ／ <b>ファンブル ${Number(cf.fumble||0)}</b> ／ 成長候補 ${growth.length}</div>${(a.bySpeaker||[]).map(r=>`<div class="small"><b>${esc(r.speaker)}</b>：クリ ${r.critical||0} ／ ファン ${r.fumble||0}</div>`).join("")}${growth.length?`<details><summary class="small">成長候補を見る</summary>${growth.map(g=>`<div class="small">${esc(g.speaker)}｜${esc(g.skill)}｜${esc(g.roll)}</div>`).join("")}</details>`:""}</div>`}).join("")}</details>`;

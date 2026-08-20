@@ -244,6 +244,69 @@
  #scheduleMatchPanel button{width:100%}
 }
 </style>
+
+<style>
+/* Fix schedule owner action / status alignment */
+#scheduleRoomOwnerActions{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(300px,320px);
+  gap:18px;
+  align-items:start!important;
+}
+#scheduleRoomOwnerActions > #scheduleRoomOwnerState,
+#scheduleRoomOwnerActions > #scheduleRoomResponses{
+  grid-column:2;
+}
+#scheduleRoomOwnerActions > #scheduleRoomOwnerState{
+  align-self:start;
+  margin:0 0 8px;
+  font-weight:700;
+}
+#scheduleRoomOwnerActions > #scheduleRoomResponses{
+  align-self:start;
+}
+#scheduleRoomOwnerActions > button{
+  grid-column:1;
+  justify-self:start;
+  margin:0 0 8px;
+}
+#scheduleRoomOwnerActions > #schedulePublishCandidates,
+#scheduleRoomOwnerActions > #scheduleConfirmSelected{
+  min-width:210px;
+  min-height:44px;
+  padding:0 16px;
+  font-weight:700;
+  border:1px solid var(--accent);
+  background:color-mix(in srgb,var(--accent) 20%,var(--panel));
+}
+#scheduleRoomOwnerActions > #schedulePublishCandidates:hover,
+#scheduleRoomOwnerActions > #scheduleConfirmSelected:hover{
+  background:color-mix(in srgb,var(--accent) 30%,var(--panel));
+}
+#scheduleRoomOwnerActions > #scheduleReschedule,
+#scheduleRoomOwnerActions > #scheduleRefreshRoom{
+  min-width:170px;
+  min-height:38px;
+  padding:0 12px;
+  border:1px solid var(--line);
+  background:transparent;
+}
+.schedule-owner-status,
+.schedule-confirmed-summary{
+  margin-top:0!important;
+}
+@media(max-width:800px){
+  #scheduleRoomOwnerActions{
+    grid-template-columns:1fr;
+  }
+  #scheduleRoomOwnerActions > button,
+  #scheduleRoomOwnerActions > #scheduleRoomOwnerState,
+  #scheduleRoomOwnerActions > #scheduleRoomResponses{
+    grid-column:1;
+    width:100%;
+  }
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">

@@ -860,7 +860,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.5.6</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.5.7</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -3416,15 +3416,28 @@ function buildPlayerRelationshipGraph(focusId){
 }
 function showPlayerRelationNodeDetail(graph,id){
  const n=graph.nodes.find(x=>x.id===id);if(!n)return;
+ const selfNode=graph.nodes.find(x=>x.id===PLAYER_REL_SELF_ID)||null;
  const connections=graph.edges.filter(e=>e.a===id||e.b===id);
  const focusEdge=graph.edges.find(e=>(e.a===graph.focusId&&e.b===id)||(e.b===graph.focusId&&e.a===id));
- const runs=(focusEdge?[...focusEdge.runs.values()].map(r=>({...r,roles:n.runs.get(r.id)?.roles||[],roleLabels:n.runs.get(r.id)?.roleLabels||[]})):[...n.runs.values()]).sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
+
+ // The role shown beside each table is ALWAYS the browser owner's (SELF) role.
+ // The clicked person's role is relationship data, not "how I joined this table".
+ const baseRuns=(focusEdge?[...focusEdge.runs.values()]:[...n.runs.values()]);
+ const runs=baseRuns.map(r=>{
+   const selfRun=selfNode?.runs?.get(r.id);
+   return {
+     ...r,
+     roles:selfRun?.roles||[],
+     roleLabels:selfRun?.roleLabels||[]
+   };
+ }).sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
+
  q("playerRelationDetail").innerHTML=`<div class="player-rel-detail-card">
    <strong>${esc(n.name)}</strong>${n.self?` <span class="small muted">［自分］</span>`:""}
    <div class="library-dir-meta">${id===graph.focusId?`同卓ネットワーク：${connections.length}人`:`中心人物との同卓：${focusEdge?.count||0}卓`}</div>
 
    ${id!==graph.focusId?`<button type="button" class="player-rel-center" data-player-rel-center="${esc(id)}">この人を中心に見る</button>`:""}
-   <div style="margin-top:10px"><strong>${id===graph.focusId?"参加した卓":"中心人物との同卓陣"}</strong>
+   <div style="margin-top:10px"><strong>${id===graph.focusId?"参加した卓":"中心人物との同卓"}</strong>
      ${runs.length?runs.map(r=>{
        const labels=[...new Set((r.roleLabels||[]).filter(Boolean))];
        const roles=labels.length?labels:[...new Set((r.roles||[]).filter(x=>x&&x!=="参加").map(playerRoleLabel))];

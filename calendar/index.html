@@ -757,7 +757,10 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
      return setNextAction("参加者の空き日提出を待っています","調整URLを送ったら、提出状況を更新してください。","提出状況を更新",()=>$("scheduleMatchLoadSubmissions")?.click(),"submit");
    }
    if(!candidates.length){
-     return setNextAction("空き日を照合できます",`${subs.length}人が提出済みです。`,"空き日を照合",()=>$("scheduleMatchRun")?.click(),"compare");
+     return setNextAction(room.status==="リスケ中"?"空き日を再照合してください":"空き日を照合できます",`${subs.length}人が提出済みです。`,"空き日を照合",()=>$("scheduleMatchRun")?.click(),"compare");
+   }
+   if(room.rescheduleMode==="participants"){
+     return setNextAction("新しい参加者の回答を待っています","既存メンバーの○△×は保持しています。新しい参加者が回答すれば、そのまま再確定できます。","回答・連絡を更新",()=>$("scheduleRefreshRoom")?.click(),"candidate");
    }
    return setNextAction("候補日の回答を確認してください","参加者の○△×と連絡を更新し、全員○の日を確定します。","回答・連絡を更新",()=>$("scheduleRefreshRoom")?.click(),"candidate");
  }
@@ -784,16 +787,18 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
        if(!confirm(`${name}さんをこの日程調整から外しますか？\n提出・回答データも削除します。`))return;
        try{
          const saved=loadCase();
-         if(saved?.id&&window.TRPG39Cloud?.getSharedPage&&TRPG39Cloud.updateSharedPage){
-           const p=await TRPG39Cloud.getSharedPage(saved.id);
+         const caseId=activeCaseId||saved?.id||"";
+         if(caseId&&window.TRPG39Cloud?.getSharedPage&&TRPG39Cloud.updateSharedPage){
+           const p=await TRPG39Cloud.getSharedPage(caseId);
            if(p?.kind==="calendar-schedule-match"){
              const key=name.normalize("NFKC").trim().toLowerCase();
              const submissions=(p.submissions||[]).filter(x=>String(x.name||"").normalize("NFKC").trim().toLowerCase()!==key);
              const responses=(p.responses||[]).filter(x=>String(x.name||"").normalize("NFKC").trim().toLowerCase()!==key);
              const next={...p,submissions,responses,updatedAt:new Date().toISOString()};
-             await TRPG39Cloud.updateSharedPage(saved.id,next);
-             upsertCase({id:saved.id,payload:next});
+             await TRPG39Cloud.updateSharedPage(caseId,next);
+             upsertCase({id:caseId,payload:next});
              updateScheduleGuide(next);
+             $("scheduleMatchStatus").textContent=`${submissions.length}人が提出済みです。`;
            }
          }
        }catch(e){
@@ -804,6 +809,9 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
      }
      row.remove();
      renderSavedCases();
+     if(v.submitted){
+       try{await loadCaseSubmissions()}catch(_){}
+     }
    };
  }
  function sharedIdFromUrl(text){
@@ -942,12 +950,71 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  async function markRescheduling(){
    try{
      const {id,p}=await getCurrentRoom();
-     if(!confirm("この調整を「リスケ中」に戻しますか？確定日は残します。"))return;
-     const next={...p,status:"リスケ中",updatedAt:new Date().toISOString()};
+     const keepSchedule=confirm(
+       "リスケ方法を選びます。\n\n"+
+       "［OK］参加者変更だけ\n"+
+       "　→ 現在の候補日と既存メンバーの○△×を残します。\n"+
+       "　　新しい参加者だけ回答すれば再確定できます。\n\n"+
+       "［キャンセル］日程変更\n"+
+       "　→ 候補日と○△×を解除して、全員で日程を決め直します。"
+     );
+
+     const history=Array.isArray(p.confirmationHistory)?p.confirmationHistory.slice():[];
+     if((p.confirmedDates||[]).length){
+       history.push({
+         dates:[...(p.confirmedDates||[])],
+         confirmedAt:p.confirmedAt||"",
+         closedAt:new Date().toISOString(),
+         reason:keepSchedule?"参加者変更":"日程変更"
+       });
+     }
+
+     let next;
+     if(keepSchedule){
+       // Keep the previously confirmed dates as the new candidate dates.
+       // Existing responses are preserved; removed participants' responses
+       // have already been deleted by the participant-removal workflow.
+       const retainedDates=[...(p.confirmedDates||p.candidateDates||[])];
+       next={
+         ...p,
+         status:"候補確認中",
+         rescheduleMode:"participants",
+         confirmationHistory:history,
+         confirmedDates:[],
+         confirmedAt:"",
+         candidateDates:retainedDates,
+         responses:Array.isArray(p.responses)?p.responses:[],
+         updatedAt:new Date().toISOString()
+       };
+     }else{
+       next={
+         ...p,
+         status:"リスケ中",
+         rescheduleMode:"dates",
+         confirmationHistory:history,
+         confirmedDates:[],
+         confirmedAt:"",
+         candidateDates:[],
+         responses:[],
+         updatedAt:new Date().toISOString()
+       };
+     }
+
      await TRPG39Cloud.updateSharedPage(id,next);
      upsertCase({id,payload:next});
+     updateScheduleGuide(next);
+
+     if(keepSchedule){
+       $("scheduleRoomOwnerState").textContent=
+         "参加者変更として再調整中です。既存回答を保持しています。新しい参加者の回答を待ってください。";
+     }else{
+       $("scheduleRoomOwnerState").textContent=
+         "日程変更としてリスケ中です。空き日を再照合してください。";
+     }
      await refreshRoom();
-   }catch(e){alert("リスケ状態に変更できませんでした: "+(e.message||e))}
+   }catch(e){
+     alert("リスケ状態に変更できませんでした: "+(e.message||e))
+   }
  }
   async function refreshRoom(){
    try{
@@ -980,7 +1047,7 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
        </div>`;
      }).join("");
      const msgHtml=messages.slice().sort((a,b)=>String(a.at||"").localeCompare(String(b.at||""))).map(m=>`<div class="schedule-room-message"><strong>${esc(m.name||"")}</strong><span>${esc(m.text||"")}</span></div>`).join("");
-     $("scheduleRoomResponses").innerHTML=`<div class="schedule-owner-status"><strong>状態：</strong>${esc(p.status||"調整中")}</div>
+     $("scheduleRoomResponses").innerHTML=`<div class="schedule-owner-status"><strong>状態：</strong>${esc(p.status||"調整中")}${p.rescheduleMode==="participants"?' ／ 参加者変更':p.rescheduleMode==="dates"?' ／ 日程変更':""}</div>
        ${confirmed.length?`<div class="schedule-confirmed-summary"><strong>確定日程：</strong>${confirmed.map(esc).join("、")}</div>`:""}
        ${rows||'<div class="small muted">候補日はまだ掲載していません。</div>'}
        ${msgHtml?`<details class="schedule-owner-messages"><summary>連絡 ${messages.length}件</summary>${msgHtml}</details>`:""}`;

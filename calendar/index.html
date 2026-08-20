@@ -307,6 +307,84 @@
   }
 }
 </style>
+
+<style>
+/* v8.2: explicitly pin left controls and right status to the same top row */
+#scheduleRoomOwnerActions{
+  display:grid!important;
+  grid-template-columns:minmax(220px,1fr) minmax(300px,320px)!important;
+  grid-template-rows:auto auto auto auto 1fr!important;
+  column-gap:18px!important;
+  row-gap:8px!important;
+  align-items:start!important;
+}
+
+/* Left controls */
+#schedulePublishCandidates{
+  grid-column:1!important;
+  grid-row:1!important;
+  justify-self:start!important;
+  margin:0!important;
+}
+#scheduleConfirmSelected{
+  grid-column:1!important;
+  grid-row:2!important;
+  justify-self:start!important;
+  margin:0!important;
+}
+#scheduleReschedule{
+  grid-column:1!important;
+  grid-row:3!important;
+  justify-self:start!important;
+  margin:0!important;
+}
+#scheduleRefreshRoom{
+  grid-column:1!important;
+  grid-row:4!important;
+  justify-self:start!important;
+  margin:0!important;
+}
+
+/* Right column starts at the very same top row */
+#scheduleRoomOwnerState{
+  grid-column:2!important;
+  grid-row:1!important;
+  align-self:start!important;
+  margin:0!important;
+}
+#scheduleRoomResponses{
+  grid-column:2!important;
+  grid-row:2 / span 4!important;
+  align-self:start!important;
+  margin:0!important;
+}
+
+#scheduleRoomResponses .schedule-owner-status{
+  margin-top:0!important;
+}
+
+/* Do not let generic owner-action button rules move these around */
+#scheduleRoomOwnerActions > button{
+  width:auto!important;
+}
+
+@media(max-width:800px){
+  #scheduleRoomOwnerActions{
+    grid-template-columns:1fr!important;
+    grid-template-rows:auto!important;
+  }
+  #schedulePublishCandidates,
+  #scheduleConfirmSelected,
+  #scheduleReschedule,
+  #scheduleRefreshRoom,
+  #scheduleRoomOwnerState,
+  #scheduleRoomResponses{
+    grid-column:1!important;
+    grid-row:auto!important;
+    width:100%!important;
+  }
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">

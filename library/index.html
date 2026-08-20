@@ -692,7 +692,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
  height:auto;min-height:0;border-radius:14px;padding:44px 10px 10px;
  box-shadow:0 10px 50px rgba(0,0,0,.45)
 }
-.player-rel-stage.player-rel-expanded svg{height:calc(100vh - 78px);min-width:1120px}
+.player-rel-stage.player-rel-expanded svg{height:calc(100vh - 78px);min-width:1260px}
 .player-rel-expanded-close{
  position:fixed;right:28px;top:24px;z-index:10021;width:auto
 }
@@ -813,7 +813,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.4.4</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.4.5</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -3185,10 +3185,9 @@ function renderPlayerRelationshipGraph(focusId){
    return;
  }
 
- const W=1120,H=720,cx=W/2,cy=H/2,pos=new Map();
- pos.set(focusId,{x:cx,y:cy});
+ const W=1260,H=820,cx=W/2,cy=H/2;
+ const pos=new Map(),vel=new Map(),frequency=new Map();
 
- const frequency=new Map();
  graph.edges.forEach(e=>{
    if(e.a===focusId)frequency.set(e.b,e.count);
    else if(e.b===focusId)frequency.set(e.a,e.count);
@@ -3197,58 +3196,103 @@ function renderPlayerRelationshipGraph(focusId){
  const others=graph.nodes.filter(n=>n.id!==focusId)
    .sort((a,b)=>(frequency.get(b.id)||0)-(frequency.get(a.id)||0)||String(a.name).localeCompare(String(b.name),"ja"));
 
- // Explicit distance bands. 1-run contacts are pushed farthest out.
- const bands=[
-   {test:c=>c>=20,r:155},
-   {test:c=>c>=10,r:215},
-   {test:c=>c>=5,r:270},
-   {test:c=>c>=2,r:320},
-   {test:c=>c<=1,r:350}
- ];
- const groups=bands.map(()=>[]);
- others.forEach(n=>{
-   const c=frequency.get(n.id)||1;
-   let idx=bands.findIndex(b=>b.test(c));
-   if(idx<0)idx=bands.length-1;
-   groups[idx].push(n);
+ const targetRadius=count=>{
+   if(count>=20)return 150;
+   if(count>=10)return 225;
+   if(count>=5)return 305;
+   if(count>=2)return 400;
+   return 515;
+ };
+
+ pos.set(focusId,{x:cx,y:cy}); vel.set(focusId,{x:0,y:0});
+
+ const golden=2.399963229728653;
+ others.forEach((n,i)=>{
+   const count=frequency.get(n.id)||1;
+   const base=targetRadius(count);
+   const angle=-Math.PI/2+i*golden+(count%4)*0.13;
+   const jitter=((i*41)%61)-30;
+   const r=base+jitter;
+   pos.set(n.id,{x:cx+Math.cos(angle)*r,y:cy+Math.sin(angle)*r});
+   vel.set(n.id,{x:0,y:0});
  });
 
- groups.forEach((group,gi)=>{
-   if(!group.length)return;
-   const baseR=bands[gi].r;
-   group.forEach((n,i)=>{
-     // Offset each ring so labels do not line up radially.
-     const offset=(gi%2?Math.PI/group.length:0);
-     const angle=-Math.PI/2+offset+(Math.PI*2*i/group.length);
-     const r=baseR+(i%2?5:-5);
-     pos.set(n.id,{x:cx+Math.cos(angle)*r,y:cy+Math.sin(angle)*r});
+ const nodeRadius=id=>id===focusId?62:42;
+ const ids=graph.nodes.map(n=>n.id);
+
+ for(let step=0;step<170;step++){
+   const force=new Map(ids.map(id=>[id,{x:0,y:0}]));
+
+   others.forEach(n=>{
+     const p=pos.get(n.id),dx=p.x-cx,dy=p.y-cy,dist=Math.max(1,Math.hypot(dx,dy));
+     const target=targetRadius(frequency.get(n.id)||1);
+     const k=(dist-target)*0.012;
+     force.get(n.id).x-=dx/dist*k;
+     force.get(n.id).y-=dy/dist*k;
    });
- });
+
+   for(let i=0;i<ids.length;i++){
+     for(let j=i+1;j<ids.length;j++){
+       const a=ids[i],b=ids[j],pa=pos.get(a),pb=pos.get(b);
+       let dx=pb.x-pa.x,dy=pb.y-pa.y,dist=Math.max(1,Math.hypot(dx,dy));
+       const min=nodeRadius(a)+nodeRadius(b)+20;
+       if(dist<min){
+         const push=(min-dist)*0.06,ux=dx/dist,uy=dy/dist;
+         if(a!==focusId){force.get(a).x-=ux*push;force.get(a).y-=uy*push}
+         if(b!==focusId){force.get(b).x+=ux*push;force.get(b).y+=uy*push}
+       }else if(dist<180){
+         const push=2300/(dist*dist),ux=dx/dist,uy=dy/dist;
+         if(a!==focusId){force.get(a).x-=ux*push;force.get(a).y-=uy*push}
+         if(b!==focusId){force.get(b).x+=ux*push;force.get(b).y+=uy*push}
+       }
+     }
+   }
+
+   graph.edges.forEach(e=>{
+     if(e.a===focusId||e.b===focusId)return;
+     const pa=pos.get(e.a),pb=pos.get(e.b); if(!pa||!pb)return;
+     const dx=pb.x-pa.x,dy=pb.y-pa.y,dist=Math.max(1,Math.hypot(dx,dy));
+     if(dist>165){
+       const pull=Math.min(.9,(dist-165)*.0018*Math.min(4,e.count)),ux=dx/dist,uy=dy/dist;
+       force.get(e.a).x+=ux*pull;force.get(e.a).y+=uy*pull;
+       force.get(e.b).x-=ux*pull;force.get(e.b).y-=uy*pull;
+     }
+   });
+
+   others.forEach(n=>{
+     const p=pos.get(n.id),f=force.get(n.id),v=vel.get(n.id),margin=62;
+     if(p.x<margin)f.x+=(margin-p.x)*.03;
+     if(p.x>W-margin)f.x-=(p.x-(W-margin))*.03;
+     if(p.y<margin)f.y+=(margin-p.y)*.03;
+     if(p.y>H-margin)f.y-=(p.y-(H-margin))*.03;
+     v.x=(v.x+f.x)*.78; v.y=(v.y+f.y)*.78;
+     p.x+=v.x; p.y+=v.y;
+   });
+ }
 
  const edgeSvg=graph.edges.map(e=>{
-   const a=pos.get(e.a),b=pos.get(e.b);if(!a||!b)return "";
-   const isFocusEdge=e.a===focusId||e.b===focusId;
-   const baseWidth=Math.min(8,1.5+Math.max(0,e.count-1)*1.15);
+   const a=pos.get(e.a),b=pos.get(e.b); if(!a||!b)return "";
+   const focusEdge=e.a===focusId||e.b===focusId;
    let width,opacity;
-   if(isFocusEdge){
-     width=baseWidth;
-     opacity=Math.min(.80,.34+Math.max(0,e.count-1)*.07);
+   if(focusEdge){
+     width=Math.min(8,1.5+Math.max(0,e.count-1)*1.15);
+     opacity=Math.min(.82,.36+Math.max(0,e.count-1)*.07);
    }else{
-     // Keep community structure visible, but don't let it turn into a hairball.
-     width=playerRelationShowAllEdges?Math.min(5,1+Math.max(0,e.count-1)*.7):Math.min(2.4,.7+Math.max(0,e.count-1)*.35);
-     opacity=playerRelationShowAllEdges?Math.min(.46,.16+Math.max(0,e.count-1)*.04):Math.min(.22,.07+Math.max(0,e.count-1)*.025);
+     width=playerRelationShowAllEdges?Math.min(5,1+Math.max(0,e.count-1)*.7):Math.min(2.5,.8+Math.max(0,e.count-1)*.35);
+     opacity=playerRelationShowAllEdges?Math.min(.48,.18+Math.max(0,e.count-1)*.04):Math.min(.24,.08+Math.max(0,e.count-1)*.025);
    }
    return `<line class="player-rel-edge" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" style="stroke-width:${width};stroke-opacity:${opacity}"></line>`;
  }).join("");
 
  const nodeSvg=graph.nodes.map(n=>{
-   const p=pos.get(n.id),isFocus=n.id===focusId,r=isFocus?58:38;
+   const p=pos.get(n.id),isFocus=n.id===focusId,r=nodeRadius(n.id);
    const rawLabel=n.self?`自分｜${n.name}`:n.name;
-   const label=rawLabel.length>11?rawLabel.slice(0,10)+"…":rawLabel;
+   const label=rawLabel.length>12?rawLabel.slice(0,11)+"…":rawLabel;
    const count=isFocus?"":frequency.get(n.id)||0;
-   const sub=count?`<text y="17" style="font-size:10px;opacity:.72">${count}陣</text>`:"";
    return `<g class="player-rel-node ${isFocus?"focus":""} ${n.self?"self":""}" data-player-rel-node="${esc(n.id)}" transform="translate(${p.x} ${p.y})">
-     <circle r="${r}"></circle><text y="${count?-5:2}">${esc(label)}</text>${sub}
+     <circle r="${r}"></circle>
+     <text y="${count?-5:2}">${esc(label)}</text>
+     ${count?`<text y="18" style="font-size:10px;opacity:.72">${count}陣</text>`:""}
    </g>`;
  }).join("");
 
@@ -3602,7 +3646,7 @@ q("pcRelEventCancel").onclick=()=>{editingEventId="";q("pcRelEventForm").hidden=
 
 function refreshPlayerRelationZoom(){
  const layer=q("playerRelationZoomLayer");
- if(layer)layer.setAttribute("transform",`translate(560 360) scale(${playerRelationZoom}) translate(-560 -360)`);
+ if(layer)layer.setAttribute("transform",`translate(630 410) scale(${playerRelationZoom}) translate(-630 -410)`);
  const b=q("playerRelationZoomReset");if(b)b.textContent=`${Math.round(playerRelationZoom*100)}%`;
 }
 q("playerRelationZoomIn").onclick=()=>{playerRelationZoom=Math.min(2.2,playerRelationZoom+.15);refreshPlayerRelationZoom()};

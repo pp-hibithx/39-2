@@ -10,6 +10,13 @@
 .share-scenario-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:12px}.share-scenario-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}.share-scenario-thumb{width:100%;aspect-ratio:16/10;object-fit:cover;display:block}.share-scenario-placeholder{width:100%;aspect-ratio:16/10;display:grid;place-items:center;font-size:34px}.share-scenario-body{padding:12px}.share-scenario-title{font-weight:700}.share-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}.share-report-block{margin-top:12px;line-height:1.7}.share-report-block>strong{display:block;margin-bottom:4px}.share-spoiler{margin-top:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden}.share-spoiler summary{cursor:pointer;padding:9px 11px;font-weight:700}.share-spoiler .spoiler-body{padding:10px 12px;border-top:1px solid var(--line)}
 @media(max-width:760px){.share-cal{font-size:11px}.share-day{min-height:54px;padding:4px}.share-password-row{display:grid}}
 </style>
+
+<style>
+.schedule-submit-block{display:grid;gap:9px}
+.schedule-submit-field{display:grid;gap:4px}
+.schedule-submit-field input{width:100%}
+#matchSubmitCopy{width:auto;justify-self:start}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav></div></header>
@@ -38,22 +45,25 @@
     box.innerHTML=`<h2>${esc(p.title||"日程すり合わせ")}</h2>
       ${p.scenario?`<div class="share-report-block"><strong>シナリオ</strong><div>${esc(p.scenario)}</div></div>`:""}
       <div class="share-report-block"><strong>候補期間</strong><div>${esc(p.startDate||"")} ～ ${esc(p.endDate||"")}</div></div>
-      <div class="share-report-block">
+      <div class="share-report-block schedule-submit-block">
         <strong>自分の空き日共有URLを提出</strong>
-        <p class="small muted">現在は提出内容を主催者へ直接保存する前段階です。必要な月の空き日共有URLを1行ずつ入力し、「提出用テキストをコピー」で主催者へ送れます。</p>
-        <label>名前</label><input id="matchSubmitName" placeholder="表示名">
-        <label>空き日共有URL</label><textarea id="matchSubmitUrls" rows="5" placeholder="1行1URL"></textarea>
-        <button id="matchSubmitCopy" type="button" style="margin-top:8px">提出用テキストをコピー</button>
-      </div>
-      <div id="matchSubmitState" class="small muted"></div>`;
+        <div class="schedule-submit-field"><label>名前</label><input id="matchSubmitName" placeholder="表示名"></div>
+        <div class="schedule-submit-field"><label>共有URL</label><input id="matchSubmitUrls" type="url" placeholder="https://.../share/index.html?id=..."></div>
+        <button id="matchSubmitCopy" type="button">提出テキストをコピー</button>
+        <div id="matchSubmitState" class="small muted"></div>
+      </div>`;
     const b=document.getElementById("matchSubmitCopy");
     if(b)b.onclick=async()=>{
       const name=document.getElementById("matchSubmitName").value.trim()||"名前未設定";
-      const urls=document.getElementById("matchSubmitUrls").value.trim();
-      if(!urls)return alert("空き日共有URLを入力してください。");
-      const text=`${name}\n${urls}`;
-      try{await navigator.clipboard.writeText(text);document.getElementById("matchSubmitState").textContent="コピーしました。主催者へ送ってください。"}
-      catch(_){prompt("この内容を主催者へ送ってください。",text)}
+      const url=document.getElementById("matchSubmitUrls").value.trim();
+      if(!url)return alert("空き日共有URLを入力してください。");
+      const text=`${name}\n${url}`;
+      try{
+        await navigator.clipboard.writeText(text);
+        document.getElementById("matchSubmitState").textContent="コピーしました。主催者へ送ってください。";
+      }catch(_){
+        prompt("この内容を主催者へ送ってください。",text);
+      }
     };
     return
   }

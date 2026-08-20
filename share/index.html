@@ -55,6 +55,11 @@
 #roomMessageText{width:100%;resize:vertical}
 @media(max-width:650px){.share-room-next{flex-direction:column;align-items:stretch}.share-room-next button,.share-primary-action{width:100%}.candidate-answer-row{grid-template-columns:1fr}.room-message-thread{margin-left:calc(var(--reply-depth) * 10px)}}
 </style>
+
+<style>
+.reschedule-notice{border-color:var(--accent)}
+.room-message-actions .room-reply{font-weight:700}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav></div></header>
@@ -82,9 +87,22 @@
   if(p.kind==="calendar-schedule-match"){
     const submissions=Array.isArray(p.submissions)?p.submissions:[];
     const candidates=Array.isArray(p.candidateDates)?p.candidateDates:[];
-    const confirmed=Array.isArray(p.confirmedDates)?p.confirmedDates:[];
+    const confirmed=p.status==="確定済み"&&Array.isArray(p.confirmedDates)?p.confirmedDates:[];
     const responses=Array.isArray(p.responses)?p.responses:[];
-    const messages=Array.isArray(p.messages)?p.messages:[];
+    let messages=Array.isArray(p.messages)?p.messages.slice():[];
+    let messageMigrationNeeded=false;
+    messages=messages.map((m,i)=>{
+      if(m.id)return m;
+      messageMigrationNeeded=true;
+      return {...m,id:`legacy_${i}_${String(m.at||"").replace(/\W/g,"").slice(-14)||Date.now()}`};
+    });
+    if(messageMigrationNeeded){
+      try{
+        const migrated={...p,messages,updatedAt:new Date().toISOString()};
+        await TRPG39Cloud.updateSharedPage(id,migrated);
+        p=migrated;
+      }catch(e){console.warn("旧コメントIDの補完に失敗",e)}
+    }
     const EDIT_KEY="trpg39.scheduleRoom.commentKeys."+id;
     const ANSWER_NAME_KEY="trpg39.scheduleRoom.name."+id;
     const loadKeys=()=>{try{return JSON.parse(localStorage.getItem(EDIT_KEY)||"{}")}catch(_){return {}}};
@@ -145,6 +163,7 @@
       ${p.scenario?`<div class="share-report-block"><strong>シナリオ</strong><div>${esc(p.scenario)}</div></div>`:""}
       <div class="share-report-block"><strong>候補期間</strong><div>${esc(p.startDate||"")} ～ ${esc(p.endDate||"")}</div></div>
       <div class="share-report-block"><strong>状態</strong><div>${esc(p.status||"調整中")}</div></div>
+      ${p.status==="リスケ中"?`<div class="share-report-block reschedule-notice"><strong>リスケ調整中です</strong><div class="small muted">以前の確定日は解除されています。新しい候補日の案内をお待ちください。</div></div>`:""}
 
       ${confirmed.length?`<div id="confirmedSchedule" class="share-report-block confirmed-schedule-block">
         <strong>日程が確定しました</strong>
@@ -250,7 +269,12 @@
       }catch(e){alert("メッセージを送信できませんでした: "+(e.message||e))}
     };
 
-    document.querySelectorAll(".room-reply").forEach(b=>b.onclick=()=>setReply(b.dataset.messageId,b.dataset.messageName));
+    document.querySelectorAll(".room-reply").forEach(b=>b.onclick=()=>{
+      const mid=b.dataset.messageId||"";
+      if(!mid)return alert("この旧コメントには返信先IDがありません。ページを再読み込みしてからもう一度お試しください。");
+      setReply(mid,b.dataset.messageName||"");
+      document.getElementById("messageBlock")?.scrollIntoView({behavior:"smooth",block:"center"});
+    });
     document.querySelectorAll(".room-edit").forEach(b=>b.onclick=async()=>{
       const messageId=b.dataset.messageId,current=await TRPG39Cloud.getSharedPage(id),msgs=Array.isArray(current.messages)?current.messages.slice():[],i=msgs.findIndex(m=>m.id===messageId);
       if(i<0)return;

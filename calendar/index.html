@@ -385,6 +385,59 @@
   }
 }
 </style>
+
+<style>
+/* v8.3: explicit DOM columns for owner controls/status */
+#scheduleRoomOwnerActions{
+  display:grid!important;
+  grid-template-columns:minmax(220px,1fr) minmax(320px,360px)!important;
+  gap:18px!important;
+  align-items:start!important;
+}
+#scheduleRoomOwnerActions > .schedule-owner-controls,
+#scheduleRoomOwnerActions > .schedule-owner-status-pane{
+  grid-column:auto!important;
+  grid-row:auto!important;
+  min-width:0;
+}
+.schedule-owner-controls{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  align-items:flex-start;
+}
+.schedule-owner-controls > button{
+  width:auto!important;
+  min-width:210px;
+  margin:0!important;
+}
+.schedule-owner-status-pane{
+  align-self:start;
+}
+.schedule-owner-status-pane #scheduleRoomOwnerState{
+  margin:0 0 8px!important;
+  font-weight:700;
+}
+.schedule-owner-status-pane #scheduleRoomResponses{
+  margin:0!important;
+}
+.schedule-owner-status-pane .schedule-owner-status,
+.schedule-owner-status-pane .schedule-confirmed-summary{
+  margin-top:0!important;
+}
+@media(max-width:800px){
+  #scheduleRoomOwnerActions{
+    grid-template-columns:1fr!important;
+  }
+  .schedule-owner-controls,
+  .schedule-owner-status-pane{
+    width:100%;
+  }
+  .schedule-owner-controls > button{
+    width:100%!important;
+  }
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -530,12 +583,16 @@
   <div id="scheduleMatchStatus" class="small muted"></div>
   <div id="scheduleMatchResults" class="schedule-match-results"></div>
   <div id="scheduleRoomOwnerActions" class="schedule-room-owner-actions" hidden>
-    <button id="schedulePublishCandidates" type="button">選択した候補日を調整URLに掲載</button>
-    <button id="scheduleConfirmSelected" type="button" onclick="return window.SAKUMERU_CONFIRM_STANDALONE?.(event)">選択した日程で確定</button>
-    <button id="scheduleReschedule" type="button" class="schedule-reschedule-button" onclick="return window.SAKUMERU_RESCHEDULE_STANDALONE?.(event)">リスケに戻す</button>
-    <button id="scheduleRefreshRoom" type="button" class="text-action">回答・連絡を更新</button>
-    <div id="scheduleRoomOwnerState" class="small muted"></div>
-    <div id="scheduleRoomResponses"></div>
+    <div class="schedule-owner-controls">
+      <button id="schedulePublishCandidates" type="button">選択した候補日を調整URLに掲載</button>
+      <button id="scheduleConfirmSelected" type="button" onclick="return window.SAKUMERU_CONFIRM_STANDALONE?.(event)">選択した日程で確定</button>
+      <button id="scheduleReschedule" type="button" class="schedule-reschedule-button" onclick="return window.SAKUMERU_RESCHEDULE_STANDALONE?.(event)">リスケに戻す</button>
+      <button id="scheduleRefreshRoom" type="button" class="text-action">回答・連絡を更新</button>
+    </div>
+    <div class="schedule-owner-status-pane">
+      <div id="scheduleRoomOwnerState" class="small muted"></div>
+      <div id="scheduleRoomResponses"></div>
+    </div>
   </div>
 </section>
 

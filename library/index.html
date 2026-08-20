@@ -813,7 +813,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.4.6</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.4.8</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -852,7 +852,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
       <span class="player-rel-frequency-note">中心人物との線を強調しつつ、同卓者同士の線も薄く表示します。1陣だけの人ほど外側に配置します。</span>
     </div>
     <div id="playerRelationStage" class="player-rel-stage"></div>
-    <div class="pc-rel-legend">線の太さ＝同卓した陣数。複数日卓は1陣として数えます。人物を選ぶと同卓陣を確認できます。</div>
+    <div class="pc-rel-legend">線の太さ＝同卓した卓数。複数日卓は1卓として数えます。人物を選ぶと同卓した卓を確認できます。</div>
     <div id="playerRelationDetail" class="player-rel-detail"></div>
   </div>
 </div>
@@ -1405,7 +1405,7 @@ function groupData(xs){
    // 既存データは書き換えず、表示時だけ陣名を補完する。
    let displayKpNo=0;
    g.runs.forEach(r=>{
-     // 自分がPLとして参加した陣は、保存済みrunLabelより「自陣」を優先して表示する。
+     // 自分がPLとして参加した卓は、保存済みrunLabelより「自陣」を優先して表示する。
      const selfRoles=new Set((r.items||[]).map(x=>String(x.role||"").toUpperCase()).filter(Boolean));
      if(selfRoles.has("PL")){
        r.label="自陣";
@@ -3081,21 +3081,26 @@ function playerRelRunGroups(){
 }
 function playerRelRunPeople(run){
  const people=new Map();
- const add=(id,name,role)=>{
+ const add=(id,name,role,ho="")=>{
    if(!id||!name)return;
-   if(!people.has(id))people.set(id,{id,name,roles:new Set()});
-   if(role)people.get(id).roles.add(String(role));
+   if(!people.has(id))people.set(id,{id,name,roles:new Set(),roleLabels:new Set()});
+   const p=people.get(id);
+   if(role)p.roles.add(String(role));
+   const roleName=role?playerRoleLabel(String(role)):"";
+   const hoName=String(ho||"").trim();
+   if(roleName||hoName)p.roleLabels.add([roleName,hoName].filter(Boolean).join("/"));
  };
  (run.items||[]).forEach(x=>{
    const selfRole=displayRoleForRecord(x)||x.role||"";
-   // "自分"はPLAYERSには登録しない仮想ノード。
-   // 旧記録でroleが空でも、このLIBRARY記録そのものに参加した本人として必ず含める。
-   add(PLAYER_REL_SELF_ID,playerRelSelfName(),selfRole||"参加");
+   const selfRows=storedSelfPcRows(x);
+   const selfHos=[...new Set(selfRows.map(r=>String(r.ho||"").trim()).filter(Boolean))];
+   if(selfHos.length)selfHos.forEach(ho=>add(PLAYER_REL_SELF_ID,playerRelSelfName(),selfRole||"参加",ho));
+   else add(PLAYER_REL_SELF_ID,playerRelSelfName(),selfRole||"参加",x.selfHo||"");
 
    rowsFromRecord(x).forEach(r=>{
      const hit=playerRelPlayerForRow(r);
      if(!hit)return;
-     add(String(hit.id),String(hit.name||hit.publicName||"").trim(),r.role||"PL");
+     add(String(hit.id),String(hit.name||hit.publicName||"").trim(),r.role||"PL",r.ho||"");
    });
  });
  return [...people.values()];
@@ -3129,7 +3134,8 @@ function buildPlayerRelationshipGraph(focusId){
        title:first.title||scenarioById(first.scenarioId||"")?.title||"名称未設定",
        scenarioId:first.scenarioId||"",
        date:(run.items||[]).map(x=>x.date).filter(Boolean).sort()[0]||"",
-       roles:[...p.roles]
+       roles:[...p.roles],
+       roleLabels:[...p.roleLabels]
      });
    });
    for(let i=0;i<people.length;i++){
@@ -3161,15 +3167,16 @@ function showPlayerRelationNodeDetail(graph,id){
  const n=graph.nodes.find(x=>x.id===id);if(!n)return;
  const connections=graph.edges.filter(e=>e.a===id||e.b===id);
  const focusEdge=graph.edges.find(e=>(e.a===graph.focusId&&e.b===id)||(e.b===graph.focusId&&e.a===id));
- const runs=(focusEdge?[...focusEdge.runs.values()].map(r=>({...r,roles:n.runs.get(r.id)?.roles||[]})):[...n.runs.values()]).sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
+ const runs=(focusEdge?[...focusEdge.runs.values()].map(r=>({...r,roles:n.runs.get(r.id)?.roles||[],roleLabels:n.runs.get(r.id)?.roleLabels||[]})):[...n.runs.values()]).sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
  q("playerRelationDetail").innerHTML=`<div class="player-rel-detail-card">
    <strong>${esc(n.name)}</strong>${n.self?` <span class="small muted">［自分］</span>`:""}
    <div class="library-dir-meta">${id===graph.focusId?`同卓ネットワーク：${connections.length}人`:`中心人物との同卓：${focusEdge?.count||0}陣`}</div>
 
    ${id!==graph.focusId?`<button type="button" class="player-rel-center" data-player-rel-center="${esc(id)}">この人を中心に見る</button>`:""}
-   <div style="margin-top:10px"><strong>${id===graph.focusId?"参加した陣":"中心人物との同卓陣"}</strong>
+   <div style="margin-top:10px"><strong>${id===graph.focusId?"参加した卓":"中心人物との同卓した卓"}</strong>
      ${runs.length?runs.map(r=>{
-       const roles=[...new Set((r.roles||[]).filter(x=>x&&x!=="参加").map(playerRoleLabel))];
+       const labels=[...new Set((r.roleLabels||[]).filter(Boolean))];
+       const roles=labels.length?labels:[...new Set((r.roles||[]).filter(x=>x&&x!=="参加").map(playerRoleLabel))];
        const roleText=roles.length?` <span class="small muted">［${esc(roles.join("・"))}］</span>`:"";
        return `<div class="player-rel-run">${r.date?`${esc(r.date)} ／ `:""}${esc(r.title)}${roleText}</div>`;
      }).join(""):'<div class="small muted">該当する記録はありません。</div>'}
@@ -3296,7 +3303,7 @@ function renderPlayerRelationshipGraph(focusId){
    return `<g class="player-rel-node ${isFocus?"focus":""} ${n.self?"self":""}" data-player-rel-node="${esc(n.id)}" transform="translate(${p.x} ${p.y})">
      <circle r="${r}"></circle>
      <text y="${count?-5:2}">${esc(label)}</text>
-     ${count?`<text y="18" style="font-size:10px;opacity:.72">${count}陣</text>`:""}
+     ${count?`<text y="18" style="font-size:10px;opacity:.72">${count}卓</text>`:""}
    </g>`;
  }).join("");
 

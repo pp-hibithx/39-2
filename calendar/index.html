@@ -169,6 +169,10 @@
 #scheduleNextAction{width:auto;min-width:150px;flex:0 0 auto}
 @media(max-width:650px){.schedule-next-card{align-items:stretch;flex-direction:column}#scheduleNextAction{width:100%}}
 </style>
+
+<style>
+.schedule-participant-note{margin-top:6px}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -303,7 +307,8 @@
   </div>
 
   <div id="scheduleMatchPeople" class="schedule-match-people"></div>
-  <button id="scheduleMatchAddPerson" type="button" class="text-action">＋ 人を追加</button>
+  <div class="small muted schedule-participant-note">辞退者は「辞退・削除」でこの調整案件から外せます。提出済みデータと回答も削除されます。</div>
+  <button id="scheduleMatchAddPerson" type="button" class="text-action">＋ 参加者を追加</button>
 
   <div class="schedule-match-actions">
     <button id="scheduleMatchLoadSubmissions" type="button">提出済みを読み込む</button>
@@ -765,35 +770,41 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  function addPerson(v={}){
    const row=document.createElement("div");
    row.className="schedule-match-person";
+   row.dataset.playerName=String(v.name||"");
    row.innerHTML=`<div class="schedule-match-person-line">
      <div><label>名前</label><input class="schedule-match-name" value="${String(v.name||"").replace(/"/g,"&quot;")}" placeholder="Aさん"></div>
      <div class="schedule-match-url-cell"><label>共有URL</label><input class="schedule-match-urls" type="url" value="${String(v.urls||"").replace(/"/g,"&quot;")}" placeholder="https://.../share/index.html?id=..."></div>
      <label class="schedule-match-save-player"><input type="checkbox" class="schedule-match-save-player-check"> PLAYERSに保存</label>
-     <button type="button" class="danger schedule-match-remove">削除</button>
+     <button type="button" class="danger schedule-match-remove">${v.submitted?"辞退・削除":"削除"}</button>
    </div><div class="schedule-match-person-state small muted">${v.submitted?"提出済み":""}</div>`;
    peopleBox.appendChild(row);
-   row.querySelector(".schedule-match-remove").onclick=()=>row.remove();
- }
- async function loadCaseSubmissions(){
-   const saved=loadCase();
-   if(!saved?.id)return alert("先に日程すり合わせ用URLを発行してください。");
-   if(!(window.TRPG39Cloud&&TRPG39Cloud.getSharedPage))return alert("共有データ読込機能がありません。");
-   $("scheduleMatchStatus").textContent="提出状況を読み込んでいます…";
-   try{
-     const p=await TRPG39Cloud.getSharedPage(saved.id);
-     if(!p||p.kind!=="calendar-schedule-match")throw new Error("日程すり合わせデータが見つかりません。");
-     const submissions=Array.isArray(p.submissions)?p.submissions:[];
-     peopleBox.innerHTML="";
-     submissions.forEach(x=>addPerson({name:x.name||"",urls:x.availabilityUrl||"",submitted:true}));
-     if(!submissions.length)addPerson({});
-     $("scheduleMatchStatus").textContent=submissions.length?`${submissions.length}人が提出済みです。`:"まだ提出はありません。";
-     saveCase({id:saved.id,payload:p});
-     updateScheduleGuide(p);
-   }catch(e){
-     console.error(e);
-     $("scheduleMatchStatus").textContent="";
-     alert("提出状況を読み込めませんでした: "+(e.message||e));
-   }
+   row.querySelector(".schedule-match-remove").onclick=async()=>{
+     const name=row.querySelector(".schedule-match-name").value.trim()||row.dataset.playerName||"";
+     if(v.submitted && name){
+       if(!confirm(`${name}さんをこの日程調整から外しますか？\n提出・回答データも削除します。`))return;
+       try{
+         const saved=loadCase();
+         if(saved?.id&&window.TRPG39Cloud?.getSharedPage&&TRPG39Cloud.updateSharedPage){
+           const p=await TRPG39Cloud.getSharedPage(saved.id);
+           if(p?.kind==="calendar-schedule-match"){
+             const key=name.normalize("NFKC").trim().toLowerCase();
+             const submissions=(p.submissions||[]).filter(x=>String(x.name||"").normalize("NFKC").trim().toLowerCase()!==key);
+             const responses=(p.responses||[]).filter(x=>String(x.name||"").normalize("NFKC").trim().toLowerCase()!==key);
+             const next={...p,submissions,responses,updatedAt:new Date().toISOString()};
+             await TRPG39Cloud.updateSharedPage(saved.id,next);
+             upsertCase({id:saved.id,payload:next});
+             updateScheduleGuide(next);
+           }
+         }
+       }catch(e){
+         console.error(e);
+         alert("参加者を削除できませんでした: "+(e.message||e));
+         return;
+       }
+     }
+     row.remove();
+     renderSavedCases();
+   };
  }
  function sharedIdFromUrl(text){
    const raw=String(text||"").trim();

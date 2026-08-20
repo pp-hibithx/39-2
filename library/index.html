@@ -813,7 +813,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.4.5</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.4.6</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -3161,14 +3161,18 @@ function showPlayerRelationNodeDetail(graph,id){
  const n=graph.nodes.find(x=>x.id===id);if(!n)return;
  const connections=graph.edges.filter(e=>e.a===id||e.b===id);
  const focusEdge=graph.edges.find(e=>(e.a===graph.focusId&&e.b===id)||(e.b===graph.focusId&&e.a===id));
- const runs=focusEdge?[...focusEdge.runs.values()].sort((a,b)=>String(a.date||"").localeCompare(String(b.date||""))):[...n.runs.values()].sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
+ const runs=(focusEdge?[...focusEdge.runs.values()].map(r=>({...r,roles:n.runs.get(r.id)?.roles||[]})):[...n.runs.values()]).sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
  q("playerRelationDetail").innerHTML=`<div class="player-rel-detail-card">
    <strong>${esc(n.name)}</strong>${n.self?` <span class="small muted">［自分］</span>`:""}
    <div class="library-dir-meta">${id===graph.focusId?`同卓ネットワーク：${connections.length}人`:`中心人物との同卓：${focusEdge?.count||0}陣`}</div>
-   ${[...n.roles].filter(r=>r!=="参加").length?`<div class="library-dir-meta">記録された役割：${esc([...n.roles].filter(r=>r!=="参加").map(playerRoleLabel).join("、"))}</div>`:""}
+
    ${id!==graph.focusId?`<button type="button" class="player-rel-center" data-player-rel-center="${esc(id)}">この人を中心に見る</button>`:""}
    <div style="margin-top:10px"><strong>${id===graph.focusId?"参加した陣":"中心人物との同卓陣"}</strong>
-     ${runs.length?runs.map(r=>`<div class="player-rel-run">${r.date?`${esc(r.date)} ／ `:""}${esc(r.title)}</div>`).join(""):'<div class="small muted">該当する記録はありません。</div>'}
+     ${runs.length?runs.map(r=>{
+       const roles=[...new Set((r.roles||[]).filter(x=>x&&x!=="参加").map(playerRoleLabel))];
+       const roleText=roles.length?` <span class="small muted">［${esc(roles.join("・"))}］</span>`:"";
+       return `<div class="player-rel-run">${r.date?`${esc(r.date)} ／ `:""}${esc(r.title)}${roleText}</div>`;
+     }).join(""):'<div class="small muted">該当する記録はありません。</div>'}
    </div>
  </div>`;
  const btn=q("playerRelationDetail").querySelector("[data-player-rel-center]");

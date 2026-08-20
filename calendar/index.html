@@ -426,12 +426,18 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  btn.onclick=async()=>{
    try{
      const events=(window.TRPG39&&TRPG39.loadEvents)?TRPG39.loadEvents():[];
-     const monthInput=document.querySelector('input[type="month"]');
-     let ym=monthInput?.value;
-     if(!ym){
-       const now=new Date();ym=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+     // Share the month currently selected in the CALENDAR UI.
+     // Latest CALENDAR uses separate year/month controls, not input[type="month"].
+     const yearInput=document.getElementById("yearJump");
+     const monthSelect=document.getElementById("monthJump");
+     let y=Number(yearInput?.value);
+     let m=Number(monthSelect?.value);
+     if(!Number.isInteger(y)||y<1900||y>2100||!Number.isInteger(m)||m<1||m>12){
+       const now=new Date();
+       y=now.getFullYear();
+       m=now.getMonth()+1;
      }
-     const [y,m]=ym.split("-").map(Number);
+     const ym=String(y)+"-"+String(m).padStart(2,"0");
      const last=new Date(y,m,0).getDate();
      const busy=new Set(events.filter(e=>String(e.start||"").slice(0,7)===ym&&((e.type==="blocked")||["tentative","planned"].includes(e.status))).map(e=>String(e.start||"").slice(0,10)));
      const days=[];
@@ -450,5 +456,6 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
 })();
 </script>
 
+<!-- availability-share-month-fix 2026-08-20 -->
 </body>
 </html>

@@ -966,16 +966,21 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
  }
 
  async function markRescheduling(){
+   // Ask first. Do not make the user wait for network before seeing the choice.
+   const keepSchedule=confirm(
+     "リスケ方法を選びます。\n\n"+
+     "［OK］参加者変更だけ\n"+
+     "　→ 現在の候補日と既存メンバーの○△×を残します。\n"+
+     "　　新しい参加者だけ回答すれば再確定できます。\n\n"+
+     "［キャンセル］日程変更\n"+
+     "　→ 候補日と○△×を解除して、全員で日程を決め直します。"
+   );
+
    try{
+     $("scheduleRoomOwnerState").textContent=
+       keepSchedule?"参加者変更としてリスケ処理中…":"日程変更としてリスケ処理中…";
+
      const {id,p}=await getCurrentRoom();
-     const keepSchedule=confirm(
-       "リスケ方法を選びます。\n\n"+
-       "［OK］参加者変更だけ\n"+
-       "　→ 現在の候補日と既存メンバーの○△×を残します。\n"+
-       "　　新しい参加者だけ回答すれば再確定できます。\n\n"+
-       "［キャンセル］日程変更\n"+
-       "　→ 候補日と○△×を解除して、全員で日程を決め直します。"
-     );
 
      const history=Array.isArray(p.confirmationHistory)?p.confirmationHistory.slice():[];
      if((p.confirmedDates||[]).length){
@@ -989,10 +994,10 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
 
      let next;
      if(keepSchedule){
-       // Keep the previously confirmed dates as the new candidate dates.
-       // Existing responses are preserved; removed participants' responses
-       // have already been deleted by the participant-removal workflow.
-       const retainedDates=[...(p.confirmedDates||p.candidateDates||[])];
+       const retainedDates=(p.confirmedDates||[]).length
+         ? [...p.confirmedDates]
+         : [...(p.candidateDates||[])];
+
        next={
          ...p,
          status:"候補確認中",
@@ -1018,20 +1023,27 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
        };
      }
 
+     if(!(window.TRPG39Cloud&&TRPG39Cloud.updateSharedPage)){
+       throw new Error("共有データ更新機能がありません。");
+     }
+
      await TRPG39Cloud.updateSharedPage(id,next);
      upsertCase({id,payload:next});
      updateScheduleGuide(next);
 
      if(keepSchedule){
        $("scheduleRoomOwnerState").textContent=
-         "参加者変更として再調整中です。既存回答を保持しています。新しい参加者の回答を待ってください。";
+         "参加者変更として再調整中です。既存回答は保持されています。";
      }else{
        $("scheduleRoomOwnerState").textContent=
          "日程変更としてリスケ中です。空き日を再照合してください。";
      }
+
      await refreshRoom();
    }catch(e){
-     alert("リスケ状態に変更できませんでした: "+(e.message||e))
+     console.error("reschedule update failed",e);
+     $("scheduleRoomOwnerState").textContent="リスケ処理に失敗しました。";
+     alert("リスケ状態に変更できませんでした: "+(e.message||e));
    }
  }
   async function refreshRoom(){
@@ -1184,8 +1196,6 @@ TRPG39.syncAllEventsToAlbum();fillScenarioSelect();resetForm();hideEditor();rend
     if(btn.id==="scheduleReschedule"){
       e.preventDefault();
       e.stopImmediatePropagation();
-      const status=document.getElementById("scheduleRoomOwnerState");
-      if(status)status.textContent="リスケ処理を開始しています…";
       if(typeof window.__SAKUMERU_RESCHEDULE__==="function"){
         window.__SAKUMERU_RESCHEDULE__();
       }else{

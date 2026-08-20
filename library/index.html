@@ -822,7 +822,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.5.1</div></main>
+</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.5.2</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1095,6 +1095,21 @@ function migrateRunIds(){
 migrateRunIds();
 
 const persist=()=>TRPG39.saveAlbum(data);
+const X_REPORT_STORE_KEY="trpg39.library.xReports.v1";
+function loadXReportStore(){
+ try{return JSON.parse(localStorage.getItem(X_REPORT_STORE_KEY)||"{}")||{}}catch(_){return {}}
+}
+function getXReport(id){
+ const v=loadXReportStore()[String(id)]||{};
+ return {url:String(v.url||""),text:String(v.text||"")};
+}
+function setXReport(id,url,text){
+ const all=loadXReportStore(),key=String(id);
+ const value={url:String(url||"").trim(),text:String(text||"").trim()};
+ if(value.url||value.text)all[key]=value;else delete all[key];
+ localStorage.setItem(X_REPORT_STORE_KEY,JSON.stringify(all));
+}
+
 const showEditor=()=>q("libraryEditor").hidden=false;
 const hideEditor=()=>q("libraryEditor").hidden=true;
 
@@ -1362,6 +1377,7 @@ function save(){
    item=TRPG39.normalizeAlbum({...item,eventId,date:String(item.start).slice(0,10)});
    i=data.findIndex(x=>x.id===item.id);if(i>=0)data[i]=item;
  }
+ setXReport(item.id,q("xReportUrl").value,q("xReportText").value);
  const selfRoleForHoTemplate=String(item.role||"").toUpperCase();
  if(["KP","DL","GM","KPGM","SKP"].includes(selfRoleForHoTemplate)){
    if(q("rememberParticipantHo").checked)setParticipantHoTemplate(item.scenarioId,item.title,getParticipantRows());
@@ -1371,7 +1387,7 @@ function save(){
 }
 function edit(id){
  let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";const st=splitLibraryDateTime(x.start||x.date||""),en=splitLibraryDateTime(x.end||"");q("date").value=x.date||st.date||"";q("startTime").value=st.time||"";q("endTime").value=en.time||"";q("sessionKind").value=sessionKindForRecord(x);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setSelfPcRows(storedSelfPcRows(x));setParticipantRows(rowsFromRecord(x));q("rememberParticipantHo").checked=getParticipantHoTemplate(x.scenarioId,x.title).length>0;q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";q("xReportUrl").value=x.xReportUrl||"";q("xReportText").value=x.xReportText||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
+ q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";const st=splitLibraryDateTime(x.start||x.date||""),en=splitLibraryDateTime(x.end||"");q("date").value=x.date||st.date||"";q("startTime").value=st.time||"";q("endTime").value=en.time||"";q("sessionKind").value=sessionKindForRecord(x);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setSelfPcRows(storedSelfPcRows(x));setParticipantRows(rowsFromRecord(x));q("rememberParticipantHo").checked=getParticipantHoTemplate(x.scenarioId,x.title).length>0;q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";const xr=getXReport(x.id);q("xReportUrl").value=xr.url||x.xReportUrl||"";q("xReportText").value=xr.text||x.xReportText||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -1640,7 +1656,8 @@ function diceAnalysisHtml(x){
 }
 
 function xReportHtml(x){
- const url=String(x?.xReportUrl||"").trim(),text=String(x?.xReportText||"").trim();
+ const stored=x?.id?getXReport(x.id):{url:"",text:""};
+ const url=String(stored.url||x?.xReportUrl||"").trim(),text=String(stored.text||x?.xReportText||"").trim();
  if(!url&&!text)return "";
  let link="";
  if(url){

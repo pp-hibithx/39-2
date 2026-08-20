@@ -25,6 +25,13 @@
 .room-message{display:grid;grid-template-columns:minmax(90px,150px) 1fr;gap:8px;padding:7px 0;border-top:1px solid var(--line)}
 #roomMessageSend{width:auto;margin-top:7px}
 </style>
+
+<style>
+.confirmed-schedule-block{border-color:var(--accent)}
+.confirmed-date-list{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}
+.confirmed-date{padding:7px 10px;border:1px solid var(--accent);border-radius:999px;font-weight:700}
+.candidate-answer-row.confirmed{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav></div></header>
@@ -52,12 +59,20 @@
   if(p.kind==="calendar-schedule-match"){
     const submissions=Array.isArray(p.submissions)?p.submissions:[];
     const candidates=Array.isArray(p.candidateDates)?p.candidateDates:[];
+    const confirmed=Array.isArray(p.confirmedDates)?p.confirmedDates:[];
     const responses=Array.isArray(p.responses)?p.responses:[];
     const messages=Array.isArray(p.messages)?p.messages:[];
     box.innerHTML=`<h2>${esc(p.title||"日程すり合わせ")}</h2>
       ${p.scenario?`<div class="share-report-block"><strong>シナリオ</strong><div>${esc(p.scenario)}</div></div>`:""}
       <div class="share-report-block"><strong>候補期間</strong><div>${esc(p.startDate||"")} ～ ${esc(p.endDate||"")}</div></div>
       <div class="share-report-block"><strong>状態</strong><div>${esc(p.status||"調整中")}</div></div>
+
+      ${confirmed.length?`<div class="share-report-block confirmed-schedule-block">
+        <strong>日程が確定しました</strong>
+        <div class="confirmed-date-list">${confirmed.map(d=>`<div class="confirmed-date">${esc(d)}</div>`).join("")}</div>
+        <div class="small muted">各自、自分のCALENDARや予定表への登録をお願いします。</div>
+      </div>`:""}
+
       <div class="share-report-block schedule-submit-block">
         <strong>自分の空き日共有URLを提出</strong>
         <div class="schedule-submit-field"><label>名前</label><input id="matchSubmitName" placeholder="表示名"></div>
@@ -65,8 +80,18 @@
         <button id="matchSubmitDirect" type="button">提出</button>
         <div id="matchSubmitState" class="small muted"></div>
       </div>
-      ${candidates.length?`<div class="share-report-block"><strong>候補日への回答</strong><div id="candidateAnswers">${candidates.map(d=>`<div class="candidate-answer-row"><span>${esc(d)}</span><div><button type="button" data-answer-date="${esc(d)}" data-answer="○">○ 了承</button><button type="button" data-answer-date="${esc(d)}" data-answer="△">△ 保留</button><button type="button" data-answer-date="${esc(d)}" data-answer="×">× 難しい</button></div></div>`).join("")}</div><div id="candidateAnswerState" class="small muted"></div></div>`:""}
-      <div class="share-report-block"><strong>連絡</strong><div class="schedule-submit-field"><label>名前</label><input id="roomMessageName" placeholder="表示名"></div><div class="schedule-submit-field"><label>メッセージ</label><input id="roomMessageText" placeholder="例：9/12が難しくなりました。ごめんなさい！"></div><button id="roomMessageSend" type="button">送信</button><div class="room-message-list">${messages.slice().sort((a,b)=>String(a.at||"").localeCompare(String(b.at||""))).map(m=>`<div class="room-message"><strong>${esc(m.name||"")}</strong><span>${esc(m.text||"")}</span></div>`).join("")||'<div class="small muted">まだ連絡はありません。</div>'}</div></div>`;
+
+      ${candidates.length?`<div class="share-report-block"><strong>候補日への回答</strong><div id="candidateAnswers">${candidates.map(d=>`<div class="candidate-answer-row ${confirmed.includes(d)?"confirmed":""}">
+        <span>${esc(d)}${confirmed.includes(d)?' <span class="badge">確定</span>':""}</span>
+        <div><button type="button" data-answer-date="${esc(d)}" data-answer="○">○ 了承</button><button type="button" data-answer-date="${esc(d)}" data-answer="△">△ 保留</button><button type="button" data-answer-date="${esc(d)}" data-answer="×">× 難しい</button></div>
+      </div>`).join("")}</div><div id="candidateAnswerState" class="small muted"></div></div>`:""}
+
+      <div class="share-report-block"><strong>連絡</strong>
+        <div class="schedule-submit-field"><label>名前</label><input id="roomMessageName" placeholder="表示名"></div>
+        <div class="schedule-submit-field"><label>メッセージ</label><input id="roomMessageText" placeholder="例：9/12が難しくなりました。ごめんなさい！"></div>
+        <button id="roomMessageSend" type="button">送信</button>
+        <div class="room-message-list">${messages.slice().sort((a,b)=>String(a.at||"").localeCompare(String(b.at||""))).map(m=>`<div class="room-message"><strong>${esc(m.name||"")}</strong><span>${esc(m.text||"")}</span></div>`).join("")||'<div class="small muted">まだ連絡はありません。</div>'}</div>
+      </div>`;
 
     const submit=document.getElementById("matchSubmitDirect");
     if(submit)submit.onclick=async()=>{

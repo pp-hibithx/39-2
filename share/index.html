@@ -22,6 +22,11 @@
 .share-bgm{padding:12px;border-left:3px solid var(--accent);border-radius:8px;background:rgba(255,255,255,.02);display:grid;gap:7px}.share-bgm audio{width:100%}
 @media(max-width:620px){.share-conversation-line{grid-template-columns:1fr;gap:3px}}
 </style>
+<style>
+.share-password-hint{margin:10px 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.025)}
+.share-password-hint span{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+.share-password-hint div{overflow-wrap:anywhere}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav></div></header>
@@ -47,7 +52,7 @@
  const renderArticle=p=>{const blocks=Array.isArray(p.blocks)?p.blocks:[];const body=blocks.length?blocks.map(sharedBlockHtml).join(""):`<div class="share-article-body">${esc(p.body||"").replace(/\n/g,"<br>")}</div>`;box.innerHTML=`<div class="share-article-head"><div class="small muted">${esc([p.scenarioTitle,p.runLabel].filter(Boolean).join(" ／ "))}</div><h2>${esc(p.title||"卓記事")}</h2>${p.updatedAt?`<div class="small muted">更新 ${esc(p.updatedAt)}</div>`:""}</div><div class="share-article-blocks">${body}</div>`};
  const unlockArticle=p=>{
    if(!p.passwordRequired){renderArticle(p);return}
-   box.innerHTML=`<div class="share-password"><h2>パスワード保護された卓記事です</h2><p class="small muted">共有者から案内されたパスワードを入力してください。</p><div class="share-password-row"><div><label>パスワード</label><input id="articleSharePassword" type="password" autocomplete="current-password"></div><button id="articleShareUnlock" type="button">開く</button></div><div id="articleShareError" class="share-password-error"></div></div>`;
+   box.innerHTML=`<div class="share-password"><h2>パスワード保護された卓記事です</h2><p class="small muted">共有者から案内されたパスワードを入力してください。</p>${p.passwordHint?`<div class="share-password-hint"><span>ヒント</span><div>${esc(p.passwordHint)}</div></div>`:""}<div class="share-password-row"><div><label>パスワード</label><input id="articleSharePassword" type="password" autocomplete="current-password"></div><button id="articleShareUnlock" type="button">開く</button></div><div id="articleShareError" class="share-password-error"></div></div>`;
    const input=document.getElementById("articleSharePassword"),btn=document.getElementById("articleShareUnlock"),err=document.getElementById("articleShareError");
    const check=async()=>{const hash=await sha256Text(input.value);if(hash===String(p.passwordHash||"")){renderArticle(p)}else{err.textContent="パスワードが違います。";input.select()}};btn.onclick=check;input.onkeydown=e=>{if(e.key==="Enter")check()};input.focus();
  };

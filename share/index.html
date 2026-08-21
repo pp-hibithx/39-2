@@ -27,6 +27,15 @@
 .share-password-hint span{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
 .share-password-hint div{overflow-wrap:anywhere}
 </style>
+
+<style>
+.share-conversation-line{display:grid;grid-template-columns:minmax(120px,180px) minmax(0,1fr);gap:10px;align-items:start}
+.share-conversation-speaker{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.035);min-width:0}
+.share-conversation-speaker strong{min-width:0;overflow-wrap:anywhere}
+.share-conversation-avatar{width:36px;height:36px;flex:0 0 36px;border-radius:50%;object-fit:cover;object-position:top center;border:1px solid var(--line);background:var(--panel)}
+.share-conversation-text{padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.035);white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:620px){.share-conversation-line{grid-template-columns:1fr;gap:4px}}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav></div></header>
@@ -44,7 +53,7 @@
    if(!b||!b.type)return "";
    if(b.type==="text")return `<div class="share-block-text">${esc(b.text||"").replace(/\n/g,"<br>")}</div>`;
    if(b.type==="image"){const u=String(b.url||"").trim();return u?`<figure class="share-block-image"><img src="${esc(u)}" alt="${esc(b.caption||"")}" loading="lazy">${b.caption?`<figcaption>${esc(b.caption)}</figcaption>`:""}</figure>`:`<div class="share-block-placeholder">画像未設定</div>`}
-   if(b.type==="conversation"){const lines=conversationLines(b);return `<section class="share-conversation">${b.caption?`<h3>${esc(b.caption)}</h3>`:""}${lines.map(v=>`<div class="share-conversation-line">${v.speaker?`<strong>${esc(v.speaker)}</strong>`:""}<div>${esc(v.text||"")}</div></div>`).join("")}</section>`}
+   if(b.type==="conversation"){const lines=conversationLines(b);return `<section class="share-conversation">${b.caption?`<h3>${esc(b.caption)}</h3>`:""}${lines.map(v=>{const name=String(v.pcName||v.speaker||"").trim(),image=String(v.pcImage||"").trim();return `<div class="share-conversation-line">${name?`<div class="share-conversation-speaker">${image?`<img class="share-conversation-avatar" src="${esc(image)}" alt="" loading="lazy">`:""}<strong>${esc(name)}</strong></div>`:""}<div class="share-conversation-text">${esc(v.text||"")}</div></div>`}).join("")}</section>`}
    if(b.type==="youtube"){const id=youtubeId(b.url);return id?`<div class="share-youtube-wrap">${b.caption?`<strong>${esc(b.caption)}</strong>`:""}<div class="share-youtube"><iframe src="https://www.youtube-nocookie.com/embed/${esc(id)}" title="YouTube video player" loading="lazy" allowfullscreen></iframe></div></div>`:""}
    if(b.type==="bgm"){const audio=String(b.audioUrl||"").trim(),source=String(b.sourceUrl||"").trim();return `<section class="share-bgm"><strong>${esc(b.title||"BGM")}</strong>${b.artist?`<div class="small muted">${esc(b.artist)}</div>`:""}${audio?`<audio controls preload="none" src="${esc(audio)}"></audio>`:""}${source?`<div><a href="${esc(source)}" target="_blank" rel="noopener noreferrer">配布元・参照先を開く</a></div>`:""}${!audio&&b.localAudioId?`<div class="small muted">この端末だけに保存された音声は共有されません。</div>`:""}${b.memo?`<div>${esc(b.memo).replace(/\n/g,"<br>")}</div>`:""}</section>`}
    return "";

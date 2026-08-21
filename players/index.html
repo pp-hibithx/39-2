@@ -3244,12 +3244,16 @@ function playerHistoryCardHtml(v){
  // 代表スクショはこれまでどおり、全日程から最初に見つかったものを使用する。
  const dateText=dates[0]||"";
  const hoText=cleanPlayerFieldValue(row.ho,"HO");
- const meta=[playerRecordSystem(v),dateText,v.role?`役割：${playerRoleLabel(v.role)}`:"",hoText,row.pcName?`PC：${row.pcName}`:""].filter(Boolean).join(" ／ ");
+ const roleText=v.role?playerRoleLabel(v.role):"";
+ const pcText=cleanPlayerFieldValue(row.pcName,"PC");
+ const metaLine1=[playerRecordSystem(v),dateText].filter(Boolean).join(" ／ ");
+ const metaLine2=[roleText,hoText,pcText].filter(Boolean).join(" ／ ");
  return `<article class="player-history-card">
    ${image?`<img class="player-history-thumb" src="${esc(image)}" alt="" loading="lazy">`:`<div class="player-history-placeholder">🌺</div>`}
    <div class="player-history-body">
      <div class="player-history-title">${esc(x.title||scenario.title||"名称未設定")}</div>
-     ${meta?`<div class="player-history-meta">${esc(meta)}</div>`:""}
+     ${metaLine1?`<div class="player-history-meta">${esc(metaLine1)}</div>`:""}
+     ${metaLine2?`<div class="player-history-meta">${esc(metaLine2)}</div>`:""}
      ${x.scenarioId?`<div style="margin-top:7px"><a class="link" href="?view=scenario&scenario=${encodeURIComponent(x.scenarioId)}">卓記録を見る</a></div>`:""}
    </div>
  </article>`;

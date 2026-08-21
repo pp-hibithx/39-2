@@ -809,7 +809,14 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .conversation-import-row span{white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:650px){.conversation-import-row{grid-template-columns:auto 1fr}.conversation-import-row span{grid-column:2}}
 </style>
-</head>
+<style>
+.conversation-speaker-map{margin:4px 0 12px;padding:10px;border:1px solid var(--line);border-radius:9px}
+.conversation-speaker-map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:7px;margin-top:8px}
+.conversation-speaker-map-grid label{display:grid;gap:3px}.conversation-speaker-map-grid span{font-size:12px;font-weight:700}
+.conversation-import-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,220px);gap:7px;margin:8px 0}
+.conversation-import-row[hidden]{display:none!important}
+@media(max-width:650px){.conversation-import-controls{grid-template-columns:1fr}}
+</style></head>
 <body>
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
@@ -2232,11 +2239,28 @@ function conversationParseAny(raw){
  if(t[0]==="{"||t[0]==="["){try{const rows=conversationCollectJson(JSON.parse(t),[]);if(rows.length)return rows}catch(_){}}
  return conversationParseText(t);
 }
+function conversationPcChoices(){
+ const out=[];try{(pcs||[]).forEach(p=>{const name=String(p.name||p.pcName||p.characterName||"").trim();if(name)out.push(name)})}catch(_){}
+ return [...new Set(out)].sort((a,b)=>a.localeCompare(b,"ja"));
+}
+function conversationSpeakerMap(row,speaker){
+ const key=String(speaker||"");
+ const el=[...row.querySelectorAll("[data-conversation-speaker-map]")].find(x=>x.dataset.conversationSpeakerMap===key);
+ return String(el?.value||key).trim();
+}
+function conversationRefreshRows(row){
+ const rows=row._conversationRows||[],q=String(row.querySelector(".conversation-import-search")?.value||"").trim().toLowerCase(),sp=String(row.querySelector(".conversation-import-speaker-filter")?.value||"");
+ row.querySelectorAll(".conversation-import-row").forEach(el=>{const v=rows[Number(el.dataset.conversationIndex)]||{},hay=(String(v.speaker||"")+" "+String(v.text||"")).toLowerCase();el.hidden=!!((sp&&String(v.speaker||"")!==sp)||(q&&!hay.includes(q)))});
+}
 function renderConversationImport(row,rows){
- const box=row.querySelector(".conversation-import-results"),footer=row.querySelector(".conversation-import-footer");
- row._conversationRows=rows;
- box.innerHTML=rows.length?rows.map((v,i)=>`<label class="conversation-import-row"><input type="checkbox" data-conversation-pick="${i}" checked><input class="conversation-import-name" data-conversation-name="${i}" value="${esc(v.speaker||"")}" placeholder="発言者"><span>${esc(v.text||"")}</span></label>`).join(""):'<div class="small muted">発言を抽出できませんでした。</div>';
+ const box=row.querySelector(".conversation-import-results"),footer=row.querySelector(".conversation-import-footer");row._conversationRows=rows;
+ const speakers=[...new Set(rows.map(v=>String(v.speaker||"").trim()).filter(Boolean))],listId=`conversationPcList-${row.dataset.blockId}`,pcsList=conversationPcChoices();
+ const mapping=speakers.length?`<div class="conversation-speaker-map"><strong>発言者をPC／表示名に紐付け</strong><div class="small muted">登録済みPCを選ぶか、表示名を直接入力できます。</div><div class="conversation-speaker-map-grid">${speakers.map(sp=>`<label><span>${esc(sp)}</span><input data-conversation-speaker-map="${esc(sp)}" value="${esc(sp)}" list="${esc(listId)}"></label>`).join("")}</div><datalist id="${esc(listId)}">${pcsList.map(n=>`<option value="${esc(n)}"></option>`).join("")}<option value="KP"></option><option value="KPC"></option><option value="SKP"></option></datalist></div>`:"";
+ const controls=rows.length?`<div class="conversation-import-controls"><input class="conversation-import-search" placeholder="発言を検索"><select class="conversation-import-speaker-filter"><option value="">発言者：すべて</option>${speakers.map(sp=>`<option value="${esc(sp)}">${esc(sp)}</option>`).join("")}</select></div>`:"";
+ box.innerHTML=rows.length?`${mapping}${controls}<div class="conversation-import-count">${rows.length}件抽出</div>${rows.map((v,i)=>`<label class="conversation-import-row" data-conversation-index="${i}"><input type="checkbox" data-conversation-pick="${i}" checked><span class="conversation-import-speaker">${esc(v.speaker||"発言者未設定")}</span><span>${esc(v.text||"")}</span></label>`).join("")}`:'<div class="small muted">発言を抽出できませんでした。</div>';
  footer.hidden=!rows.length;
+ row.querySelector(".conversation-import-search")?.addEventListener("input",()=>conversationRefreshRows(row));
+ row.querySelector(".conversation-import-speaker-filter")?.addEventListener("change",()=>conversationRefreshRows(row));
 }
 function bindArticleEditorBlockControls(ed){
  ed.querySelectorAll('[data-block-up]').forEach(b=>b.onclick=()=>moveEditorBlock(ed,b.dataset.blockUp,-1));
@@ -2249,7 +2273,7 @@ function bindArticleEditorBlockControls(ed){
  ed.querySelectorAll('[data-conversation-parse]').forEach(b=>b.onclick=()=>{const row=b.closest('.article-block');renderConversationImport(row,conversationParseAny(row.querySelector('.conversationImportText')?.value||''))});
  ed.querySelectorAll('[data-conversation-select-all]').forEach(b=>b.onclick=()=>b.closest('.article-block')?.querySelectorAll('[data-conversation-pick]').forEach(x=>x.checked=true));
  ed.querySelectorAll('[data-conversation-select-none]').forEach(b=>b.onclick=()=>b.closest('.article-block')?.querySelectorAll('[data-conversation-pick]').forEach(x=>x.checked=false));
- ed.querySelectorAll('[data-conversation-insert]').forEach(b=>b.onclick=()=>{const row=b.closest('.article-block'),ta=row?.querySelector('.articleConversationRaw'),rows=row?._conversationRows||[],picked=[];row?.querySelectorAll('[data-conversation-pick]').forEach(ch=>{if(!ch.checked)return;const idx=Number(ch.dataset.conversationPick),v=rows[idx];if(!v)return;const name=row.querySelector(`[data-conversation-name="${idx}"]`)?.value.trim()||v.speaker||'';picked.push({speaker:name,text:v.text||''})});if(!picked.length)return alert('追加する発言を選択してください。');const add=conversationRaw(picked);ta.value=ta.value.trim()?ta.value.trim()+'\n'+add:add;row.querySelector('.conversation-importer').hidden=true});
+ ed.querySelectorAll('[data-conversation-insert]').forEach(b=>b.onclick=()=>{const row=b.closest('.article-block'),ta=row?.querySelector('.articleConversationRaw'),rows=row?._conversationRows||[],picked=[];row?.querySelectorAll('[data-conversation-pick]').forEach(ch=>{if(!ch.checked)return;const idx=Number(ch.dataset.conversationPick),v=rows[idx];if(!v)return;const name=conversationSpeakerMap(row,v.speaker||"");picked.push({speaker:name,text:v.text||''})});if(!picked.length)return alert('追加する発言を選択してください。');const add=conversationRaw(picked);ta.value=ta.value.trim()?ta.value.trim()+'\n'+add:add;row.querySelector('.conversation-importer').hidden=true});
  ed.querySelectorAll('[data-block-upload]').forEach(b=>b.onclick=async()=>{
    const row=b.closest('.article-block'),file=row?.querySelector('.articleBlockImageFile')?.files?.[0],status=row?.querySelector('.article-upload-status');
    try{b.disabled=true;if(status)status.textContent="アップロード中…";const url=await uploadArticleImageFile(file);row.querySelector('.articleBlockImageUrl').value=url;const pv=row.querySelector('.article-block-preview'),note=row.querySelector('.article-image-placeholder-note');pv.hidden=false;if(note)note.hidden=true;pv.innerHTML=`<img src="${esc(url)}" alt="">`;if(status)status.textContent="アップロードしました。"}catch(e){console.error(e);if(status)status.textContent="";alert(e.message||e)}finally{b.disabled=false}

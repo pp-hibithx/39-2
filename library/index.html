@@ -883,6 +883,26 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .guest-pc-image-preview img{display:block;width:110px;height:110px;object-fit:cover;object-position:top center;border-radius:9px;border:1px solid var(--line)}
 @media(max-width:620px){.guest-pc-image-file-row{grid-template-columns:1fr}}
 </style>
+
+<style>
+.share-diagnostic-modal{
+  position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.68);
+  display:grid;place-items:center;padding:16px
+}
+.share-diagnostic-panel{
+  width:min(820px,96vw);max-height:88vh;overflow:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px
+}
+.share-diagnostic-panel h3{margin-top:0}
+.share-diagnostic-list{display:grid;gap:8px}
+.share-diagnostic-row{padding:10px;border:1px solid var(--line);border-radius:9px}
+.share-diagnostic-row.ok{border-left:4px solid currentColor}
+.share-diagnostic-row.ng{border-left:4px dashed currentColor}
+.share-diagnostic-row strong{display:block;margin-bottom:4px}
+.share-diagnostic-error{margin-top:5px;font-size:12px}
+.share-diagnostic-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;flex-wrap:wrap}
+.share-diagnostic-actions button{width:auto}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -2340,6 +2360,85 @@ async function conversationLineShareImage(line){
  const src=String(pc.image||line?.pcImage||"");
  return await imageSourceToShareUrl(src,`${pc.name||line?.speaker||"pc"}.png`);
 }
+
+async function diagnoseConversationShareImages(blocks){
+ const rows=[];
+ const seen=new Set();
+
+ for(const b of blocks){
+   if(b.type!=="conversation")continue;
+   for(const line of normalizeConversationLines(b)){
+     const pc=conversationResolvedPc(line);
+     const key=pc?`${pc.ownerType||""}:${pc.id||pc.playerId||""}:${pc.name||line.speaker||""}`:`none:${line.pcName||line.speaker||""}`;
+     if(seen.has(key))continue;
+     seen.add(key);
+
+     const item={
+       speaker:String(line.speaker||""),
+       pcName:String(pc?.name||line.pcName||line.speaker||""),
+       ownerType:String(pc?.ownerType||""),
+       pcRefId:String(line.pcRefId||""),
+       localMeta:false,
+       localBlob:false,
+       sourceUrl:"",
+       shareUrl:"",
+       error:""
+     };
+
+     try{
+       if(pc?.ownerType==="guest"){
+         const meta=guestPcImageMeta(pc.playerId,pc.plName,pc.name);
+         item.localMeta=!!meta.local;
+         item.sourceUrl=String(meta.url||pc.image||line.pcImage||"");
+
+         if(meta.local){
+           const fileRow=await guestPcImageFileResolved(pc.playerId,pc.plName,pc.name);
+           item.localBlob=!!fileRow?.blob;
+         }else{
+           const fallbackRow=await findGuestPcImageFileByPcName(pc.name);
+           item.localBlob=!!fallbackRow?.blob;
+         }
+       }else{
+         item.sourceUrl=String(pc?.image||line.pcImage||"");
+       }
+
+       item.shareUrl=await conversationLineShareImage(line);
+     }catch(e){
+       item.error=String(e?.message||e||"");
+     }
+     rows.push(item);
+   }
+ }
+ return rows;
+}
+function conversationShareDiagnosticHtml(rows){
+ if(!rows.length)return '<div class="small muted">会話ログ内にPC情報がありません。</div>';
+ return `<div class="share-diagnostic-list">${rows.map(r=>{
+   const ok=!!r.shareUrl;
+   const parts=[
+     `PC特定：${r.pcName?"✓":"×"}`,
+     r.ownerType?`種別：${esc(r.ownerType)}`:"",
+     r.ownerType==="guest"?`ローカル設定：${r.localMeta?"✓":"×"}`:"",
+     r.ownerType==="guest"?`画像本体：${r.localBlob?"✓":"×"}`:"",
+     r.sourceUrl?`元画像：あり`:"元画像：なし",
+     `共有URL：${ok?"✓":"×"}`
+   ].filter(Boolean);
+   return `<div class="share-diagnostic-row ${ok?"ok":"ng"}"><strong>${esc(r.pcName||r.speaker||"名前不明")}</strong><div>${parts.join(" ／ ")}</div>${r.error?`<div class="share-diagnostic-error">${esc(r.error)}</div>`:""}${r.shareUrl?`<div class="small muted">${esc(r.shareUrl)}</div>`:""}</div>`;
+ }).join("")}</div>`;
+}
+async function showConversationShareDiagnostic(rows){
+ return new Promise(resolve=>{
+   const old=document.getElementById("conversationShareDiagnostic");
+   if(old)old.remove();
+   const wrap=document.createElement("div");
+   wrap.id="conversationShareDiagnostic";
+   wrap.className="share-diagnostic-modal";
+   wrap.innerHTML=`<div class="share-diagnostic-panel"><h3>共有する会話PC画像の診断</h3>${conversationShareDiagnosticHtml(rows)}<div class="share-diagnostic-actions"><button type="button" data-diagnostic-close>閉じる</button><button type="button" data-diagnostic-continue>このまま共有</button></div></div>`;
+   document.body.appendChild(wrap);
+   wrap.querySelector("[data-diagnostic-close]").onclick=()=>{wrap.remove();resolve(false)};
+   wrap.querySelector("[data-diagnostic-continue]").onclick=()=>{wrap.remove();resolve(true)};
+ });
+}
 async function prepareConversationBlocksForShare(blocks){
  const cache=new Map();
  const out=[];
@@ -2667,8 +2766,11 @@ async function shareArticlePage(runId,pageId){
      if(b.type==="image")return {...b,url:String(b.url||"").trim(),caption:String(b.caption||"").trim()};
      return {...b};
    });
+   const diagnostic=await diagnoseConversationShareImages(baseBlocks);
+   const proceed=await showConversationShareDiagnostic(diagnostic);
+   if(!proceed)return;
    const sharedBlocks=await prepareConversationBlocksForShare(baseBlocks);
-   const payload={kind:"library-article",version:5,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
+   const payload={kind:"library-article",version:6,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
    let shareId=page.shareId||"";
    if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);else shareId=await TRPG39Cloud.createSharedPage(payload);
    saveArticlePagesForRun(runId,pages.map(p=>p.id===page.id?{...p,shareId}:p));

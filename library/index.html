@@ -740,6 +740,26 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
  .participant-pl-row{grid-template-columns:minmax(7.5em,auto) minmax(5.5em,auto) 1fr;column-gap:.45em}
 }
 </style>
+
+<style>
+/* Participant rows: role slot becomes HO when present, PL otherwise.
+   Columns size to their actual content so HO-less scenarios do not leave a wide blank. */
+.participant-pl-row{
+  display:grid!important;
+  grid-template-columns:max-content max-content minmax(0,1fr)!important;
+  column-gap:.7em!important;
+  align-items:baseline!important;
+}
+.participant-ho,
+.participant-name{white-space:nowrap}
+.participant-pc{min-width:0}
+@media(max-width:700px){
+  .participant-pl-row{
+    grid-template-columns:max-content max-content minmax(0,1fr)!important;
+    column-gap:.45em!important;
+  }
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">

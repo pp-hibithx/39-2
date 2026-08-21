@@ -796,6 +796,19 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 }
 .article-image-placeholder-note[hidden]{display:none}
 </style>
+
+<style>
+.article-conversation-tools{margin:8px 0}.article-conversation-tools button,.conversation-importer button{width:auto}
+.conversation-importer{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.012)}
+.conversation-importer[hidden],.conversation-import-footer[hidden]{display:none}
+.conversation-importer-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.conversation-import-file-row,.conversation-import-footer{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.conversation-import-results{display:grid;gap:6px;margin-top:10px;max-height:360px;overflow:auto}
+.conversation-import-row{display:grid!important;grid-template-columns:auto minmax(100px,160px) 1fr;gap:8px;align-items:start!important;margin:0!important;padding:7px;border:1px solid var(--line);border-radius:8px}
+.conversation-import-row input[type=checkbox]{width:auto!important;margin-top:6px}
+.conversation-import-row span{white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:650px){.conversation-import-row{grid-template-columns:auto 1fr}.conversation-import-row span{grid-column:2}}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -2112,7 +2125,7 @@ function articleEditorBlockHtml(b,index,total){
  const actions=`<div class="article-block-actions"><button type="button" data-block-up="${id}" ${index===0?"disabled":""}>↑</button><button type="button" data-block-down="${id}" ${index===total-1?"disabled":""}>↓</button><button type="button" class="danger" data-block-remove="${id}">削除</button></div>`;
  if(b.type==="image")return `<div class="article-block" data-block-id="${id}" data-block-type="image"><div class="article-block-head"><span class="article-block-label">🖼 画像</span>${actions}</div><div class="article-image-inputs"><div><label>画像URL</label><input class="articleBlockImageUrl" type="url" value="${esc(b.url||"")}" placeholder="https://..."></div><div><label>画像ファイル</label><input class="articleBlockImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif"><button type="button" data-block-upload="${id}">アップロード</button><div class="article-upload-status"></div></div></div><label>キャプション <span class="small muted">（任意）</span></label><input class="articleBlockCaption" value="${esc(b.caption||"")}" placeholder="画像の説明"><div class="article-image-placeholder-note" ${b.url?"hidden":""}>画像はあとから設定できます。この枠は保存しても残ります。</div><div class="article-block-preview" ${b.url?"":"hidden"}>${b.url?`<img src="${esc(b.url)}" alt="">`:""}</div></div>`;
  if(b.type==="bgm")return `<div class="article-block" data-block-id="${id}" data-block-type="bgm"><div class="article-block-head"><span class="article-block-label">🎵 BGM</span>${actions}</div><input class="articleBgmLibraryId" type="hidden" value="${esc(b.libraryId||"")}"><div class="bgm-lib-actions"><button type="button" data-bgm-lib-open="${id}">BGM LIBRARYから選ぶ</button><button type="button" data-bgm-lib-save="${id}">BGM LIBRARYに登録／更新</button></div><div class="article-bgm-grid"><div><label>曲名</label><input class="articleBgmTitle" value="${esc(b.title||"")}" placeholder="曲名"></div><div><label>作者・アーティスト</label><input class="articleBgmArtist" value="${esc(b.artist||"")}" placeholder="作者名"></div><div><label>使用シーン</label><input class="articleBgmScene" value="${esc(b.scene||"")}" placeholder="例：Scene 3／終盤"></div><div><label>タグ <span class="small muted">（、区切り）</span></label><input class="articleBgmTags" value="${esc(Array.isArray(b.tags)?b.tags.join("、"):(b.tags||""))}" placeholder="不穏、戦闘、エンディング"></div><div><label>配布元名</label><input class="articleBgmSourceLabel" value="${esc(b.sourceLabel||"")}" placeholder="DOVA-SYNDROME など"></div><div><label>配布元URL</label><input class="articleBgmSourceUrl" type="url" value="${esc(b.sourceUrl||"")}" placeholder="https://..."></div><div><label>音源URL <span class="small muted">（任意）</span></label><input class="articleBgmAudioUrl" type="url" value="${esc(b.audioUrl||"")}" placeholder="直接再生できるMP3 URL"></div></div><label>手元のMP3 <span class="small muted">（自分用・このブラウザに保存）</span></label><div class="article-image-inputs"><div><input class="articleBgmFile" type="file" accept="audio/mpeg,audio/mp3,.mp3"><input class="articleBgmLocalId" type="hidden" value="${esc(b.localAudioId||"")}"><input class="articleBgmLocalName" type="hidden" value="${esc(b.localFileName||"")}"><div class="article-local-audio">${b.localFileName?`保存済み：${esc(b.localFileName)}`:"MP3本体は共有記事には含まれません。"}</div></div><div><button type="button" data-bgm-local-save="${id}">この端末に保存</button><div class="article-upload-status"></div></div></div><label>メモ <span class="small muted">（任意）</span></label><textarea class="articleBgmMemo" placeholder="この場面で流した、イントロから使用など">${esc(b.memo||"")}</textarea></div>`;
- if(b.type==="conversation")return `<div class="article-block" data-block-id="${id}" data-block-type="conversation"><div class="article-block-head"><span class="article-block-label">💬 会話ログ</span>${actions}</div><label>見出し <span class="small muted">（任意）</span></label><input class="articleConversationCaption" value="${esc(b.caption||"")}" placeholder="例：終盤／この場面好き"><label>会話</label><textarea class="articleConversationRaw" placeholder="1行ごとに「発言者｜発言」の形で入力します。&#10;A｜こんにちは。&#10;B｜確認しました。">${esc(conversationRaw(normalizeConversationLines(b)))}</textarea><div class="small muted">「｜」「:」「：」で発言者と台詞を分けられます。ログ取り込みは次段階でここへ接続します。</div></div>`;
+ if(b.type==="conversation")return `<div class="article-block" data-block-id="${id}" data-block-type="conversation"><div class="article-block-head"><span class="article-block-label">💬 会話ログ</span>${actions}</div><label>見出し <span class="small muted">（任意）</span></label><input class="articleConversationCaption" value="${esc(b.caption||"")}" placeholder="例：終盤／この場面好き"><label>会話</label><textarea class="articleConversationRaw" placeholder="1行ごとに「発言者｜発言」の形で入力します。&#10;A｜こんにちは。&#10;B｜確認しました。">${esc(conversationRaw(normalizeConversationLines(b)))}</textarea><div class="article-conversation-tools"><button type="button" data-conversation-import-open="${id}">ログを読み込む</button></div><div class="conversation-importer" data-conversation-importer="${id}" hidden><div class="conversation-importer-head"><strong>会話ログを読み込む</strong><button type="button" data-conversation-import-close="${id}">閉じる</button></div><label>ログを貼り付け</label><textarea class="conversationImportText" placeholder="A：こんにちは&#10;B：確認しました"></textarea><div class="conversation-import-file-row"><input class="conversationImportFile" type="file" accept=".txt,.json,text/plain,application/json"><button type="button" data-conversation-file-load="${id}">ファイルを読む</button><button type="button" data-conversation-parse="${id}">発言を抽出</button></div><div class="conversation-import-results" data-conversation-results="${id}"></div><div class="conversation-import-footer" hidden><button type="button" data-conversation-select-all="${id}">すべて選択</button><button type="button" data-conversation-select-none="${id}">選択解除</button><button type="button" data-conversation-insert="${id}">選択した発言を追加</button></div></div><div class="small muted">「｜」「:」「：」で発言者と台詞を分けられます。ログ取り込みは次段階でここへ接続します。</div></div>`;
  if(b.type==="youtube")return `<div class="article-block" data-block-id="${id}" data-block-type="youtube"><div class="article-block-head"><span class="article-block-label">▶ YouTube</span>${actions}</div><label>YouTube URL</label><input class="articleBlockYoutubeUrl" type="url" value="${esc(b.url||"")}" placeholder="https://www.youtube.com/watch?v=..."><label>見出し <span class="small muted">（任意）</span></label><input class="articleBlockCaption" value="${esc(b.caption||"")}" placeholder="セッション録画 など"><div class="article-youtube-preview"></div></div>`;
  return `<div class="article-block" data-block-id="${id}" data-block-type="text"><div class="article-block-head"><span class="article-block-label">✎ 文章</span>${actions}</div><textarea class="articleBlockText" placeholder="書きたいことを自由に残せます。">${esc(b.text||"")}</textarea></div>`;
 }
@@ -2190,10 +2203,53 @@ function updateYoutubeEditorPreview(row){
  const id=youtubeVideoId(row.querySelector('.articleBlockYoutubeUrl')?.value||""),box=row.querySelector('.article-youtube-preview');if(!box)return;
  box.innerHTML=id?`<div class="lib-article-youtube"><iframe src="https://www.youtube-nocookie.com/embed/${esc(id)}" title="YouTube preview" loading="lazy" allowfullscreen></iframe></div>`:'<div class="small muted">YouTubeのURLを貼ると、ここに動画が表示されます。</div>';
 }
+
+function conversationParseText(raw){
+ const out=[];
+ for(const rawLine of String(raw||"").split(/\r?\n/)){
+   const line=rawLine.trim();if(!line)continue;
+   const m=line.match(/^(.{1,60}?)[｜|：:]\s*(.+)$/);
+   if(m)out.push({speaker:m[1].trim(),text:m[2].trim()});
+   else if(out.length)out[out.length-1].text+="\n"+line;
+   else out.push({speaker:"",text:line});
+ }
+ return out;
+}
+function conversationCollectJson(v,out=[]){
+ if(v==null)return out;
+ if(Array.isArray(v)){v.forEach(x=>conversationCollectJson(x,out));return out}
+ if(typeof v!=="object")return out;
+ const speaker=String(v.speaker??v.speaker_name??v.name??v.character??v.characterName??v.user??"").trim();
+ const text=String(v.text??v.message??v.content??v.transcript??v.utterance??"").trim();
+ if(text)out.push({speaker,text});
+ for(const k of ["segments","utterances","messages","lines","entries","results"]){
+   if(v[k]&&typeof v[k]==="object")conversationCollectJson(v[k],out);
+ }
+ return out;
+}
+function conversationParseAny(raw){
+ const t=String(raw||"").trim();if(!t)return [];
+ if(t[0]==="{"||t[0]==="["){try{const rows=conversationCollectJson(JSON.parse(t),[]);if(rows.length)return rows}catch(_){}}
+ return conversationParseText(t);
+}
+function renderConversationImport(row,rows){
+ const box=row.querySelector(".conversation-import-results"),footer=row.querySelector(".conversation-import-footer");
+ row._conversationRows=rows;
+ box.innerHTML=rows.length?rows.map((v,i)=>`<label class="conversation-import-row"><input type="checkbox" data-conversation-pick="${i}" checked><input class="conversation-import-name" data-conversation-name="${i}" value="${esc(v.speaker||"")}" placeholder="発言者"><span>${esc(v.text||"")}</span></label>`).join(""):'<div class="small muted">発言を抽出できませんでした。</div>';
+ footer.hidden=!rows.length;
+}
 function bindArticleEditorBlockControls(ed){
  ed.querySelectorAll('[data-block-up]').forEach(b=>b.onclick=()=>moveEditorBlock(ed,b.dataset.blockUp,-1));
  ed.querySelectorAll('[data-block-down]').forEach(b=>b.onclick=()=>moveEditorBlock(ed,b.dataset.blockDown,1));
  ed.querySelectorAll('[data-block-remove]').forEach(b=>b.onclick=()=>{const blocks=editorBlocks(ed).filter(x=>x.id!==b.dataset.blockRemove);renderArticleEditorBlocks(ed,blocks)});
+
+ ed.querySelectorAll('[data-conversation-import-open]').forEach(b=>b.onclick=()=>{const row=b.closest('.article-block'),box=row?.querySelector('.conversation-importer');if(box)box.hidden=false});
+ ed.querySelectorAll('[data-conversation-import-close]').forEach(b=>b.onclick=()=>{const row=b.closest('.article-block'),box=row?.querySelector('.conversation-importer');if(box)box.hidden=true});
+ ed.querySelectorAll('[data-conversation-file-load]').forEach(b=>b.onclick=async()=>{const row=b.closest('.article-block'),file=row?.querySelector('.conversationImportFile')?.files?.[0];if(!file)return alert('TXTまたはJSONファイルを選択してください。');try{row.querySelector('.conversationImportText').value=await file.text()}catch(e){alert('ファイルを読み込めませんでした。')}});
+ ed.querySelectorAll('[data-conversation-parse]').forEach(b=>b.onclick=()=>{const row=b.closest('.article-block');renderConversationImport(row,conversationParseAny(row.querySelector('.conversationImportText')?.value||''))});
+ ed.querySelectorAll('[data-conversation-select-all]').forEach(b=>b.onclick=()=>b.closest('.article-block')?.querySelectorAll('[data-conversation-pick]').forEach(x=>x.checked=true));
+ ed.querySelectorAll('[data-conversation-select-none]').forEach(b=>b.onclick=()=>b.closest('.article-block')?.querySelectorAll('[data-conversation-pick]').forEach(x=>x.checked=false));
+ ed.querySelectorAll('[data-conversation-insert]').forEach(b=>b.onclick=()=>{const row=b.closest('.article-block'),ta=row?.querySelector('.articleConversationRaw'),rows=row?._conversationRows||[],picked=[];row?.querySelectorAll('[data-conversation-pick]').forEach(ch=>{if(!ch.checked)return;const idx=Number(ch.dataset.conversationPick),v=rows[idx];if(!v)return;const name=row.querySelector(`[data-conversation-name="${idx}"]`)?.value.trim()||v.speaker||'';picked.push({speaker:name,text:v.text||''})});if(!picked.length)return alert('追加する発言を選択してください。');const add=conversationRaw(picked);ta.value=ta.value.trim()?ta.value.trim()+'\n'+add:add;row.querySelector('.conversation-importer').hidden=true});
  ed.querySelectorAll('[data-block-upload]').forEach(b=>b.onclick=async()=>{
    const row=b.closest('.article-block'),file=row?.querySelector('.articleBlockImageFile')?.files?.[0],status=row?.querySelector('.article-upload-status');
    try{b.disabled=true;if(status)status.textContent="アップロード中…";const url=await uploadArticleImageFile(file);row.querySelector('.articleBlockImageUrl').value=url;const pv=row.querySelector('.article-block-preview'),note=row.querySelector('.article-image-placeholder-note');pv.hidden=false;if(note)note.hidden=true;pv.innerHTML=`<img src="${esc(url)}" alt="">`;if(status)status.textContent="アップロードしました。"}catch(e){console.error(e);if(status)status.textContent="";alert(e.message||e)}finally{b.disabled=false}

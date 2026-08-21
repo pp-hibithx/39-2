@@ -2132,7 +2132,7 @@ function articlePagesHtml(r){
      <div class="article-blocks"></div>
      <div class="lib-article-share-row">
        <div><label>共有設定</label><select class="articleShareEnabled"><option value="0">自分のみ</option><option value="1">リンク限定</option></select></div>
-       <div><label>共有パスワード <span class="small muted">（任意）</span></label><input class="articlePassword" type="password" autocomplete="new-password" placeholder="設定する場合のみ入力"></div><div><label>パスワードのヒント <span class="small muted">（任意）</span></label><input class="articlePasswordHint" value="${esc(p.passwordHint||"")}" placeholder="例：Cから始めて5文字（英字）"></div>
+       <div><label>共有パスワード <span class="small muted">（任意）</span></label><input class="articlePassword" type="password" autocomplete="new-password" placeholder="設定する場合のみ入力"></div><div><label>パスワードのヒント <span class="small muted">（任意）</span></label><input class="articlePasswordHint" value="" placeholder="例：Cから始めて5文字（英字）"></div>
      </div>
      <div class="lib-article-share-note">共有URLには文章・複数画像・会話ログ・YouTube・BGMの並び順をそのまま送ります。パスワード設定も保持されます。</div>
      <div class="album-actions"><button type="button" data-article-save="${esc(r.id)}">保存</button><button type="button" data-article-cancel="${esc(r.id)}">キャンセル</button></div>
@@ -2215,6 +2215,7 @@ function openArticleEditor(runId,pageId=""){
  ed.querySelector('.articleShareEnabled').value=page?.shareEnabled?"1":"0";
  ed.querySelector('.articlePassword').value="";
  ed.querySelector('.articlePassword').placeholder=page?.passwordProtected?"設定済み（変更する場合のみ入力）":"設定する場合のみ入力";
+ const hintInput=ed.querySelector('.articlePasswordHint');if(hintInput)hintInput.value=page?.passwordHint||"";
  const blocks=page?normalizedArticleBlocks(page):[{id:TRPG39.uuid(),type:"text",text:""}];renderArticleEditorBlocks(ed,blocks);
  ed.hidden=false;ed.scrollIntoView({behavior:"smooth",block:"nearest"});
 }

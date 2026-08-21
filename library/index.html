@@ -884,31 +884,6 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 @media(max-width:620px){.guest-pc-image-file-row{grid-template-columns:1fr}}
 </style>
 
-<style>
-.share-diagnostic-modal{
-  position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.68);
-  display:grid;place-items:center;padding:16px
-}
-.share-diagnostic-panel{
-  width:min(820px,96vw);max-height:88vh;overflow:auto;
-  background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px
-}
-.share-diagnostic-panel h3{margin-top:0}
-.share-diagnostic-list{display:grid;gap:8px}
-.share-diagnostic-row{padding:10px;border:1px solid var(--line);border-radius:9px}
-.share-diagnostic-row.ok{border-left:4px solid currentColor}
-.share-diagnostic-row.ng{border-left:4px dashed currentColor}
-.share-diagnostic-row strong{display:block;margin-bottom:4px}
-.share-diagnostic-error{margin-top:5px;font-size:12px}
-.share-diagnostic-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;flex-wrap:wrap}
-.share-diagnostic-actions button{width:auto}
-</style>
-
-<style>
-.payload-avatar-preview{display:grid;grid-template-columns:48px minmax(0,1fr);gap:9px;align-items:center;margin-top:8px}
-.payload-avatar-preview img{width:46px;height:46px;border-radius:50%;object-fit:cover;object-position:top center;border:1px solid var(--line)}
-.payload-avatar-preview .small{overflow-wrap:anywhere;word-break:break-all}
-</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -2367,127 +2342,6 @@ async function conversationLineShareImage(line){
  return await imageSourceToShareUrl(src,`${pc.name||line?.speaker||"pc"}.png`);
 }
 
-async function diagnoseConversationShareImages(blocks){
- const rows=[];
- const seen=new Set();
-
- for(const b of blocks){
-   if(b.type!=="conversation")continue;
-   for(const line of normalizeConversationLines(b)){
-     const pc=conversationResolvedPc(line);
-     const key=pc?`${pc.ownerType||""}:${pc.id||pc.playerId||""}:${pc.name||line.speaker||""}`:`none:${line.pcName||line.speaker||""}`;
-     if(seen.has(key))continue;
-     seen.add(key);
-
-     const item={
-       speaker:String(line.speaker||""),
-       pcName:String(pc?.name||line.pcName||line.speaker||""),
-       ownerType:String(pc?.ownerType||""),
-       pcRefId:String(line.pcRefId||""),
-       localMeta:false,
-       localBlob:false,
-       sourceUrl:"",
-       shareUrl:"",
-       error:""
-     };
-
-     try{
-       if(pc?.ownerType==="guest"){
-         const meta=guestPcImageMeta(pc.playerId,pc.plName,pc.name);
-         item.localMeta=!!meta.local;
-         item.sourceUrl=String(meta.url||pc.image||line.pcImage||"");
-
-         if(meta.local){
-           const fileRow=await guestPcImageFileResolved(pc.playerId,pc.plName,pc.name);
-           item.localBlob=!!fileRow?.blob;
-         }else{
-           const fallbackRow=await findGuestPcImageFileByPcName(pc.name);
-           item.localBlob=!!fallbackRow?.blob;
-         }
-       }else{
-         item.sourceUrl=String(pc?.image||line.pcImage||"");
-       }
-
-       item.shareUrl=await conversationLineShareImage(line);
-     }catch(e){
-       item.error=String(e?.message||e||"");
-     }
-     rows.push(item);
-   }
- }
- return rows;
-}
-
-function conversationPayloadDiagnostic(blocks){
- const rows=[],seen=new Set();
- for(const b of blocks||[]){
-   if(b?.type!=="conversation")continue;
-   for(const line of normalizeConversationLines(b)){
-     const name=String(line.pcName||line.speaker||"").trim();
-     const image=String(line.pcImage||"").trim();
-     const key=`${name}::${image}`;
-     if(seen.has(key))continue;
-     seen.add(key);
-     rows.push({
-       pcName:name,
-       speaker:String(line.speaker||""),
-       pcRefId:String(line.pcRefId||""),
-       pcImage:image
-     });
-   }
- }
- return rows;
-}
-function conversationPayloadDiagnosticHtml(rows){
- if(!rows.length)return '<div class="small muted">最終payloadに会話PC情報がありません。</div>';
- return `<div class="share-diagnostic-list">${rows.map(r=>`
-   <div class="share-diagnostic-row ${r.pcImage?"ok":"ng"}">
-     <strong>${esc(r.pcName||r.speaker||"名前不明")}</strong>
-     <div>pcName：${r.pcName?"✓":"×"} ／ pcImage：${r.pcImage?"✓":"×"} ／ pcRefId：${r.pcRefId?"あり":"なし"}</div>
-     ${r.pcImage?`<div class="payload-avatar-preview"><img src="${esc(r.pcImage)}" alt=""><div class="small muted">${esc(r.pcImage)}</div></div>`:`<div class="share-diagnostic-error">最終payloadの pcImage が空です。</div>`}
-   </div>`).join("")}</div>`;
-}
-async function showFinalPayloadDiagnostic(blocks){
- const rows=conversationPayloadDiagnostic(blocks);
- return new Promise(resolve=>{
-   document.getElementById("conversationPayloadDiagnostic")?.remove();
-   const wrap=document.createElement("div");
-   wrap.id="conversationPayloadDiagnostic";
-   wrap.className="share-diagnostic-modal";
-   wrap.innerHTML=`<div class="share-diagnostic-panel"><h3>SHAREへ送る最終会話データ</h3><p class="small muted">ここに表示されている pcImage が、実際に共有payloadへ入る値です。</p>${conversationPayloadDiagnosticHtml(rows)}<div class="share-diagnostic-actions"><button type="button" data-payload-close>閉じる</button><button type="button" data-payload-continue>このpayloadで共有</button></div></div>`;
-   document.body.appendChild(wrap);
-   wrap.querySelector("[data-payload-close]").onclick=()=>{wrap.remove();resolve(false)};
-   wrap.querySelector("[data-payload-continue]").onclick=()=>{wrap.remove();resolve(true)};
- });
-}
-function conversationShareDiagnosticHtml(rows){
- if(!rows.length)return '<div class="small muted">会話ログ内にPC情報がありません。</div>';
- return `<div class="share-diagnostic-list">${rows.map(r=>{
-   const ok=!!r.shareUrl;
-   const parts=[
-     `PC特定：${r.pcName?"✓":"×"}`,
-     r.ownerType?`種別：${esc(r.ownerType)}`:"",
-     r.ownerType==="guest"?`ローカル設定：${r.localMeta?"✓":"×"}`:"",
-     r.ownerType==="guest"?`画像本体：${r.localBlob?"✓":"×"}`:"",
-     r.sourceUrl?`元画像：あり`:"元画像：なし",
-     `共有URL：${ok?"✓":"×"}`
-   ].filter(Boolean);
-   return `<div class="share-diagnostic-row ${ok?"ok":"ng"}"><strong>${esc(r.pcName||r.speaker||"名前不明")}</strong><div>${parts.join(" ／ ")}</div>${r.error?`<div class="share-diagnostic-error">${esc(r.error)}</div>`:""}${r.shareUrl?`<div class="small muted">${esc(r.shareUrl)}</div>`:""}</div>`;
- }).join("")}</div>`;
-}
-async function showConversationShareDiagnostic(rows){
- return new Promise(resolve=>{
-   const old=document.getElementById("conversationShareDiagnostic");
-   if(old)old.remove();
-   const wrap=document.createElement("div");
-   wrap.id="conversationShareDiagnostic";
-   wrap.className="share-diagnostic-modal";
-   wrap.innerHTML=`<div class="share-diagnostic-panel"><h3>共有する会話PC画像の診断</h3>${conversationShareDiagnosticHtml(rows)}<div class="share-diagnostic-actions"><button type="button" data-diagnostic-close>閉じる</button><button type="button" data-diagnostic-continue>このまま共有</button></div></div>`;
-   document.body.appendChild(wrap);
-   wrap.querySelector("[data-diagnostic-close]").onclick=()=>{wrap.remove();resolve(false)};
-   wrap.querySelector("[data-diagnostic-continue]").onclick=()=>{wrap.remove();resolve(true)};
- });
-}
 async function prepareConversationBlocksForShare(blocks){
  const cache=new Map();
  const out=[];
@@ -2816,15 +2670,13 @@ async function shareArticlePage(runId,pageId){
      return {...b};
    });
    const sharedBlocks=await prepareConversationBlocksForShare(baseBlocks);
-   const proceed=await showFinalPayloadDiagnostic(sharedBlocks);
-   if(!proceed)return;
-   const payload={kind:"library-article",version:7,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
+   const payload={kind:"library-article",version:8,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
    let shareId=page.shareId||"";
    if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);else shareId=await TRPG39Cloud.createSharedPage(payload);
    saveArticlePagesForRun(runId,pages.map(p=>p.id===page.id?{...p,shareId}:p));
    const previewUrl=new URL("https://sakumeru-share.sakumeru.workers.dev/");
    previewUrl.searchParams.set("id",shareId);previewUrl.searchParams.set("type","article");
-   showShareUrl(previewUrl.href,page.passwordProtected?"この記事の共有URLです。会話で使ったPC画像も共有用に反映しました。":"この記事の共有URLです。会話で使ったPC画像も共有用に反映しました。");
+   showShareUrl(previewUrl.href,page.passwordProtected?"この記事の共有URLです。パスワードと会話PC画像を反映しました。":"この記事の共有URLです。会話PC画像を反映しました。");
  }catch(e){console.error(e);alert(e.message||e)}
 }
 function bindArticlePageButtons(){

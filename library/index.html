@@ -750,6 +750,37 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-thumb-choice img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:6px}
 .lib-thumb-choice span{font-size:12px}
 </style>
+
+<style>
+.lib-cover-chooser{margin:10px 0 14px;border:1px solid var(--line);border-radius:10px;padding:9px}
+.lib-cover-chooser>summary{cursor:pointer;font-weight:700}
+.lib-cover-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}.lib-cover-tabs button{width:auto}
+.lib-cover-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px}
+.lib-cover-choice{display:grid;gap:5px;padding:6px;border:1px solid var(--line);border-radius:8px;background:transparent}
+.lib-cover-choice.selected{outline:2px solid var(--accent);outline-offset:1px}
+.lib-cover-choice img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:6px}
+.lib-cover-choice span{font-size:12px}.lib-cover-custom-row{display:flex;gap:7px;align-items:end;flex-wrap:wrap;margin-top:9px}.lib-cover-custom-row input{max-width:360px}.lib-cover-custom-row button{width:auto}
+</style>
+
+<style>
+.player-profile-summary{display:grid;gap:10px}
+.player-profile-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.player-profile-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.player-contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.player-contact-grid>div{border:1px solid var(--line);border-radius:8px;padding:8px}
+.player-share-link-list{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.player-contact-history{border-top:1px solid var(--line);padding-top:8px}
+.player-contact-history summary{cursor:pointer}
+.player-contact-history-row{font-size:11px;color:var(--muted);padding:3px 0}
+.player-meta-editor{border:1px solid var(--line);border-radius:9px;padding:9px}
+.player-meta-editor>summary{cursor:pointer;font-weight:700}
+.player-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.player-history-filter-head{display:flex;gap:12px;align-items:end;justify-content:space-between;flex-wrap:wrap}
+.player-history-filters{display:grid;grid-template-columns:repeat(3,minmax(145px,180px));gap:8px;align-items:end}
+@media(max-width:760px){
+ .player-contact-grid,.player-meta-grid,.player-history-filters{grid-template-columns:1fr}
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -1091,6 +1122,7 @@ let playerListSort="name";
 let playerArchiveFilter="active";
 let playerDetailRoleFilter="all";
 let playerDetailSystemFilter="all";
+let playerDetailPcFilter="all";
 
 {let changed=false;data=data.map(x=>{if(!x.spoilerBody&&x.spoiler){changed=true;return TRPG39.normalizeAlbum({...x,spoilerBody:x.spoiler,spoiler:""})}return x});if(changed)TRPG39.saveAlbum(data);}
 
@@ -1144,794 +1176,83 @@ migrateRunIds();
 
 const persist=()=>TRPG39.saveAlbum(data);
 
-const LIB_THUMB_KEY="trpg39.library.thumbSelection.v1";
-function libThumbMap(){try{return JSON.parse(localStorage.getItem(LIB_THUMB_KEY)||"{}")||{}}catch(_){return {}}}
-function selectedLibraryThumb(key){return String(libThumbMap()[String(key)]||"")}
-function saveLibraryThumb(key,url){
- const m=libThumbMap(),k=String(key||"");
- if(url)m[k]=String(url);else delete m[k];
- localStorage.setItem(LIB_THUMB_KEY,JSON.stringify(m));
+const LIB_COVER_KEY="trpg39.library.coverSelection.v2";
+function libCoverMap(){try{return JSON.parse(localStorage.getItem(LIB_COVER_KEY)||"{}")||{}}catch(_){return {}}}
+function getLibraryCover(key){return libCoverMap()[String(key)]||null}
+function saveLibraryCover(key,cover){
+ const m=libCoverMap(),k=String(key||"");
+ if(cover&&cover.url)m[k]=cover;else delete m[k];
+ localStorage.setItem(LIB_COVER_KEY,JSON.stringify(m));
 }
-function libraryScreenshotChoices(g){
+function libraryScreenshots(g){
  return [...new Set((g?.items||[]).flatMap(x=>Array.isArray(x.imageUrls)?x.imageUrls:[]).filter(Boolean))];
 }
-function libraryThumbChooser(g){
- const imgs=libraryScreenshotChoices(g),selected=selectedLibraryThumb(g.key);
- if(!imgs.length)return "";
- return `<details class="lib-thumb-chooser"><summary>LIBRARYサムネを選ぶ</summary>
- <div class="lib-thumb-chooser-grid">${imgs.map(u=>`<button type="button" class="lib-thumb-choice ${selected===u?"selected":""}" data-lib-thumb-key="${esc(g.key)}" data-lib-thumb-url="${esc(u)}"><img src="${esc(u)}" alt="" loading="lazy"><span>${selected===u?"✓ 使用中":"このスクショを使う"}</span></button>`).join("")}</div>
- ${selected?`<button type="button" class="text-action" data-lib-thumb-clear="${esc(g.key)}">サムネ設定を解除</button>`:""}</details>`;
+function scenarioTrailerForGroup(g){
+ return String(g?.thumbnailUrl||"");
 }
-
-
-const RUN_ROSTER_STORE_KEY="trpg39.library.runRoster.v1";
-function loadRunRosterStore(){
- try{return JSON.parse(localStorage.getItem(RUN_ROSTER_STORE_KEY)||"{}")||{}}catch(_){return {}}
+function libraryCoverChooser(g){
+ const shots=libraryScreenshots(g),trailer=scenarioTrailerForGroup(g),selected=getLibraryCover(g.key);
+ return `<details class="lib-cover-chooser">
+   <summary>カバー画像を選ぶ</summary>
+   <div class="lib-cover-tabs">
+     <button type="button" data-cover-tab="shots" data-cover-group="${esc(g.key)}">スクショ</button>
+     <button type="button" data-cover-tab="trailer" data-cover-group="${esc(g.key)}">トレーラー</button>
+     <button type="button" data-cover-tab="custom" data-cover-group="${esc(g.key)}">任意画像</button>
+   </div>
+   <div class="lib-cover-source" data-cover-source="${esc(g.key)}">
+     ${shots.length?`<div class="lib-cover-grid">${shots.map(u=>`<button type="button" class="lib-cover-choice ${selected?.url===u?"selected":""}" data-lib-cover-key="${esc(g.key)}" data-lib-cover-url="${esc(u)}" data-lib-cover-type="screenshot"><img src="${esc(u)}" alt="" loading="lazy"><span>${selected?.url===u?"✓ 使用中":"この画像を使う"}</span></button>`).join("")}</div>`:`<div class="small muted">登録済みスクショはありません。</div>`}
+   </div>
+   <div class="lib-cover-custom-row">
+     <input type="file" accept="image/*" data-lib-cover-file="${esc(g.key)}">
+     <button type="button" data-lib-cover-upload="${esc(g.key)}">画像を追加して使う</button>
+   </div>
+   ${selected?`<button type="button" class="text-action" data-lib-cover-clear="${esc(g.key)}">カバー設定を解除</button>`:""}
+ </details>`;
 }
-function getRunRoster(runId){
- const all=loadRunRosterStore(),v=all[String(runId)]||null;
- if(!v)return null;
- return {
-   role:String(v.role||"PL"),
-   selfPcs:Array.isArray(v.selfPcs)?v.selfPcs:[],
-   participants:Array.isArray(v.participants)?v.participants:[]
- };
-}
-function setRunRoster(runId,roster){
- if(!runId)return;
- const all=loadRunRosterStore(),key=String(runId);
- all[key]={
-   role:String(roster?.role||"PL"),
-   selfPcs:Array.isArray(roster?.selfPcs)?roster.selfPcs:[],
-   participants:Array.isArray(roster?.participants)?roster.participants:[]
- };
- localStorage.setItem(RUN_ROSTER_STORE_KEY,JSON.stringify(all));
-}
-function ensureRunRosterFromData(runId){
- let roster=getRunRoster(runId);
- if(roster)return roster;
-
- const items=data.filter(x=>x.runId===runId).sort(bySessionStart);
- if(!items.length)return null;
-
- // Prefer a main-session record with the fullest participant composition.
- const ranked=items.slice().sort((a,b)=>{
-   const ak=sessionKindForRecord(a)==="main"?10:0;
-   const bk=sessionKindForRecord(b)==="main"?10:0;
-   const ac=storedSelfPcRows(a).length+rowsFromRecord(a).length;
-   const bc=storedSelfPcRows(b).length+rowsFromRecord(b).length;
-   return (bk+bc)-(ak+ac)||bySessionStart(a,b);
+async function coverFileToDataUrl(file){
+ return await new Promise((resolve,reject)=>{
+   const reader=new FileReader();
+   reader.onerror=()=>reject(reader.error);
+   reader.onload=()=>{
+     const img=new Image();
+     img.onerror=()=>reject(new Error("画像を読み込めませんでした"));
+     img.onload=()=>{
+       const max=1600,scale=Math.min(1,max/Math.max(img.width,img.height));
+       const c=document.createElement("canvas");c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));
+       c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+       resolve(c.toDataURL("image/jpeg",0.86));
+     };
+     img.src=reader.result;
+   };
+   reader.readAsDataURL(file);
  });
- const base=ranked[0];
- roster={
-   role:base.role||"PL",
-   selfPcs:storedSelfPcRows(base),
-   participants:rowsFromRecord(base)
- };
- setRunRoster(runId,roster);
- return roster;
 }
-
-const X_REPORT_STORE_KEY="trpg39.library.xReports.v1";
-function loadXReportStore(){
- try{return JSON.parse(localStorage.getItem(X_REPORT_STORE_KEY)||"{}")||{}}catch(_){return {}}
-}
-function getXReport(id){
- const v=loadXReportStore()[String(id)]||{};
- return {url:String(v.url||""),text:String(v.text||"")};
-}
-function setXReport(id,url,text){
- const all=loadXReportStore(),key=String(id);
- const value={url:String(url||"").trim(),text:String(text||"").trim()};
- if(value.url||value.text)all[key]=value;else delete all[key];
- localStorage.setItem(X_REPORT_STORE_KEY,JSON.stringify(all));
-}
-
-const showEditor=()=>q("libraryEditor").hidden=false;
-const hideEditor=()=>q("libraryEditor").hidden=true;
-
-function fillPCSelect(selectedId=""){
- const pcs=TRPG39.loadPCs?TRPG39.loadPCs():[];
- q("pcSelect").innerHTML='<option value="">直接入力</option>'+pcs.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ja")).map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
- q("pcSelect").value=selectedId||"";
-}
-function fillScenarioSelect(selectedId=""){
-  scenarios=TRPG39.loadScenarios();
-  q("scenarioSelect").innerHTML='<option value="">直接入力</option>'+scenarios
-    .slice().filter(s=>!s.archived)
-    .sort((a,b)=>String(a.title).localeCompare(String(b.title),"ja"))
-    .map(s=>`<option value="${esc(s.id)}">${esc(s.title)}</option>`).join("");
-  q("scenarioSelect").value=selectedId||"";
-  syncScenarioSearchLabel();
-}
-function scenarioSearchText(s){
-  return [s.title,s.shortTitle,s.system,s.author,(s.tags||[]).join(" ")]
-    .filter(Boolean).join(" ").normalize("NFKC").toLowerCase();
-}
-function syncScenarioSearchLabel(){
-  const s=scenarioById(q("scenarioSelect").value);
-  q("scenarioSearch").value=s?.title||"";
-}
-function chooseScenario(id){
-  q("scenarioSelect").value=id||"";
-  const s=scenarioById(id);
-  if(s){
-    q("scenarioSearch").value=s.title||"";
-    q("title").value=s.title||"";
-    q("system").value=s.system||"";
-    updateFacilitatorControls(true);
-  }else{
-    q("scenarioSearch").value="";
-  }
-  q("scenarioSearchResults").classList.remove("open");
-}
-function renderScenarioSearch(){
-  const box=q("scenarioSearchResults");
-  const term=q("scenarioSearch").value.trim().normalize("NFKC").toLowerCase();
-  const selected=q("scenarioSelect").value;
-  let rows=scenarios.filter(s=>!s.archived);
-  if(term) rows=rows.filter(s=>scenarioSearchText(s).includes(term));
-  rows=rows.slice().sort((a,b)=>{
-    const aSel=a.id===selected?-1:0,bSel=b.id===selected?-1:0;
-    if(aSel!==bSel)return aSel-bSel;
-    return String(a.title||"").localeCompare(String(b.title||""),"ja");
-  }).slice(0,30);
-
-  box.innerHTML=rows.length?rows.map(s=>{
-    const meta=[s.system,s.author].filter(Boolean).join(" ／ ");
-    return `<button type="button" class="scenario-picker-item" data-scenario-choice="${esc(s.id)}">
-      <div class="scenario-picker-title">${esc(s.title)}</div>
-      ${meta?`<div class="scenario-picker-meta">${esc(meta)}</div>`:""}
-    </button>`;
-  }).join(""):'<div class="scenario-picker-empty">一致するシナリオがありません。直接入力できます。</div>';
-
-  box.classList.add("open");
-  box.querySelectorAll("[data-scenario-choice]").forEach(b=>b.onclick=()=>chooseScenario(b.dataset.scenarioChoice));
-}
-function scenarioById(id){return scenarios.find(s=>s.id===id)}
-function facilitatorConfig(source={}){const scenario=scenarioById(source.scenarioId||q("scenarioSelect").value)||{};const system=source.system||q("system").value||scenario.system||"";const mode=source.facilitatorTermMode||q("facilitatorTermMode")?.value||scenario.facilitatorTermMode||"auto";const custom=source.facilitatorTermCustom||q("facilitatorTermCustom")?.value||scenario.facilitatorTermCustom||"";const label=source.facilitatorLabel||TRPG39.resolveFacilitatorLabel?.(system,{facilitatorTermMode:mode,facilitatorTermCustom:custom})||"GM";const less=source.facilitatorless!==undefined?!!source.facilitatorless:(source.facilitatorPresence||q("facilitatorPresence")?.value||scenario.facilitatorPresence||"present")==="less";return {label,less,mode,custom}}
-function roleOptions(selected="",label="GM"){const base=["PL",label,...(label==="KP"?["SKP"]:[]),"見学","その他"];if(selected&&!base.includes(selected))base.splice(1,0,selected);return [...new Set(base)].map(v=>`<option ${v===selected?"selected":""}>${esc(v)}</option>`).join("")}
-function updateFacilitatorControls(fromScenario=false){const scenario=scenarioById(q("scenarioSelect").value)||{};if(fromScenario){q("facilitatorPresence").value=scenario.facilitatorPresence||"present";q("facilitatorTermMode").value=scenario.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=scenario.facilitatorTermCustom||""}const cfg=facilitatorConfig({});q("facilitatorTermCustom").hidden=q("facilitatorTermMode").value!=="custom";const old=q("role").value||"PL";q("role").innerHTML=roleOptions(old,cfg.label);if(cfg.less&&["KP","DL","GM"].includes(q("role").value))q("role").value="PL";[...q("participantRows").querySelectorAll(".partRole")].forEach(sel=>{const old=sel.value||"PL";sel.innerHTML=roleOptions(old,cfg.label)});return cfg}
-function addLinkRow(v={label:"",url:"",spoiler:false}){
- const wrap=document.createElement("div");wrap.className="card ext-row";
- wrap.innerHTML=`<div class="lib-form-grid"><div><label>表示名</label><input class="extLabel" value="${esc(v.label)}" placeholder="ふせったー感想 など"></div><div><label>URL</label><input class="extUrl" type="url" value="${esc(v.url)}" placeholder="https://..."></div></div><label class="checkline"><input class="extSpoiler" type="checkbox" ${v.spoiler?"checked":""}> ネタバレあり</label><button class="danger extRemove" type="button">削除</button>`;
- wrap.querySelector(".extRemove").onclick=()=>wrap.remove();q("externalLinks").appendChild(wrap);
-}
-function getLinks(){return [...document.querySelectorAll(".ext-row")].map(r=>({label:r.querySelector(".extLabel").value.trim(),url:r.querySelector(".extUrl").value.trim(),spoiler:r.querySelector(".extSpoiler").checked})).filter(x=>x.url)}
-function updateImagePreview(){const u=q("image").value.trim();q("imagePreview").hidden=!u;q("imagePreviewImg").src=u||""}
-function addParticipantRow(v={},opts={}){
- const row=document.createElement("div");row.className="participant-row";
- row.dataset.placeholder=opts.placeholder?"1":"0";
- const role=String(v.role||"PL"),pl=String(v.plName||v.name||"");
- const cfg=facilitatorConfig({});
- row.innerHTML=`<div class="participant-person">
-   <div><label>役割</label><select class="partRole">${roleOptions(role,cfg.label)}</select></div>
-   <div class="participant-field-wrap"><label>参加者</label><input class="partPl" value="${esc(pl)}" placeholder="参加者名を検索・選択" autocomplete="off"><div class="participant-picker-results partPlResults"></div></div>
-   <button type="button" class="danger participant-remove">参加者を削除</button>
- </div><div class="participant-pcs"></div><button type="button" class="participant-pc-add">＋ PC追加</button>`;
- const plInput=row.querySelector(".partPl"),plResults=row.querySelector(".partPlResults"),pcBox=row.querySelector(".participant-pcs");
- function currentPlayers(){return players.filter(p=>!p.excluded&&!p.archived&&p.name).slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ja"))}
- function playerPcCandidates(){
-   const key=plInput.value.trim().normalize("NFKC").toLowerCase();if(!key)return [];
-   const names=new Set();
-   data.forEach(rec=>rowsFromRecord(rec).forEach(r=>{
-     const playerHit=r.playerId&&players.find(p=>p.id===r.playerId);
-     const same=(playerHit&&String(playerHit.name||"").normalize("NFKC").trim().toLowerCase()===key)||String(r.plName||"").normalize("NFKC").trim().toLowerCase()===key;
-     if(same&&String(r.pcName||"").trim())names.add(String(r.pcName).trim());
-   }));
-   return [...names].sort((a,b)=>a.localeCompare(b,"ja"));
- }
- function addPc(pc={}){
-   const pr=document.createElement("div");pr.className="participant-pc-row";
-   pr.innerHTML=`<div><label>HO / 役割</label><input class="partPcHo" value="${esc(pc.ho||"")}" placeholder="HO1 / KPC など"></div>
-   <div class="participant-field-wrap"><label>PC</label><input class="partPcName" value="${esc(pc.pcName||"")}" placeholder="PC名を検索・入力" autocomplete="off"><div class="participant-picker-results partPcResults"></div></div>
-   <button type="button" class="danger participant-pc-remove">削除</button>`;
-   pcBox.appendChild(pr);
-   const inp=pr.querySelector(".partPcName"),res=pr.querySelector(".partPcResults");
-   const render=()=>{const term=inp.value.trim().normalize("NFKC").toLowerCase(),names=playerPcCandidates().filter(n=>!term||n.normalize("NFKC").toLowerCase().includes(term));res.innerHTML=names.length?names.map(n=>`<button type="button" class="participant-picker-item" data-pc-choice="${esc(n)}">${esc(n)}</button>`).join(""):'<div class="participant-picker-empty">候補がありません。新しいPC名をそのまま入力できます。</div>';res.classList.add("open");res.querySelectorAll("[data-pc-choice]").forEach(b=>b.onclick=()=>{inp.value=b.dataset.pcChoice;res.classList.remove("open")})};
-   inp.addEventListener("focus",render);inp.addEventListener("input",render);
-   pr.querySelector(".participant-pc-remove").onclick=()=>pr.remove();
- }
- const pcs0=Array.isArray(v.pcs)?v.pcs:((v.pcName||v.ho)?[{pcName:v.pcName||"",ho:v.ho||""}]:[]);
- pcs0.forEach(addPc);
- row.querySelector(".participant-pc-add").onclick=()=>addPc({});
- function renderPl(){const term=plInput.value.trim().normalize("NFKC").toLowerCase(),rows=currentPlayers().filter(p=>!term||[p.name,p.publicName,p.socialName].filter(Boolean).join(" ").normalize("NFKC").toLowerCase().includes(term)).slice(0,40);plResults.innerHTML=rows.length?rows.map(p=>`<button type="button" class="participant-picker-item" data-pl-choice="${esc(p.name)}">${esc(p.name)}</button>`).join(""):'<div class="participant-picker-empty">一致する参加者がいません。新しい名前をそのまま入力できます。</div>';plResults.classList.add("open");plResults.querySelectorAll("[data-pl-choice]").forEach(b=>b.onclick=()=>{plInput.value=b.dataset.plChoice;plResults.classList.remove("open")})}
- plInput.addEventListener("focus",renderPl);plInput.addEventListener("input",renderPl);
- row.querySelector(".participant-remove").onclick=()=>row.remove();
- q("participantRows").appendChild(row);
-}
-function getParticipantRows(){
- const out=[];
- [...q("participantRows").querySelectorAll(".participant-row")].forEach(r=>{
-   const role=r.querySelector(".partRole").value,plName=r.querySelector(".partPl").value.trim();
-   const pcRows=[...r.querySelectorAll(".participant-pc-row")].map(pr=>({ho:pr.querySelector(".partPcHo").value.trim(),pcName:pr.querySelector(".partPcName").value.trim()})).filter(p=>p.ho||p.pcName);
-   if(pcRows.length)pcRows.forEach(p=>out.push({role,ho:p.ho,plName,pcName:p.pcName,relation:""}));
-   else if(plName||r.dataset.placeholder!=="1")out.push({role,ho:"",plName,pcName:"",relation:""});
- });
- return out;
-}
-function rowsFromRecord(x){
- if(Array.isArray(x?.participantRows)&&x.participantRows.length)return x.participantRows;
- return (x?.participants||[]).map((name,i)=>({role:"PL",ho:"",plName:name,playerId:(x.participantIds||[])[i]||"",pcName:"",relation:""}));
-}
-function refreshParticipantPlayerList(){}
-function setParticipantRows(rows=[]){
- refreshParticipantPlayerList();q("participantRows").innerHTML="";
- const groups=[],map=new Map();
- (rows||[]).forEach((r,i)=>{
-   const key=`${r.role||"PL"}||${String(r.plName||"").trim()}`;
-   let g=map.get(key);if(!g){g={role:r.role||"PL",plName:r.plName||"",pcs:[]};map.set(key,g);groups.push(g)}
-   if(r.pcName||r.ho)g.pcs.push({pcName:r.pcName||"",ho:r.ho||""});
- });
- if(groups.length)groups.forEach(g=>addParticipantRow(g,{placeholder:false}));
- else addParticipantRow({}, {placeholder:true});
-}
-
-const SELF_PC_ROWS_KEY="trpg39_library_self_pc_rows_v1";
-function loadSelfPcRowsMap(){try{return JSON.parse(localStorage.getItem(SELF_PC_ROWS_KEY)||"{}")||{}}catch(e){return {}}}
-function saveSelfPcRowsMap(v){localStorage.setItem(SELF_PC_ROWS_KEY,JSON.stringify(v||{}))}
-function storedSelfPcRows(record){
- if(!record)return [];
- const map=loadSelfPcRowsMap(),saved=Array.isArray(map[record.id])?map[record.id]:[];
- if(saved.length)return saved;
- if(record.pcName||record.selfHo)return [{pcName:record.pcName||"",ho:record.selfHo||"",pcId:record.pcId||""}];
- return [];
-}
-function setStoredSelfPcRows(recordId,rows){
- const map=loadSelfPcRowsMap();
- if(rows?.length)map[recordId]=rows;else delete map[recordId];
- saveSelfPcRowsMap(map);
-}
-function addSelfPcRow(v={}){
- const row=document.createElement("div");row.className="self-pc-row";
- row.innerHTML=`<div><label>HO / 役割</label><input class="selfPcHo" value="${esc(v.ho||"")}" placeholder="HO1 / KPC など"></div>
- <div><label>自PC</label><select class="selfPcSelect"><option value="">直接入力</option></select><input class="selfPcName" value="${esc(v.pcName||"")}" placeholder="自分のPC名"></div>
- <button type="button" class="danger self-pc-remove">削除</button>`;
- q("selfPcRows").appendChild(row);
- const own=TRPG39.loadPCs?TRPG39.loadPCs():pcs,sel=row.querySelector(".selfPcSelect"),inp=row.querySelector(".selfPcName");
- sel.innerHTML='<option value="">直接入力</option>'+own.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ja")).map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
- if(v.pcId&&own.some(p=>p.id===v.pcId)){sel.value=v.pcId;const p=own.find(p=>p.id===v.pcId);if(p)inp.value=p.name||inp.value}
- sel.onchange=()=>{const p=own.find(p=>p.id===sel.value);if(p)inp.value=p.name||""};
- row.querySelector(".self-pc-remove").onclick=()=>row.remove();
-}
-function setSelfPcRows(rows=[]){q("selfPcRows").innerHTML="";(rows||[]).forEach(addSelfPcRow)}
-function getSelfPcRows(){
- return [...q("selfPcRows").querySelectorAll(".self-pc-row")].map(r=>({
-   ho:r.querySelector(".selfPcHo").value.trim(),
-   pcName:r.querySelector(".selfPcName").value.trim(),
-   pcId:r.querySelector(".selfPcSelect").value||""
- })).filter(r=>r.ho||r.pcName);
-}
-function recordHasSelfPc(record,name){
- const k=String(name||"").normalize("NFKC").trim().toLowerCase();
- return storedSelfPcRows(record).some(r=>String(r.pcName||"").normalize("NFKC").trim().toLowerCase()===k);
-}
-
-function reset(prefillScenarioId=""){
- q("editId").value="";
- ["title","date","startTime","endTime","system","selfHo","pc","image","comment","xReportUrl","xReportText","spoilerBody","runId","runLabel"].forEach(x=>q(x).value="");setSelfPcRows([]);q("sessionKind").value="main";
- q("status").value="done";q("facilitatorPresence").value="present";q("facilitatorTermMode").value="auto";q("facilitatorTermCustom").value="";q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
- q("externalLinks").innerHTML="";addLinkRow();q("rememberParticipantHo").checked=false;setParticipantRows();updateImagePreview();fillScenarioSelect();fillPCSelect();
- q("scenarioSelect").value=prefillScenarioId||"";syncScenarioSearchLabel();
- if(prefillScenarioId){
-   const s=scenarioById(prefillScenarioId);
-   if(s){q("title").value=s.title||"";q("system").value=s.system||"";updateFacilitatorControls(true)}
- } else updateFacilitatorControls(false);
-}
-
-async function uploadLibraryImage(){
-  const file=q("imageFile")?.files?.[0];
-  if(!file)return alert("画像ファイルを選んでください。");
-  const cfg=window.SUPABASE_CONFIG||{};
-  const base=String(cfg.projectUrl||"").trim();
-  const key=String(cfg.publishableKey||"").trim();
-  if(!base||!key)return alert("Supabase設定がありません。");
-  const syncId=window.TRPG39Sync?.getSyncId?.()||localStorage.getItem("39x2_cloud_sync_id_v1")||"";
-  if(!syncId)return alert("同期コードが見つかりません。先にBACKUPでクラウド同期を設定してください。");
-  const fd=new FormData(); fd.append("file",file); fd.append("sync_id",syncId);
-  const r=await fetch(base.replace(/\/$/,"")+"/functions/v1/image-upload",{method:"POST",headers:{apikey:key},body:fd});
-  const body=await r.json().catch(()=>({}));
-  if(!r.ok)throw new Error(body.error||("アップロードエラー "+r.status));
-  q("image").value=body.publicUrl||""; updateImagePreview(); q("imageFile").value=""; return body.publicUrl;
-}
-function combineLibraryDateTime(date,time){
- if(!date)return "";
- return time?`${date}T${time}`:date;
-}
-function splitLibraryDateTime(value=""){
- const s=String(value||"");
- return {
-   date:s.slice(0,10),
-   time:s.includes("T")?s.slice(11,16):""
- };
-}
-function save(){
- let title=q("title").value.trim();if(!title)return alert("シナリオ名を入力してください。");
- let scenarioId=q("scenarioSelect").value;
- const selected=scenarioById(scenarioId);
- if(selected)title=selected.title;
- else if(title){
-   const created=TRPG39.ensureScenario?TRPG39.ensureScenario(title,{system:q("system").value.trim()}):null;
-   if(created){scenarioId=created.id;title=created.title;fillScenarioSelect();q("scenarioSelect").value=created.id;}
- }
- let id=q("editId").value||TRPG39.uuid(),old=data.find(x=>x.id===id);
- const runId=old?.runId||q("runId").value||TRPG39.uuid(),runLabel=q("runLabel").value.trim()||old?.runLabel||nextRunLabelForScenario(scenarioId,title);
- const date=q("date").value;
- if(!date)return alert("日付を入力してください。");
- const start=combineLibraryDateTime(date,q("startTime").value);
- const end=combineLibraryDateTime(date,q("endTime").value);
- const rows=getParticipantRows().map(r=>{
-   let playerId="";
-   if(TRPG39.playersEnabled?.()&&r.plName){
-     const p=TRPG39.ensurePlayer?TRPG39.ensurePlayer(r.plName):null;
-     playerId=p?.id||"";
-   }
-   return {...r,playerId};
- });
- const participants=rows.map(r=>r.plName).filter(Boolean);
- const participantIds=rows.filter(r=>r.plName).map(r=>r.playerId||"");
- const selfPcRows=getSelfPcRows().map(r=>{
-   let pcId=r.pcId||"";
-   if(!pcId&&r.pcName){const p=TRPG39.ensurePC?TRPG39.ensurePC(r.pcName,{system:q("system").value.trim()}):null;pcId=p?.id||""}
-   return {...r,pcId};
- });
- const primarySelf=selfPcRows[0]||{pcName:"",ho:"",pcId:""};
- const ownPcName=primarySelf.pcName||"",ownPcId=primarySelf.pcId||"";
- q("pc").value=ownPcName;q("selfHo").value=primarySelf.ho||"";
- let item=TRPG39.normalizeAlbum({...old,id,scenarioId,title,runId,runLabel,date,start,end,status:q("status").value,
-   articleBody:old?.articleBody||"",
-   spoilerBody:q("spoilerBody")?.value.trim()||"",spoiler:"",system:q("system").value.trim(),facilitatorLabel:facilitatorConfig({}).label,facilitatorless:q("facilitatorPresence").value==="less",role:q("role").value,selfHo:primarySelf.ho||"",pcName:ownPcName,pcId:ownPcId,
-   participants,participantIds,participantRows:rows,
-   imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),
-   xReportUrl:q("xReportUrl").value.trim(),xReportText:q("xReportText").value.trim(),
-   spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
- let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);setStoredSelfPcRows(item.id,selfPcRows);
- if((q("sessionKind").value||"main")==="main"){
-   setRunRoster(item.runId,{
-     role:item.role||"PL",
-     selfPcs:selfPcRows,
-     participants:rows
-   });
- }
- if(item.start){
-   let evs=TRPG39.loadEvents(),eventId=item.eventId||TRPG39.uuid();
-   const ei=evs.findIndex(e=>e.id===eventId),base=ei>=0?evs[ei]:{};
-   const ev=TRPG39.normalizeEvent({...base,id:eventId,type:"trpg",scenarioId:item.scenarioId,title:item.title,scenarioTitle:item.title,start:item.start,end:item.end,status:item.status,sessionKind:q("sessionKind").value||"main",system:item.system,facilitatorLabel:item.facilitatorLabel,facilitatorless:item.facilitatorless,role:item.role,pcName:item.pcName,pcId:item.pcId,participants:item.participants,participantIds:item.participantIds,runId:item.runId,runLabel:item.runLabel,linkedAlbumId:item.id});
-   if(ei>=0)evs[ei]=ev;else evs.push(ev);TRPG39.saveEvents(evs);
-   item=TRPG39.normalizeAlbum({...item,eventId,date:String(item.start).slice(0,10)});
-   i=data.findIndex(x=>x.id===item.id);if(i>=0)data[i]=item;
- }
- setXReport(item.id,q("xReportUrl").value,q("xReportText").value);
- const selfRoleForHoTemplate=String(item.role||"").toUpperCase();
- if(["KP","DL","GM","KPGM","SKP"].includes(selfRoleForHoTemplate)){
-   if(q("rememberParticipantHo").checked)setParticipantHoTemplate(item.scenarioId,item.title,getParticipantRows());
-   else setParticipantHoTemplate(item.scenarioId,item.title,[]);
- }
- persist();reset();render();hideEditor();
-}
-function edit(id){
- let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";const st=splitLibraryDateTime(x.start||x.date||""),en=splitLibraryDateTime(x.end||"");q("date").value=x.date||st.date||"";q("startTime").value=st.time||"";q("endTime").value=en.time||"";q("sessionKind").value=sessionKindForRecord(x);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setSelfPcRows(storedSelfPcRows(x));setParticipantRows(rowsFromRecord(x));q("rememberParticipantHo").checked=getParticipantHoTemplate(x.scenarioId,x.title).length>0;q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";const xr=getXReport(x.id);q("xReportUrl").value=xr.url||x.xReportUrl||"";q("xReportText").value=xr.text||x.xReportText||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
- q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
- q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
-}
-function setRunArchived(runId,archived){
- data=data.map(x=>x.runId===runId?TRPG39.normalizeAlbum({...x,archived:!!archived}):x);persist();render();
-}
-function del(id){
- const x=data.find(v=>v.id===id);if(!x)return;
- const linked=!!x.eventId;
- const msg=linked?"この開催記録を削除しますか？\nCALENDARと連動しているため、卓予定も一緒に削除されます。":"この開催記録を削除しますか？";
- if(confirm(msg)){
-   data=data.filter(v=>v.id!==id);persist();
-   if(linked)TRPG39.saveEvents(TRPG39.loadEvents().filter(e=>e.id!==x.eventId));
-   render();
+function renderCoverSource(groupKey,type){
+ const groups=libraryGroups(),g=groups.find(x=>String(x.key)===String(groupKey));if(!g)return;
+ const box=document.querySelector(`[data-cover-source="${CSS.escape(groupKey)}"]`);if(!box)return;
+ const selected=getLibraryCover(g.key);
+ if(type==="trailer"){
+   const u=scenarioTrailerForGroup(g);
+   box.innerHTML=u?`<div class="lib-cover-grid"><button type="button" class="lib-cover-choice ${selected?.url===u?"selected":""}" data-lib-cover-key="${esc(g.key)}" data-lib-cover-url="${esc(u)}" data-lib-cover-type="trailer"><img src="${esc(u)}" alt="" loading="lazy"><span>${selected?.url===u?"✓ 使用中":"トレーラーを使う"}</span></button></div>`:`<div class="small muted">トレーラー画像は登録されていません。</div>`;
+ }else if(type==="custom"){
+   box.innerHTML=selected?.type==="custom"?`<div class="lib-cover-grid"><div class="lib-cover-choice selected"><img src="${esc(selected.url)}" alt=""><span>✓ 任意画像を使用中</span></div></div><div class="small muted">下の「画像を追加して使う」から差し替えできます。</div>`:`<div class="small muted">下から任意の画像ファイルを追加できます。</div>`;
+ }else{
+   const shots=libraryScreenshots(g);
+   box.innerHTML=shots.length?`<div class="lib-cover-grid">${shots.map(u=>`<button type="button" class="lib-cover-choice ${selected?.url===u?"selected":""}" data-lib-cover-key="${esc(g.key)}" data-lib-cover-url="${esc(u)}" data-lib-cover-type="screenshot"><img src="${esc(u)}" alt="" loading="lazy"><span>${selected?.url===u?"✓ 使用中":"この画像を使う"}</span></button>`).join("")}</div>`:`<div class="small muted">登録済みスクショはありません。</div>`;
  }
 }
 
-function groupKey(x){return x.scenarioId?`id:${x.scenarioId}`:`title:${normTitle(x.title)}`}
-function sessionSortKey(x){
- const start=String(x?.start||"").trim();
- if(start)return start;
- const date=String(x?.date||"").trim();
- return date?date+"T00:00":"9999-12-31T23:59";
-}
-function bySessionStart(a,b){return sessionSortKey(a).localeCompare(sessionSortKey(b));}
-
-function groupData(xs){
- const map=new Map();
- for(const x of xs){
-   const key=groupKey(x);
-   if(!map.has(key))map.set(key,{key,scenarioId:x.scenarioId||"",title:x.title||"名称未設定",items:[]});
-   map.get(key).items.push(x);
- }
- return [...map.values()].map(g=>{
-   g.items.sort((a,b)=>String(a.date||"9999").localeCompare(String(b.date||"9999")));
-   const rm=new Map();
-   for(const x of g.items){const rk=x.runId||"legacy";if(!rm.has(rk))rm.set(rk,{id:rk,label:x.runLabel||"",items:[]});const r=rm.get(rk);r.items.push(x);if(!r.label&&x.runLabel)r.label=x.runLabel}
-   g.runs=[...rm.values()].sort((a,b)=>String(a.items[0]?.date||"9999").localeCompare(String(b.items[0]?.date||"9999")));
-   g.runs.forEach(r=>r.items.sort(bySessionStart));
-   g.runs.sort((a,b)=>bySessionStart(a.items[0]||{},b.items[0]||{}));
-   // runLabelは作成時に固定。旧データのみ、表示時に暫定ラベルを付ける。
-   // 既存データは書き換えず、表示時だけ陣名を補完する。
-   let displayKpNo=0;
-   g.runs.forEach(r=>{
-     // 自分がPLとして参加した卓は、保存済みrunLabelより「自陣」を優先して表示する。
-     const selfRoles=new Set((r.items||[]).map(x=>String(x.role||"").toUpperCase()).filter(Boolean));
-     if(selfRoles.has("PL")){
-       r.label="自陣";
-       return;
-     }
-
-     if(r.label){
-       const m=String(r.label).match(/^(\d+)陣目$/);
-       if(m)displayKpNo=Math.max(displayKpNo,Number(m[1])||0);
-       return;
-     }
-
-     const roles=new Set(r.items.map(x=>String(x.role||"").toUpperCase()));
-     const isPl=[...roles].some(v=>v==="PL");
-     const isKp=[...roles].some(v=>v==="KP"||v==="DL"||v==="GM"||v==="KPGM"||v==="SKP");
-     if(isPl&&!isKp)r.label="自陣";
-     else r.label=`${++displayKpNo}陣目`;
-   });
-   const s=scenarioById(g.scenarioId);
-   if(s){g.title=s.title||g.title;g.system=s.system||"";g.thumbnailUrl=s.thumbnailUrl||((g.items.find(x=>(x.imageUrls||[])[0])?.imageUrls||[])[0]||"")}
-   else{
-     g.system=g.items.find(x=>x.system)?.system||"";
-     g.thumbnailUrl=(g.items.find(x=>(x.imageUrls||[])[0])?.imageUrls||[])[0]||"";
-   }
-   g.people=[...new Set(g.items.flatMap(x=>x.participants||[]))];
-   g.pcs=[...new Set(g.items.map(x=>x.pcName).filter(Boolean))];
-   g.roles=[...new Set(g.items.map(displayRoleForRecord).filter(Boolean))];
-   g.firstDate=g.items.map(x=>x.date).filter(Boolean).sort()[0]||"";
-   g.lastDate=g.items.map(x=>x.date).filter(Boolean).sort().slice(-1)[0]||"";
-   return g;
- }).sort((a,b)=>String(b.lastDate||"").localeCompare(String(a.lastDate||""))||a.title.localeCompare(b.title,"ja"));
-}
-function displayRoleForRecord(x){const role=String(x?.role||"");if(["KP","DL","GM"].includes(role))return facilitatorConfig(x).label;return role}
-function dateRange(g){
- if(!g.firstDate)return "";
- return g.firstDate===g.lastDate?g.firstDate:`${g.firstDate} → ${g.lastDate}`;
-}
-function linksHtml(x){return (x.externalLinks||[]).length?`<div style="margin-top:5px">${x.externalLinks.map(l=>l.spoiler?`<details class="spoiler"><summary>⚠ ${esc(l.label||"ネタバレリンク")}</summary><div class="spoiler-body"><a class="link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">開く</a></div></details>`:`<a class="link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label||"外部リンク")}</a>`).join("　")}</div>`:""}
-
-function showShareUrl(url,message){
- if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(url).then(()=>prompt(message+"\n\nコピー済みです。",url)).catch(()=>prompt(message,url))}
- else prompt(message,url);
-}
-function playerForRow(r){
- const players=TRPG39.loadPlayers?TRPG39.loadPlayers():[];
- return (r.playerId&&players.find(p=>p.id===r.playerId))||players.find(p=>String(p.name||"").trim()===String(r.plName||"").trim())||null;
-}
-function snsNameForRow(r){
- const hit=playerForRow(r);
- return String(hit?.socialName||r.plName||"").trim();
-}
-function rowIsExcluded(r){
- const hit=playerForRow(r);
- // 現在のPLAYERSで「除外」されている人は匿名枠として扱う。
- if(hit)return !!hit.excluded;
- // 旧データでplayerIdだけ残り、PLAYERS側から既に削除されている場合も
- // 名前を再表示せず「PL：他○名」に集約する。
- if(r?.playerId)return true;
- return false;
-}
-function reportRowsWithSelf(x){
- const rows=rowsFromRecord(x).map(r=>({...r,_excluded:rowIsExcluded(r),plName:snsNameForRow(r)}));
- const selfRole=String(x.role||"").trim();
- if(selfRole){
-   const selfName=localStorage.getItem("39x2_self_sns_name_v1")||"自分";
-   const selfCandidateRows=rows.filter(r=>String(r.plName||"").trim()==="自分");
-   selfCandidateRows.forEach(r=>rows.splice(rows.indexOf(r),1));
-   const ownRows=storedSelfPcRows(x);
-   if(ownRows.length)ownRows.forEach(r=>rows.push({role:selfRole,ho:r.ho||"",plName:selfName,pcName:r.pcName||"",relation:"",_self:true}));
-   else rows.push({role:selfRole,ho:x.selfHo||"",plName:selfName,pcName:x.pcName||"",relation:"",_self:true});
- }
- const visible=[],anonPl=[];
- rows.forEach(r=>{
-   const role=String(r.role||"PL").toUpperCase(),hidden=!!r._excluded&&!r._self,hasName=!!String(r.plName||"").trim()&&!hidden;
-   if(role==="PL"&&!hasName){anonPl.push(r);return}
-   if(["KP","DL","GM"].includes(role)&&!hasName){visible.push({...r,plName:"",_anonymousFacilitator:true});return}
-   if(hasName||r._self)visible.push(r);
- });
- if(anonPl.length)visible.push({role:"_anonymousPL",plName:`PL：他${anonPl.length}名`,_anonymousSummary:true});
- return visible;
-}
-function buildXReportText(x){
- const rows=reportRowsWithSelf(x),groups=new Map();
- rows.forEach(r=>{const role=String(r.role||"PL");if(!groups.has(role))groups.set(role,[]);groups.get(role).push(r)});
- const scenario=scenarioById(x.scenarioId||"")||{},system=String(x.system||scenario.system||"").trim(),title=String(x.title||scenario.title||"").trim(),author=String(scenario.author||"").trim(),cfg=facilitatorConfig({...x,system,scenarioId:x.scenarioId});
- const head=[system,title?`「${title}」`:"",author?`（${author}様作）`:""].join("");
- const lines=[head].filter(Boolean);
- if(cfg.less)lines.push(`${cfg.label}レス`);
- const facilitatorRows=[...(groups.get("KP")||[]),...(groups.get("DL")||[]),...(groups.get("GM")||[])];
- if(facilitatorRows.length&&!cfg.less){const values=facilitatorRows.map(r=>`${r.ho?`${r.ho}：`:""}${r.plName||""}${r.pcName?`/${r.pcName}`:""}`).filter(Boolean);if(values.length)lines.push(`${cfg.label}：${values.join("、")}`);else lines.push(`${cfg.label}`)}
- const skps=groups.get("SKP")||[];if(skps.length){const values=skps.map(r=>`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`).filter(Boolean);if(values.length)lines.push(`SKP：${values.join("、")}`)}
- const pls=(groups.get("PL")||[]).slice().sort((a,b)=>{
-   const hoNum=v=>{const m=String(v?.ho||"").match(/(\d+)/);return m?Number(m[1]):9999};
-   return hoNum(a)-hoNum(b);
- });
- if(pls.length){pls.forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(r.ho?`${r.ho}：${who}`:`PL：${who}`)})}
- (groups.get("見学")||[]).forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(`見学：${who}`)});
- (groups.get("その他")||[]).forEach(r=>{const who=`${r.plName||""}${r.pcName?`/${r.pcName}`:""}`.trim();if(who)lines.push(`${r.ho?`${r.ho}：`:""}${who}`)});
- (groups.get("_anonymousPL")||[]).forEach(r=>{if(r.plName)lines.push(r.plName)});
- if(rows.some(r=>r.plName&&!r._excludedSummary))lines.push("※敬称略");
- if(String(x.comment||"").trim())lines.push("",String(x.comment).trim());
- return lines.join("\n");
-}
-async function prepareShareUrl(id){
- const x=data.find(v=>v.id===id);if(!x)throw new Error("記録が見つかりません。");
- if((x.visibility||"private")==="private"){
-   throw new Error("この記録は「自分のみ」です。共有するには公開範囲を「リンク限定」または「公開」に変更してください。");
- }
- if(x.visibility==="table"){
-   throw new Error("「同卓者のみ」は今後のアカウント共有用です。現在はリンク限定を使ってください。");
- }
- if(!(TRPG39Cloud&&TRPG39Cloud.configured()))throw new Error("共有機能の設定がありません。");
-
- const ogVersion=Date.now();
- const payload={kind:"library-session",version:5,ogVersion,title:x.title,date:x.date,start:x.start||"",end:x.end||"",status:x.status||"done",system:x.system,facilitatorLabel:facilitatorConfig(x).label,facilitatorless:facilitatorConfig(x).less,selfRole:x.role||"",selfHo:x.selfHo||"",selfPcName:x.pcName||"",participantRows:rowsFromRecord(x),image:(x.imageUrls||[])[0]||"",comment:x.comment||"",spoiler:x.spoilerVisibility==="link"?(x.spoilerBody||x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
-
- let shareId=x.shareId||"";
- if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);
- else shareId=await TRPG39Cloud.createSharedPage(payload);
-
- const i=data.findIndex(v=>v.id===x.id);
- if(i>=0){
-   data[i]=TRPG39.normalizeAlbum({...data[i],shareId,shareVersion:ogVersion});
-   persist();
- }
-
- const previewUrl=new URL("https://sakumeru-share.sakumeru.workers.dev/");
- previewUrl.searchParams.set("id",shareId);
- previewUrl.searchParams.set("v",String(ogVersion));
- return {url:previewUrl.href,item:data.find(v=>v.id===id)||x};
-}
-async function shareAlbum(id){
- try{
-   const result=await prepareShareUrl(id);
-   showShareUrl(result.url,
-     "この開催記録の共有URLを更新しました。\nXに貼ると、登録したスクリーンショットがカード画像になります。");
- }catch(e){
-   console.error(e);
-   alert(e.message||e);
- }
-}
-let pendingXId="";
-function updateXPreviewCount(){const t=q("xPreviewText")?.value||"";if(q("xPreviewCount"))q("xPreviewCount").textContent=`${[...t].length}文字（URL分は別）`}
-function postAlbumToX(id){
- const x=data.find(v=>v.id===id);if(!x)return;
- if((x.visibility||"private")==="private")return alert("この記録は「自分のみ」です。共有するには公開範囲を「リンク限定」または「公開」に変更してください。");
- pendingXId=id;q("xPreviewText").value=buildXReportText(x);updateXPreviewCount();q("xPreviewDialog").showModal();
-}
-async function confirmPostAlbumToX(){
- const id=pendingXId;if(!id)return;q("xPreviewDialog").close();
- const popup=window.open("about:blank","_blank");
- try{
-   if(popup){popup.document.title="X投稿画面を準備中…";popup.document.body.innerHTML="<p style=\"font-family:sans-serif;padding:20px\">X投稿画面を準備しています…</p>"}
-   const result=await prepareShareUrl(id),intent=new URL("https://x.com/intent/tweet");intent.searchParams.set("text",q("xPreviewText").value);intent.searchParams.set("url",result.url);intent.searchParams.set("lang","ja");
-   if(popup){popup.opener=null;popup.location.replace(intent.href)}else location.href=intent.href;
- }catch(e){if(popup)popup.close();console.error(e);alert(e.message||e)}
-}
-function nextRunLabelForScenario(scenarioId,title=""){
- const same=data.filter(x=>{
-   if(scenarioId)return x.scenarioId===scenarioId;
-   return !x.scenarioId && normTitle(x.title)===normTitle(title);
- });
- let maxNo=0;
- same.forEach(x=>{
-   const m=String(x.runLabel||"").match(/^(\d+)陣目$/);
-   if(m)maxNo=Math.max(maxNo,Number(m[1])||0);
- });
- if(!maxNo){
-   // 旧データなどrunLabel未設定の陣数も考慮。
-   const ids=new Set(same.map(x=>x.runId).filter(Boolean));
-   maxNo=ids.size;
- }
- return `${maxNo+1}陣目`;
-}
-function addForScenario(id){
- const s=scenarioById(id);
- reset(id);
- applyParticipantHoTemplate(id,s?.title||q("title").value||"");
- q("runId").value=TRPG39.uuid();
- q("runLabel").value=nextRunLabelForScenario(id,s?.title||"");
- showEditor();
- q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
-}
-function addForRun(scenarioId,runId,runLabel=""){
- reset(scenarioId);
- q("runId").value=runId;
- q("runLabel").value=runLabel||"";
-
- const runItems=data.filter(x=>x.runId===runId).sort(bySessionStart);
- const base=runItems[0];
- const roster=ensureRunRosterFromData(runId);
-
- if(base){
-   q("system").value=base.system||"";
-   q("visibility").value=base.visibility||"private";
- }
-
- if(roster){
-   q("role").value=roster.role||"PL";
-   setSelfPcRows(roster.selfPcs||[]);
-   const primary=(roster.selfPcs||[])[0]||{pcName:"",ho:"",pcId:""};
-   q("pc").value=primary.pcName||"";
-   q("selfHo").value=primary.ho||"";
-   fillPCSelect(primary.pcId||"");
-   setParticipantRows(roster.participants||[]);
- }else if(base){
-   // Legacy fallback
-   q("role").value=base.role||"PL";
-   const selfRows=storedSelfPcRows(base);
-   setSelfPcRows(selfRows);
-   const primary=selfRows[0]||{pcName:base.pcName||"",ho:base.selfHo||"",pcId:base.pcId||""};
-   q("pc").value=primary.pcName||"";
-   q("selfHo").value=primary.ho||"";
-   fillPCSelect(primary.pcId||"");
-   setParticipantRows(rowsFromRecord(base));
- }
-
- showEditor();
- q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
-}
-function diceAnalysisHtml(x){
- const list=x.diceAnalyses||[];if(!list.length)return "";
- return `<details class="lib-dice"><summary>🎲 ダイスログ解析結果${list.length>1?` (${list.length})`:""}</summary>${list.map(a=>{const cf=a.criticalFumble||{},growth=a.growth||[];return `<div class="lib-dice-card"><div class="small muted">${esc(a.label||"解析結果")}</div><div><b>クリティカル ${Number(cf.critical||0)}</b> ／ <b>ファンブル ${Number(cf.fumble||0)}</b> ／ 成長候補 ${growth.length}</div>${(a.bySpeaker||[]).map(r=>`<div class="small"><b>${esc(r.speaker)}</b>：クリ ${r.critical||0} ／ ファン ${r.fumble||0}</div>`).join("")}${growth.length?`<details><summary class="small">成長候補を見る</summary>${growth.map(g=>`<div class="small">${esc(g.speaker)}｜${esc(g.skill)}｜${esc(g.roll)}</div>`).join("")}</details>`:""}</div>`}).join("")}</details>`;
-}
-
-function xReportsForRun(run){
- const seen=new Set(),rows=[];
- (run?.items||[]).forEach(x=>{
-   const stored=getXReport(x.id);
-   const url=String(stored.url||x?.xReportUrl||"").trim();
-   const text=String(stored.text||x?.xReportText||"").trim();
-   if(!url&&!text)return;
-   const key=url||`${x.id}:${text}`;
-   if(seen.has(key))return;
-   seen.add(key);
-   rows.push({
-     id:x.id,
-     date:String(x.date||""),
-     url,text
-   });
- });
- rows.sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
- return rows;
-}
-function xReportsRunHtml(run){
- const rows=xReportsForRun(run);
- if(!rows.length)return "";
- return `<section class="lib-run-x-reports">
-   <h3>卓報告</h3>
-   <div class="lib-run-x-report-list">${rows.map((r,i)=>{
-     let link="";
-     if(r.url){
-       let label="卓報告URLを開く ↗";
-       try{
-         const u=new URL(r.url);
-         if(["x.com","www.x.com","twitter.com","www.twitter.com"].includes(u.hostname)&&/\/status\/\d+/.test(u.pathname))label="Xの卓報告を見る ↗";
-       }catch(_){}
-       link=`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
-     }
-     return `<details class="lib-run-x-report"${rows.length===1?" open":""}>
-       <summary>${link||`卓報告 ${i+1}`}</summary>
-       ${r.text?`<div class="lib-child-note">${esc(r.text).replace(/\n/g,"<br>")}</div>`:""}
-     </details>`;
-   }).join("")}</div>
- </section>`;
-}
-
-function xReportHtml(x){
- const stored=x?.id?getXReport(x.id):{url:"",text:""};
- const url=String(stored.url||x?.xReportUrl||"").trim(),text=String(stored.text||x?.xReportText||"").trim();
- if(!url&&!text)return "";
- let link="";
- if(url){
-   try{
-     const u=new URL(url);
-     if(["x.com","www.x.com","twitter.com","www.twitter.com"].includes(u.hostname)&&/\/status\/\d+/.test(u.pathname)){
-       link=`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Xの卓報告を見る ↗</a>`;
-     }else link=`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">卓報告URLを開く ↗</a>`;
-   }catch(_){}
- }
- return `<details class="lib-x-report"${text?"":" open"}><summary>卓報告${link?` ／ ${link}`:""}</summary>${text?`<div class="lib-child-note">${esc(text).replace(/\n/g,"<br>")}</div>`:""}</details>`;
-}
-
-function participantHtml(x){
- const allRows=rowsFromRecord(x);
- const cfg=facilitatorConfig(x);
-
- // 名前を残さない/削除済みの参加者も「参加枠」として数える。
- // KP/DL/GM は1人枠なので匿名なら役割名だけ。
- // PL/HO は匿名枠を「他PL○名」にまとめる。
- const named=[],anonPl=[];
- let anonymousFacilitator=false;
-
- allRows.forEach(r=>{
-   const role=String(r.role||"PL").toUpperCase();
-   const excluded=rowIsExcluded(r);
-   const hasName=!!String(r.plName||"").trim()&&!excluded;
-
-   if(["KP","DL","GM"].includes(role)){
-     if(hasName)named.push(r);
-     else anonymousFacilitator=true;
-     return;
-   }
-   if(role==="PL"){
-     if(hasName)named.push(r);
-     else anonPl.push(r);
-     return;
-   }
-   // SKP/見学/その他は、名前がある場合だけ通常表示。
-   if(hasName)named.push(r);
- });
-
- // 参加情報そのものが無い場合は何も出さない。
- if(!named.length&&!anonPl.length&&!anonymousFacilitator)return "";
-
- const body=[];
- const facilitatorRows=named.filter(r=>["KP","DL","GM"].includes(String(r.role||"").toUpperCase()));
- if(!cfg.less){
-   if(facilitatorRows.length){
-     facilitatorRows.forEach(r=>{
-       const name=r.playerId&&TRPG39.playersEnabled?.()
-         ?`<a class="participant-link" href="../players/index.html?focus=${encodeURIComponent(r.playerId)}">${esc(r.plName)}</a>`
-         :esc(r.plName);
-       body.push(`<div>${esc(cfg.label)}：${name}${r.pcName?` / ${esc(r.pcName)}`:""}</div>`);
-     });
-   }else if(anonymousFacilitator){
-     body.push(`<div>${esc(cfg.label)}</div>`);
-   }
- }
-
- named.filter(r=>!["KP","DL","GM"].includes(String(r.role||"").toUpperCase())).forEach(r=>{
-   const role=String(r.role||"PL").toUpperCase();
-   const name=r.playerId&&TRPG39.playersEnabled?.()
-     ?`<a class="participant-link" href="../players/index.html?focus=${encodeURIComponent(r.playerId)}">${esc(r.plName)}</a>`
-     :esc(r.plName);
-   const pc=r.pcName?` / ${esc(r.pcName)}`:"";
-   if(role==="SKP")body.push(`<div>SKP：${name}${pc}</div>`);
-   else if(role==="見学")body.push(`<div>見学：${name}${pc}</div>`);
-   else if(role==="PL")body.push(`<div class="participant-pl-row"><span class="participant-ho">${r.ho?`<strong>${esc(r.ho)}</strong>`:"PL"}</span><span class="participant-name">${name}</span>${r.pcName?`<span class="participant-pc">/ ${esc(r.pcName)}</span>`:""}</div>`);
-   else body.push(`<div>${r.ho?`${esc(r.ho)}　`:""}${name}${pc}</div>`);
- });
-
- if(anonPl.length){
-   body.push(`<div class="muted">PL：他${anonPl.length}名</div>`);
-   anonPl.forEach(r=>{
-     if(r.pcName){
-       body.push(`<div>${r.ho?`<strong>${esc(r.ho)}</strong>　`:""}PC：${esc(r.pcName)}</div>`);
-     }
-   });
- }
-
- const lessNote=cfg.less?`<div><strong>${esc(cfg.label)}レス</strong></div>`:"";
- return `<div class="lib-participants">${lessNote}${body.join("")}${named.length?`<div class="small muted honorific-note">※敬称略</div>`:""}</div>`;
-}
-
-function runCountForGroup(g){
- return Array.isArray(g.runs)?g.runs.length:0;
-}
-function roleCountForGroup(g,roles){
- return (g.runs||[]).filter(r=>{
-   const set=new Set(r.items.map(x=>String(x.role||"").toUpperCase()));
-   return roles.some(role=>set.has(role));
- }).length;
-}
 function libraryGridCard(g){
  const kpRuns=roleCountForGroup(g,["KP","DL","GM","KPGM","SKP"]);
  const plRuns=roleCountForGroup(g,["PL"]);
- const chosenThumb=selectedLibraryThumb(g.key);
+ const chosenCover=getLibraryCover(g.key);
  const sub=[
    kpRuns?`進行 ${kpRuns}陣`:"",
    plRuns?`PL ${plRuns}陣`:"",
    g.lastDate?`最終 ${g.lastDate}`:""
  ].filter(Boolean).join(" ／ ");
  return `<article class="lib-grid-card" data-library-focus="${esc(g.key)}" tabindex="0">
-   <div class="lib-grid-thumb-wrap">${chosenThumb?`<img class="lib-grid-thumb" src="${esc(chosenThumb)}" alt="" loading="lazy">`:`<div class="lib-grid-placeholder">🌺</div>`}</div>
+   <div class="lib-grid-thumb-wrap">${chosenCover?.url?`<img class="lib-grid-thumb" src="${esc(chosenCover.url)}" alt="" loading="lazy">`:`<div class="lib-grid-placeholder">🌺</div>`}</div>
    <div class="lib-grid-body">
      <div class="lib-grid-title">${esc(g.title)}</div>
      <div class="lib-grid-meta">${g.system?`<span class="badge">${esc(g.system)}</span>`:""}<span class="badge">${runCountForGroup(g)}陣</span><span class="badge">${g.items.length}記録</span></div>
@@ -2239,7 +1560,7 @@ function focusedGroupHtml(g){
    <div class="lib-focused-title">${esc(g.title)}</div>
  </div>
  <div class="lib-parent-actions">${g.scenarioId?`<a class="link" href="../scenario/index.html?focus=${encodeURIComponent(g.scenarioId)}">SCENARIOを見る</a>`:""}<button type="button" data-add-scenario="${esc(g.scenarioId)}" data-add-title="${esc(g.title)}">＋ 新しい陣</button></div>
- ${!focusedRun?libraryThumbChooser(g):""}
+ ${!focusedRun?libraryCoverChooser(g):""}
  ${focusedRun
    ? runDetailHtml(g,focusedRun)
    : `${(g.runs||[]).length>1?`<div class="lib-run-repair">
@@ -3620,41 +2941,109 @@ function closePlayerRelationshipGraph(){
  q("playerRelationModal").hidden=true;
 }
 
+
+function playerAvailablePcNames(player){
+ return [...new Set(playerAllRoleRecords(player).map(v=>String(v.row?.pcName||"").trim()).filter(Boolean))]
+   .sort((a,b)=>a.localeCompare(b,"ja"));
+}
+function playerScenarioShareUrls(player){
+ const raw=player?.scenarioShareUrls;
+ if(Array.isArray(raw))return raw.map(x=>String(x||"").trim()).filter(Boolean);
+ return String(raw||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+}
+function playerContactHistory(player){
+ return Array.isArray(player?.contactHistory)?player.contactHistory:[];
+}
+function playerContactHistoryHtml(player){
+ const rows=playerContactHistory(player).slice().sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
+ if(!rows.length)return "";
+ return `<details class="player-contact-history"><summary>連絡先履歴 ${rows.length}件</summary>
+   <div>${rows.map(v=>`<div class="player-contact-history-row">${esc(v.at||"")} ／ ${esc(v.type||"連絡先")}：${esc(v.value||"")} → 登録解除</div>`).join("")}</div>
+ </details>`;
+}
+function savePlayerDirectoryMeta(player){
+ const xId=q("playerMetaX")?.value.trim()||"";
+ const discordId=q("playerMetaDiscord")?.value.trim()||"";
+ const scenarioShareUrls=String(q("playerMetaScenarioUrls")?.value||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const availabilityShareUrl=q("playerMetaAvailabilityUrl")?.value.trim()||"";
+ const history=playerContactHistory(player).slice();
+ const today=new Date().toISOString().slice(0,10);
+ const oldX=String(player.xId||"").trim(),oldDiscord=String(player.discordId||"").trim();
+ if(oldX&&oldX!==xId)history.push({type:"X",value:oldX,at:today});
+ if(oldDiscord&&oldDiscord!==discordId)history.push({type:"Discord",value:oldDiscord,at:today});
+ players=players.map(p=>p.id===player.id?{...p,xId,discordId,scenarioShareUrls,availabilityShareUrl,contactHistory:history}:p);
+ savePlayersState();
+ renderPlayerDetail(playerById(player.id));
+}
+
 function renderPlayerDetail(player){
- const pcsForPlayer=playerRegisteredPcs(player),allHistory=playerAllRoleRecords(player),external=externalPlayedFor(player.id);
- const availableRoles=playerAvailableRoles(player),availableSystems=playerAvailableSystems(player);
+ const allHistory=playerAllRoleRecords(player),external=externalPlayedFor(player.id);
+ const availableRoles=playerAvailableRoles(player),availableSystems=playerAvailableSystems(player),availablePcs=playerAvailablePcNames(player);
  const history=allHistory.filter(v=>
    (playerDetailRoleFilter==="all"||v.role===playerDetailRoleFilter) &&
-   (playerDetailSystemFilter==="all"||playerRecordSystem(v)===playerDetailSystemFilter)
+   (playerDetailSystemFilter==="all"||playerRecordSystem(v)===playerDetailSystemFilter) &&
+   (playerDetailPcFilter==="all"||String(v.row?.pcName||"").trim()===playerDetailPcFilter)
  );
+ const scenarioUrls=playerScenarioShareUrls(player);
 
  q("summary").textContent=`${player.name}視点の記録`;
  q("list").classList.remove("library-grid");
  q("list").innerHTML=`<div class="player-detail">
    <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="backToPlayers" type="button">← 同卓者一覧へ</button><button id="openPlayerRelationFromDetail" class="player-rel-open" type="button">同卓者関係図</button></div>
 
-   <section class="player-section">
-     <h3>${esc(player.name)}の登録PC</h3>
-     <div class="player-card-grid">${pcsForPlayer.length?pcsForPlayer.map(p=>`<div class="player-pc-card">
-       <div class="player-pc-row">
-         ${p.pc?.image?`<img class="player-pc-thumb" src="${esc(p.pc.image)}" alt="">`:""}
-         <div><strong>${esc(p.name)}</strong><div class="small muted">${esc(p.system||p.pc?.system||"")}</div><div class="small muted">使用 ${p.count}卓</div>${p.pc?.id?`<a class="link" href="../pcs/index.html?focus=${encodeURIComponent(p.pc.id)}">PC情報を見る</a>`:""}</div>
+   <section class="player-section player-profile-summary">
+     <div class="player-profile-head">
+       <div>
+         <h3 style="margin:0">${esc(player.name)}</h3>
+         <div class="small muted">連絡先・共有URL</div>
        </div>
-       ${playerPcHistoryHtml(player,p)}
-     </div>`).join(""):'<div class="small muted">登録PCはまだありません。</div>'}</div>
+       <div class="player-profile-badges">
+         ${player.xId?'<span class="badge">Xあり</span>':""}
+         ${player.discordId?'<span class="badge">Discordあり</span>':""}
+         ${scenarioUrls.length?`<span class="badge">シナリオ共有 ${scenarioUrls.length}</span>`:""}
+         ${player.availabilityShareUrl?'<span class="badge">空き日共有あり</span>':""}
+       </div>
+     </div>
+     <div class="player-contact-grid">
+       <div><strong>X</strong><div>${player.xId?esc(player.xId):'<span class="muted">未登録</span>'}</div></div>
+       <div><strong>Discord</strong><div>${player.discordId?esc(player.discordId):'<span class="muted">未登録</span>'}</div></div>
+     </div>
+     <div class="player-share-link-list">
+       ${scenarioUrls.map((u,i)=>`<a class="link" href="${esc(u)}" target="_blank" rel="noopener noreferrer">シナリオ共有URL ${i+1}</a>`).join("")}
+       ${player.availabilityShareUrl?`<a class="link" href="${esc(player.availabilityShareUrl)}" target="_blank" rel="noopener noreferrer">空き日共有URL</a>`:""}
+       ${!scenarioUrls.length&&!player.availabilityShareUrl?'<span class="small muted">共有URLは未登録です。</span>':""}
+     </div>
+     ${playerContactHistoryHtml(player)}
+     <details class="player-meta-editor">
+       <summary>連絡先・共有URLを編集</summary>
+       <div class="player-meta-grid">
+         <div><label>X（Twitter）ID</label><input id="playerMetaX" value="${esc(player.xId||"")}" placeholder="@xxxx"></div>
+         <div><label>Discord ID</label><input id="playerMetaDiscord" value="${esc(player.discordId||"")}" placeholder="ユーザー名 / ID"></div>
+       </div>
+       <label>シナリオ共有URL <span class="small muted">1行1URL</span></label>
+       <textarea id="playerMetaScenarioUrls" placeholder="https://...">${esc(scenarioUrls.join("\n"))}</textarea>
+       <label>空き日共有URL</label>
+       <input id="playerMetaAvailabilityUrl" type="url" value="${esc(player.availabilityShareUrl||"")}" placeholder="https://.../share/index.html?id=...">
+       <div class="small muted" style="margin-top:5px">X／Discordを削除・変更すると、以前の値を履歴として残します。</div>
+       <button id="savePlayerMeta" type="button" style="margin-top:8px;width:auto">保存</button>
+     </details>
    </section>
 
    <section class="player-section">
-     <div style="display:flex;gap:12px;align-items:end;justify-content:space-between;flex-wrap:wrap">
+     <div class="player-history-filter-head">
        <div><h3 style="margin-bottom:4px">${esc(player.name)}の卓記録</h3><div class="small muted">${history.length}卓</div></div>
-       <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
-         <div style="min-width:160px"><label>システム</label><select id="playerDetailSystem">
+       <div class="player-history-filters">
+         <div><label>システム</label><select id="playerDetailSystem">
            <option value="all">すべて</option>
-           ${availableSystems.map(s=>`<option value="${esc(s)}" ${playerDetailSystemFilter===s?"selected":""}>${esc(s)}</option>`).join("")}
+           ${availableSystems.map(v=>`<option value="${esc(v)}" ${playerDetailSystemFilter===v?"selected":""}>${esc(v)}</option>`).join("")}
          </select></div>
-         <div style="min-width:150px"><label>役割</label><select id="playerDetailRole">
+         <div><label>役割</label><select id="playerDetailRole">
            <option value="all">すべて</option>
-           ${availableRoles.map(r=>`<option value="${esc(r)}" ${playerDetailRoleFilter===r?"selected":""}>${esc(playerRoleLabel(r))}</option>`).join("")}
+           ${availableRoles.map(v=>`<option value="${esc(v)}" ${playerDetailRoleFilter===v?"selected":""}>${esc(playerRoleLabel(v))}</option>`).join("")}
+         </select></div>
+         <div><label>キャラクター</label><select id="playerDetailPc">
+           <option value="all">すべて</option>
+           ${availablePcs.map(v=>`<option value="${esc(v)}" ${playerDetailPcFilter===v?"selected":""}>${esc(v)}</option>`).join("")}
          </select></div>
        </div>
      </div>
@@ -3665,7 +3054,7 @@ function renderPlayerDetail(player){
      <h3>${esc(player.name)}の別卓で通過済み</h3>
      <p class="small muted">自分とは別の卓で通過済みと分かっているシナリオを、自分用に記録します。HO・メモは共有されません。</p>
      <div class="player-external-row">
-       <div><label>シナリオ</label><select id="externalScenario"><option value="">選択してください</option>${scenarios.slice().sort((a,b)=>String(a.title||"").localeCompare(String(b.title||""),"ja")).map(s=>`<option value="${esc(s.id)}">${esc(s.title)}</option>`).join("")}</select></div>
+       <div><label>シナリオ</label><select id="externalScenario"><option value="">選択してください</option>${scenarios.slice().sort((a,b)=>String(a.title||"").localeCompare(String(b.title||""),"ja")).map(v=>`<option value="${esc(v.id)}">${esc(v.title)}</option>`).join("")}</select></div>
        <div><label>HO <span class="small muted">任意</span></label><input id="externalHo" placeholder="HO1 など"></div>
        <div><label>メモ <span class="small muted">任意</span></label><input id="externalMemo" placeholder="いつ頃聞いた等"></div>
        <button id="addExternalPlayed" type="button">追加</button>
@@ -3678,10 +3067,12 @@ function renderPlayerDetail(player){
    </section>
  </div>`;
 
- q("backToPlayers").onclick=()=>{focusedPlayerId="";playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()};
+ q("backToPlayers").onclick=()=>{focusedPlayerId="";playerDetailRoleFilter="all";playerDetailSystemFilter="all";playerDetailPcFilter="all";render()};
  q("openPlayerRelationFromDetail").onclick=()=>openPlayerRelationshipGraph(player.id);
  q("playerDetailRole").onchange=()=>{playerDetailRoleFilter=q("playerDetailRole").value;renderPlayerDetail(player)};
  q("playerDetailSystem").onchange=()=>{playerDetailSystemFilter=q("playerDetailSystem").value;renderPlayerDetail(player)};
+ q("playerDetailPc").onchange=()=>{playerDetailPcFilter=q("playerDetailPc").value;renderPlayerDetail(player)};
+ q("savePlayerMeta").onclick=()=>savePlayerDirectoryMeta(player);
  q("addExternalPlayed").onclick=()=>{
    const sid=q("externalScenario").value;
    if(!sid)return alert("シナリオを選んでください。");
@@ -3690,7 +3081,6 @@ function renderPlayerDetail(player){
  };
  document.querySelectorAll("[data-remove-external]").forEach(b=>b.onclick=()=>{removeExternalPlayed(player.id,b.dataset.removeExternal);renderPlayerDetail(player)});
 }
-
 function playerRecordSystem(v){
  const x=v.record||{};
  const scenario=scenarioById(x.scenarioId||"")||{};
@@ -3729,6 +3119,10 @@ function renderPlayerView(){
      <div class="library-dir-meta">公開名：${esc(x.publicName||x.name)}</div>
      ${systems.length?`<div class="library-dir-meta">${systems.map(s=>`<span class="badge">${esc(s)}</span>`).join(" ")}</div>`:""}
      <div class="library-dir-meta">同卓 ${st.count}シナリオ${st.first?` ／ 初同卓 ${esc(st.first)}`:""}${st.last?` ／ 最終 ${esc(st.last)}`:""}</div>
+     <div class="player-profile-badges">
+       ${x.xId?'<span class="badge">X</span>':""}${x.discordId?'<span class="badge">Discord</span>':""}
+       ${playerScenarioShareUrls(x).length?'<span class="badge">シナリオ共有</span>':""}${x.availabilityShareUrl?'<span class="badge">空き日共有</span>':""}
+     </div>
      ${x.archived?`<div class="player-archived-mark">アーカイブ済み</div>`:""}
    </div>
    <div class="player-dir-actions">
@@ -3737,7 +3131,7 @@ function renderPlayerView(){
    </div>
  </article>`).join(""):'<div class="empty">該当する同卓者がいません。</div>'}</div>`;
  q("openPlayerRelationSelf").onclick=()=>openPlayerRelationshipGraph(PLAYER_REL_SELF_ID);
- document.querySelectorAll("[data-player-focus]").forEach(card=>{card.onclick=()=>{focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()};card.onkeydown=e=>{if(e.key==="Enter"){focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()}}});
+ document.querySelectorAll("[data-player-focus]").forEach(card=>{card.onclick=()=>{focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";playerDetailSystemFilter="all";playerDetailPcFilter="all";render()};card.onkeydown=e=>{if(e.key==="Enter"){focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";playerDetailSystemFilter="all";playerDetailPcFilter="all";render()}}});
  document.querySelectorAll("[data-player-archive]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();setPlayerArchived(b.dataset.playerArchive,b.dataset.archived!=="1")});
  document.querySelectorAll("[data-player-delete]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();deletePlayerFromDirectory(b.dataset.playerDelete)});
 }
@@ -3986,11 +3380,23 @@ q("pcLibraryEditorSave").onclick=savePcLibraryEditor;
 q("pcLibraryEditor").addEventListener("click",e=>{if(e.target===q("pcLibraryEditor"))closePcLibraryEditor()});
 
 
-document.addEventListener("click",e=>{
- const choose=e.target.closest?.("[data-lib-thumb-key]");
- if(choose){e.preventDefault();e.stopPropagation();saveLibraryThumb(choose.dataset.libThumbKey,choose.dataset.libThumbUrl||"");render();return}
- const clear=e.target.closest?.("[data-lib-thumb-clear]");
- if(clear){e.preventDefault();e.stopPropagation();saveLibraryThumb(clear.dataset.libThumbClear,"");render()}
+
+
+
+document.addEventListener("click",async e=>{
+ const tab=e.target.closest?.("[data-cover-tab]");
+ if(tab){e.preventDefault();e.stopPropagation();renderCoverSource(tab.dataset.coverGroup,tab.dataset.coverTab);return}
+ const choose=e.target.closest?.("[data-lib-cover-key]");
+ if(choose){e.preventDefault();e.stopPropagation();saveLibraryCover(choose.dataset.libCoverKey,{url:choose.dataset.libCoverUrl||"",type:choose.dataset.libCoverType||"image"});render();return}
+ const clear=e.target.closest?.("[data-lib-cover-clear]");
+ if(clear){e.preventDefault();e.stopPropagation();saveLibraryCover(clear.dataset.libCoverClear,null);render();return}
+ const upload=e.target.closest?.("[data-lib-cover-upload]");
+ if(upload){
+   e.preventDefault();e.stopPropagation();
+   const key=upload.dataset.libCoverUpload,input=document.querySelector(`[data-lib-cover-file="${CSS.escape(key)}"]`),file=input?.files?.[0];
+   if(!file)return alert("画像ファイルを選択してください。");
+   try{const url=await coverFileToDataUrl(file);saveLibraryCover(key,{url,type:"custom",name:file.name||""});render()}catch(err){alert("画像を追加できませんでした: "+(err.message||err))}
+ }
 });
 
 reset();hideEditor();render();{const p=new URLSearchParams(location.search),sid=p.get("scenario")||"";if(p.get("new")==="1"){addForScenario(sid)}}

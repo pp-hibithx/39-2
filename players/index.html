@@ -3251,7 +3251,7 @@ function playerHistoryCardHtml(v){
  return `<article class="player-history-card">
    ${image?`<img class="player-history-thumb" src="${esc(image)}" alt="" loading="lazy">`:`<div class="player-history-placeholder">🌺</div>`}
    <div class="player-history-body">
-     <div class="player-history-title">${esc(x.title||scenario.title||"名称未設定")}</div>
+     <div class="player-history-title">${esc(scenario.title||x.title||"名称未設定")}</div>
      ${metaLine1?`<div class="player-history-meta">${esc(metaLine1)}</div>`:""}
      ${metaLine2?`<div class="player-history-meta">${esc(metaLine2)}</div>`:""}
      ${x.scenarioId?`<div style="margin-top:7px"><a class="link" href="?view=scenario&scenario=${encodeURIComponent(x.scenarioId)}">卓記録を見る</a></div>`:""}
@@ -3283,7 +3283,7 @@ function playerPcHistoryHtml(player,pcItem){
    return `<div class="player-pc-history-card">
      ${image?`<img src="${esc(image)}" alt="" loading="lazy">`:`<div style="width:100%;aspect-ratio:16/10;display:grid;place-items:center;font-size:26px;background:rgba(255,255,255,.025)">🌺</div>`}
      <div class="mini-body">
-       <strong>${esc(x.title||scenario.title||"名称未設定")}</strong>
+       <strong>${esc(scenario.title||x.title||"名称未設定")}</strong>
        ${firstDate?`<div class="muted">${esc(firstDate)}</div>`:""}
        ${v.row?.ho?`<div>${esc(cleanPlayerFieldValue(v.row.ho,"HO"))}</div>`:""}
        ${x.scenarioId?`<a class="link" href="?view=scenario&scenario=${encodeURIComponent(x.scenarioId)}">卓記録を見る</a>`:""}

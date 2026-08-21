@@ -3229,6 +3229,12 @@ function playerRegisteredPcs(player){
  }
  return [...map.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
 }
+function cleanPlayerFieldValue(value,label){
+ let text=String(value||"").trim();
+ if(!text)return "";
+ const escaped=String(label||"").replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+ return text.replace(new RegExp("^"+escaped+"\\s*[：:]\\s*","i"),"").trim();
+}
 function playerHistoryCardHtml(v){
  const records=Array.isArray(v.records)&&v.records.length?v.records:[v.record];
  const x=v.record,row=v.row,scenario=scenarioById(x.scenarioId||"")||{};
@@ -3237,7 +3243,8 @@ function playerHistoryCardHtml(v){
  // 複数日卓でも履歴カードには初日だけ表示。
  // 代表スクショはこれまでどおり、全日程から最初に見つかったものを使用する。
  const dateText=dates[0]||"";
- const meta=[playerRecordSystem(v),dateText,v.role?`役割：${playerRoleLabel(v.role)}`:"",row.ho?`HO：${row.ho}`:"",row.pcName?`PC：${row.pcName}`:""].filter(Boolean).join(" ／ ");
+ const hoText=cleanPlayerFieldValue(row.ho,"HO");
+ const meta=[playerRecordSystem(v),dateText,v.role?`役割：${playerRoleLabel(v.role)}`:"",hoText,row.pcName?`PC：${row.pcName}`:""].filter(Boolean).join(" ／ ");
  return `<article class="player-history-card">
    ${image?`<img class="player-history-thumb" src="${esc(image)}" alt="" loading="lazy">`:`<div class="player-history-placeholder">🌺</div>`}
    <div class="player-history-body">
@@ -3274,7 +3281,7 @@ function playerPcHistoryHtml(player,pcItem){
      <div class="mini-body">
        <strong>${esc(x.title||scenario.title||"名称未設定")}</strong>
        ${firstDate?`<div class="muted">${esc(firstDate)}</div>`:""}
-       ${v.row?.ho?`<div>HO：${esc(v.row.ho)}</div>`:""}
+       ${v.row?.ho?`<div>${esc(cleanPlayerFieldValue(v.row.ho,"HO"))}</div>`:""}
        ${x.scenarioId?`<a class="link" href="?view=scenario&scenario=${encodeURIComponent(x.scenarioId)}">卓記録を見る</a>`:""}
      </div>
    </div>`;

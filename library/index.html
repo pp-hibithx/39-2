@@ -849,6 +849,25 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
  .conversation-ab-map-card label:last-child{grid-column:2}
 }
 </style>
+
+<style>
+.article-conversation-speaker{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+}
+.article-conversation-avatar{
+  width:34px;
+  height:34px;
+  flex:0 0 34px;
+  border-radius:50%;
+  object-fit:cover;
+  object-position:top center;
+  border:1px solid var(--line);
+  background:var(--panel);
+}
+.article-conversation-speaker span{min-width:0;overflow-wrap:anywhere}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -2121,13 +2140,19 @@ function useBgmLibraryTrack(id){const x=loadBgmLibrary().find(v=>v.id===id),row=
 function bgmBlockHasContent(b){return [b.title,b.artist,b.scene,b.sourceLabel,b.sourceUrl,b.audioUrl,b.localAudioId,b.memo].some(v=>String(v||"").trim())}
 
 function normalizeConversationLines(block){
- if(Array.isArray(block?.lines))return block.lines.map(v=>({speaker:String(v?.speaker||"").trim(),text:String(v?.text||"").trim()})).filter(v=>v.speaker||v.text);
+ if(Array.isArray(block?.lines))return block.lines.map(v=>({
+   speaker:String(v?.speaker||"").trim(),
+   text:String(v?.text||"").trim(),
+   pcRefId:String(v?.pcRefId||""),
+   pcName:String(v?.pcName||""),
+   pcImage:String(v?.pcImage||"")
+ })).filter(v=>v.speaker||v.text);
  const raw=String(block?.raw||block?.text||"");
  return raw.split(/\r?\n/).map(line=>{
    const t=String(line||"").trim();
    if(!t)return null;
    const m=t.match(/^(.{1,40}?)[｜|：:]\s*(.*)$/);
-   return m?{speaker:m[1].trim(),text:m[2].trim()}:{speaker:"",text:t};
+   return m?{speaker:m[1].trim(),text:m[2].trim(),pcRefId:"",pcName:"",pcImage:""}:{speaker:"",text:t,pcRefId:"",pcName:"",pcImage:""};
  }).filter(Boolean);
 }
 function conversationRaw(lines){
@@ -2151,7 +2176,10 @@ function articleBlocksHtml(page){
    }
    if(b.type==="conversation"){
      const lines=normalizeConversationLines(b);if(!lines.length)return "";
-     return `<section class="article-conversation">${b.caption?`<div class="article-conversation-caption">${esc(b.caption)}</div>`:""}${lines.map(v=>`<div class="article-conversation-line">${v.speaker?`<div class="article-conversation-speaker">${esc(v.speaker)}</div>`:""}<div class="article-conversation-text">${esc(v.text)}</div></div>`).join("")}</section>`;
+     return `<section class="article-conversation">${b.caption?`<div class="article-conversation-caption">${esc(b.caption)}</div>`:""}${lines.map(v=>{
+       const pc=conversationResolvedPc(v),name=pc?.name||v.pcName||v.speaker||"",image=pc?.image||v.pcImage||"";
+       return `<div class="article-conversation-line">${name?`<div class="article-conversation-speaker">${image?`<img class="article-conversation-avatar" src="${esc(image)}" alt="" loading="lazy">`:""}<span>${esc(name)}</span></div>`:""}<div class="article-conversation-text">${esc(v.text)}</div></div>`;
+     }).join("")}</section>`;
    }
    if(b.type==="youtube"){
      const id=youtubeVideoId(b.url||"");if(!id)return `<div class="small muted">YouTube URLを確認してください。</div>`;
@@ -2199,7 +2227,8 @@ function editorBlocks(ed){
    if(type==="youtube")return {id,type,url:row.querySelector('.articleBlockYoutubeUrl')?.value.trim()||"",caption:row.querySelector('.articleBlockCaption')?.value.trim()||""};
    if(type==="conversation"){
      const raw=row.querySelector('.articleConversationRaw')?.value||"";
-     return {id,type,caption:row.querySelector('.articleConversationCaption')?.value.trim()||"",raw,lines:normalizeConversationLines({raw})};
+     const lines=conversationEnrichLines(row,normalizeConversationLines({raw}));
+     return {id,type,caption:row.querySelector('.articleConversationCaption')?.value.trim()||"",raw,lines};
    }
    if(type==="bgm")return {id,type,libraryId:row.querySelector('.articleBgmLibraryId')?.value||"",title:row.querySelector('.articleBgmTitle')?.value.trim()||"",artist:row.querySelector('.articleBgmArtist')?.value.trim()||"",scene:row.querySelector('.articleBgmScene')?.value.trim()||"",tags:normalizeBgmTags(row.querySelector('.articleBgmTags')?.value||""),sourceLabel:row.querySelector('.articleBgmSourceLabel')?.value.trim()||"",sourceUrl:row.querySelector('.articleBgmSourceUrl')?.value.trim()||"",audioUrl:row.querySelector('.articleBgmAudioUrl')?.value.trim()||"",localAudioId:row.querySelector('.articleBgmLocalId')?.value||"",localFileName:row.querySelector('.articleBgmLocalName')?.value||"",memo:row.querySelector('.articleBgmMemo')?.value||""};
    return {id,type:"text",text:row.querySelector('.articleBlockText')?.value||""};
@@ -2281,35 +2310,74 @@ function conversationRunId(row){
  return id.startsWith("articleEditor-")?id.slice("articleEditor-".length):"";
 }
 function conversationPcChoices(row){
- const seen=new Set(),out=[];
- const add=(name,source="登録PC",id="")=>{
-   name=String(name||"").trim();if(!name||seen.has(name))return;
-   seen.add(name);out.push({id:String(id||""),name,source});
+ const seen=new Set(),out=[],all=allLibraryPcs();
+ const addPc=(pc,source)=>{
+   if(!pc?.name)return;
+   const key=String(pc.id||pc.name);
+   if(seen.has(key))return;
+   seen.add(key);
+   out.push({
+     id:String(pc.id||""),
+     name:String(pc.name||"").trim(),
+     source,
+     image:String(pc.image||""),
+     ownerType:String(pc.ownerType||""),
+     ownerLabel:String(pc.ownerLabel||"")
+   });
+ };
+ const addByName=(name,source,preferredId="")=>{
+   name=String(name||"").trim();if(!name)return;
+   let pc=preferredId?anyPcById(preferredId):null;
+   if(!pc)pc=all.find(p=>String(p.name||"").trim()===name);
+   if(pc)addPc(pc,source);
+   else{
+     const key=`name:${name}`;if(seen.has(key))return;seen.add(key);
+     out.push({id:"",name,source,image:"",ownerType:"guest",ownerLabel:"同卓PC"});
+   }
  };
 
- // 最優先：今開いている陣に実際に参加しているPC
+ // 最優先：現在の記事が属する陣
  const runId=conversationRunId(row);
  if(runId){
    const roster=ensureRunRosterFromData(runId)||getRunRoster(runId);
-   (roster?.selfPcs||[]).forEach(p=>add(p.pcName,"この陣・自PC",p.pcId));
-   (roster?.participants||[]).forEach(p=>add(p.pcName,"この陣・同卓PC",""));
-
-   // rosterが古い場合も、陣の全記録から拾う
+   (roster?.selfPcs||[]).forEach(p=>addByName(p.pcName,"この陣・自PC",p.pcId));
+   (roster?.participants||[]).forEach(p=>addByName(p.pcName,"この陣・同卓PC",p.pcId));
    data.filter(x=>String(x.runId||"")===String(runId)).forEach(rec=>{
-     storedSelfPcRows(rec).forEach(p=>add(p.pcName,"この陣・自PC",p.pcId));
-     rowsFromRecord(rec).forEach(p=>add(p.pcName,"この陣・同卓PC",""));
+     storedSelfPcRows(rec).forEach(p=>addByName(p.pcName,"この陣・自PC",p.pcId));
+     rowsFromRecord(rec).forEach(p=>addByName(p.pcName,"この陣・同卓PC",p.pcId));
    });
  }
 
- // 次にPCページへ登録済みの自PC
- try{
-   (pcs||[]).forEach(p=>{
-     const name=String(p.name||p.pcName||p.characterName||"").trim();
-     add(name,"登録PC",p.id);
-   });
- }catch(_){}
-
+ // 次に全PC
+ all.forEach(pc=>addPc(pc,pc.ownerType==="self"?"登録PC":"同卓PC"));
  return out;
+}
+function conversationPcRefForName(row,name){
+ name=String(name||"").trim();if(!name)return null;
+ const choices=conversationPcChoices(row);
+ const exact=choices.filter(p=>p.name===name);
+ return exact[0]||null;
+}
+function conversationEnrichLines(row,lines){
+ return (lines||[]).map(v=>{
+   const ref=conversationPcRefForName(row,v.speaker);
+   return {...v,
+     pcRefId:ref?.id||v.pcRefId||"",
+     pcName:ref?.name||v.pcName||v.speaker||"",
+     pcImage:ref?.image||v.pcImage||""
+   };
+ });
+}
+function conversationResolvedPc(line){
+ if(line?.pcRefId){
+   const pc=anyPcById(line.pcRefId);
+   if(pc)return pc;
+ }
+ if(line?.pcName){
+   const matches=allLibraryPcs().filter(p=>p.name===line.pcName);
+   if(matches.length)return matches[0];
+ }
+ return null;
 }
 function conversationSpeakerMap(row,speaker){
  const key=String(speaker||"");
@@ -2474,7 +2542,7 @@ async function shareArticlePage(runId,pageId){
    if(b.type==="image")return {...b,url:String(b.url||"").trim(),caption:String(b.caption||"").trim()};
    return {...b};
  });
- const payload={kind:"library-article",version:3,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
+ const payload={kind:"library-article",version:4,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
  try{let shareId=page.shareId||"";if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);else shareId=await TRPG39Cloud.createSharedPage(payload);saveArticlePagesForRun(runId,pages.map(p=>p.id===page.id?{...p,shareId}:p));const previewUrl=new URL("https://sakumeru-share.sakumeru.workers.dev/");previewUrl.searchParams.set("id",shareId);previewUrl.searchParams.set("type","article");showShareUrl(previewUrl.href,page.passwordProtected?"この記事の共有URLです。パスワード保護情報も共有データに含めました。":"この記事の共有URLです。") }catch(e){console.error(e);alert(e.message||e)}
 }
 function bindArticlePageButtons(){

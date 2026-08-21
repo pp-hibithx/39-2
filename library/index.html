@@ -760,6 +760,20 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   }
 }
 </style>
+
+<style>
+.article-block-help{margin:-4px 0 10px}
+.article-conversation{display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.012)}
+.article-conversation-caption{font-weight:700;margin-bottom:2px}
+.article-conversation-line{display:grid;grid-template-columns:minmax(90px,150px) minmax(0,1fr);gap:9px;align-items:start}
+.article-conversation-speaker{font-weight:700;padding:7px 9px;border-radius:8px;background:rgba(255,255,255,.035);overflow-wrap:anywhere}
+.article-conversation-text{padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.025);white-space:pre-wrap;overflow-wrap:anywhere}
+.articleConversationRaw{min-height:180px!important;font-family:inherit}
+@media(max-width:620px){
+ .article-conversation-line{grid-template-columns:1fr;gap:3px}
+ .article-conversation-speaker{padding:5px 8px}
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -2030,6 +2044,21 @@ function renderBgmLibrary(){
 function openBgmLibrary(row){bgmLibraryTargetRow=row;renderBgmLibrary();q("bgmLibraryDialog").showModal()}
 function useBgmLibraryTrack(id){const x=loadBgmLibrary().find(v=>v.id===id),row=bgmLibraryTargetRow;if(!x||!row)return;row.querySelector('.articleBgmLibraryId').value=x.id;row.querySelector('.articleBgmTitle').value=x.title||"";row.querySelector('.articleBgmArtist').value=x.artist||"";row.querySelector('.articleBgmSourceLabel').value=x.sourceLabel||"";row.querySelector('.articleBgmSourceUrl').value=x.sourceUrl||"";row.querySelector('.articleBgmAudioUrl').value=x.audioUrl||"";row.querySelector('.articleBgmLocalId').value=x.localAudioId||"";row.querySelector('.articleBgmLocalName').value=x.localFileName||"";row.querySelector('.articleBgmTags').value=(x.tags||[]).join("、");row.querySelector('.article-local-audio').textContent=x.localFileName?`保存済み：${x.localFileName}`:"MP3本体は共有記事には含まれません。";q("bgmLibraryDialog").close();bgmLibraryTargetRow=null}
 function bgmBlockHasContent(b){return [b.title,b.artist,b.scene,b.sourceLabel,b.sourceUrl,b.audioUrl,b.localAudioId,b.memo].some(v=>String(v||"").trim())}
+
+function normalizeConversationLines(block){
+ if(Array.isArray(block?.lines))return block.lines.map(v=>({speaker:String(v?.speaker||"").trim(),text:String(v?.text||"").trim()})).filter(v=>v.speaker||v.text);
+ const raw=String(block?.raw||block?.text||"");
+ return raw.split(/\r?\n/).map(line=>{
+   const t=String(line||"").trim();
+   if(!t)return null;
+   const m=t.match(/^(.{1,40}?)[｜|：:]\s*(.*)$/);
+   return m?{speaker:m[1].trim(),text:m[2].trim()}:{speaker:"",text:t};
+ }).filter(Boolean);
+}
+function conversationRaw(lines){
+ return (Array.isArray(lines)?lines:[]).map(v=>`${String(v?.speaker||"").trim()}｜${String(v?.text||"").trim()}`).join("\n");
+}
+function conversationBlockHasContent(b){return normalizeConversationLines(b).some(v=>v.speaker||v.text)}
 function articleBlocksHtml(page){
  const blocks=normalizedArticleBlocks(page);
  if(!blocks.length)return '<div class="lib-article-render"><div class="small muted">本文はまだありません。</div></div>';
@@ -2044,6 +2073,10 @@ function articleBlocksHtml(page){
      const audio=b.audioUrl?`<audio class="article-bgm-player" controls preload="metadata" src="${esc(b.audioUrl)}"></audio>`:(b.localAudioId?`<audio class="article-bgm-player" controls preload="metadata" data-local-audio-id="${esc(b.localAudioId)}"></audio>`:"");
      return `<section class="article-bgm-card"><div class="article-bgm-title">🎵 ${esc(b.title||"BGM")}</div><div class="article-bgm-meta">${[b.artist?`作者：${esc(b.artist)}`:"",b.scene?`使用シーン：${esc(b.scene)}`:""].filter(Boolean).join(" ／ ")}</div>${audio}${b.localAudioId?`<div class="article-local-audio">この端末の音源を読み込みます…</div>`:""}${source?`<div class="article-bgm-meta">配布元：${source}</div>`:""}${b.memo?`<div class="article-bgm-note">${esc(b.memo)}</div>`:""}</section>`;
    }
+   if(b.type==="conversation"){
+     const lines=normalizeConversationLines(b);if(!lines.length)return "";
+     return `<section class="article-conversation">${b.caption?`<div class="article-conversation-caption">${esc(b.caption)}</div>`:""}${lines.map(v=>`<div class="article-conversation-line">${v.speaker?`<div class="article-conversation-speaker">${esc(v.speaker)}</div>`:""}<div class="article-conversation-text">${esc(v.text)}</div></div>`).join("")}</section>`;
+   }
    if(b.type==="youtube"){
      const id=youtubeVideoId(b.url||"");if(!id)return `<div class="small muted">YouTube URLを確認してください。</div>`;
      return `<div>${b.caption?`<div style="margin-bottom:6px"><strong>${esc(b.caption)}</strong></div>`:""}<div class="lib-article-youtube"><iframe src="https://www.youtube-nocookie.com/embed/${esc(id)}" title="YouTube video player" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div></div>`;
@@ -2056,13 +2089,14 @@ function articleEditorBlockHtml(b,index,total){
  const actions=`<div class="article-block-actions"><button type="button" data-block-up="${id}" ${index===0?"disabled":""}>↑</button><button type="button" data-block-down="${id}" ${index===total-1?"disabled":""}>↓</button><button type="button" class="danger" data-block-remove="${id}">削除</button></div>`;
  if(b.type==="image")return `<div class="article-block" data-block-id="${id}" data-block-type="image"><div class="article-block-head"><span class="article-block-label">🖼 画像</span>${actions}</div><div class="article-image-inputs"><div><label>画像URL</label><input class="articleBlockImageUrl" type="url" value="${esc(b.url||"")}" placeholder="https://..."></div><div><label>画像ファイル</label><input class="articleBlockImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif"><button type="button" data-block-upload="${id}">アップロード</button><div class="article-upload-status"></div></div></div><label>キャプション <span class="small muted">（任意）</span></label><input class="articleBlockCaption" value="${esc(b.caption||"")}" placeholder="画像の説明"><div class="article-block-preview" ${b.url?"":"hidden"}>${b.url?`<img src="${esc(b.url)}" alt="">`:""}</div></div>`;
  if(b.type==="bgm")return `<div class="article-block" data-block-id="${id}" data-block-type="bgm"><div class="article-block-head"><span class="article-block-label">🎵 BGM</span>${actions}</div><input class="articleBgmLibraryId" type="hidden" value="${esc(b.libraryId||"")}"><div class="bgm-lib-actions"><button type="button" data-bgm-lib-open="${id}">BGM LIBRARYから選ぶ</button><button type="button" data-bgm-lib-save="${id}">BGM LIBRARYに登録／更新</button></div><div class="article-bgm-grid"><div><label>曲名</label><input class="articleBgmTitle" value="${esc(b.title||"")}" placeholder="曲名"></div><div><label>作者・アーティスト</label><input class="articleBgmArtist" value="${esc(b.artist||"")}" placeholder="作者名"></div><div><label>使用シーン</label><input class="articleBgmScene" value="${esc(b.scene||"")}" placeholder="例：Scene 3／終盤"></div><div><label>タグ <span class="small muted">（、区切り）</span></label><input class="articleBgmTags" value="${esc(Array.isArray(b.tags)?b.tags.join("、"):(b.tags||""))}" placeholder="不穏、戦闘、エンディング"></div><div><label>配布元名</label><input class="articleBgmSourceLabel" value="${esc(b.sourceLabel||"")}" placeholder="DOVA-SYNDROME など"></div><div><label>配布元URL</label><input class="articleBgmSourceUrl" type="url" value="${esc(b.sourceUrl||"")}" placeholder="https://..."></div><div><label>音源URL <span class="small muted">（任意）</span></label><input class="articleBgmAudioUrl" type="url" value="${esc(b.audioUrl||"")}" placeholder="直接再生できるMP3 URL"></div></div><label>手元のMP3 <span class="small muted">（自分用・このブラウザに保存）</span></label><div class="article-image-inputs"><div><input class="articleBgmFile" type="file" accept="audio/mpeg,audio/mp3,.mp3"><input class="articleBgmLocalId" type="hidden" value="${esc(b.localAudioId||"")}"><input class="articleBgmLocalName" type="hidden" value="${esc(b.localFileName||"")}"><div class="article-local-audio">${b.localFileName?`保存済み：${esc(b.localFileName)}`:"MP3本体は共有記事には含まれません。"}</div></div><div><button type="button" data-bgm-local-save="${id}">この端末に保存</button><div class="article-upload-status"></div></div></div><label>メモ <span class="small muted">（任意）</span></label><textarea class="articleBgmMemo" placeholder="この場面で流した、イントロから使用など">${esc(b.memo||"")}</textarea></div>`;
+ if(b.type==="conversation")return `<div class="article-block" data-block-id="${id}" data-block-type="conversation"><div class="article-block-head"><span class="article-block-label">💬 会話ログ</span>${actions}</div><label>見出し <span class="small muted">（任意）</span></label><input class="articleConversationCaption" value="${esc(b.caption||"")}" placeholder="例：終盤／この場面好き"><label>会話</label><textarea class="articleConversationRaw" placeholder="1行ごとに「発言者｜発言」の形で入力します。&#10;犀川 慶｜……お前、本当にそれでいいのか？&#10;白十字 士布岐｜何を今更。貴方も共犯でしょう。">${esc(conversationRaw(normalizeConversationLines(b)))}</textarea><div class="small muted">「｜」「:」「：」で発言者と台詞を分けられます。ログ取り込みは次段階でここへ接続します。</div></div>`;
  if(b.type==="youtube")return `<div class="article-block" data-block-id="${id}" data-block-type="youtube"><div class="article-block-head"><span class="article-block-label">▶ YouTube</span>${actions}</div><label>YouTube URL</label><input class="articleBlockYoutubeUrl" type="url" value="${esc(b.url||"")}" placeholder="https://www.youtube.com/watch?v=..."><label>見出し <span class="small muted">（任意）</span></label><input class="articleBlockCaption" value="${esc(b.caption||"")}" placeholder="セッション録画 など"><div class="article-youtube-preview"></div></div>`;
  return `<div class="article-block" data-block-id="${id}" data-block-type="text"><div class="article-block-head"><span class="article-block-label">✎ 文章</span>${actions}</div><textarea class="articleBlockText" placeholder="書きたいことを自由に残せます。">${esc(b.text||"")}</textarea></div>`;
 }
 function articlePagesHtml(r){
  const pages=articlePagesForRun(r.id).slice().sort((a,b)=>String(a.createdAt||"").localeCompare(String(b.createdAt||"")));
  return `<section class="lib-article-pages">
-   <div class="lib-article-pages-head"><div><strong>卓記事</strong><div class="small muted">文章・画像・YouTube・BGMを好きな順に追加して、陣ごとの記事を作れます。</div></div><button type="button" data-article-new="${esc(r.id)}">＋ ページを追加</button></div>
+   <div class="lib-article-pages-head"><div><strong>卓記事</strong><div class="small muted">1ページの中に文章・画像・会話ログ・YouTube・BGMを好きな順で何個でも追加できます。</div></div><button type="button" data-article-new="${esc(r.id)}">＋ ページを追加</button></div>
    <div class="lib-article-page-list">${pages.length?pages.map((p,i)=>`<details class="lib-article-page" ${i===0?"open":""}>
      <summary><div><div class="lib-article-page-title">${esc(p.title||`ページ ${i+1}`)} <span class="lib-article-share-badge">${esc(articleShareLabel(p))}</span></div><div class="lib-article-page-meta">${esc(p.updatedAt||p.createdAt||"")}</div></div><span>▼</span></summary>
      ${articleBlocksHtml(p)}
@@ -2071,13 +2105,13 @@ function articlePagesHtml(r){
    <div class="lib-article-editor" id="articleEditor-${esc(r.id)}" hidden>
      <input type="hidden" class="articleEditId">
      <label>ページタイトル</label><input class="articleTitle" placeholder="例：セッション感想／KPメモ／あとがき">
-     <div class="article-block-toolbar"><button type="button" data-block-add-text="${esc(r.id)}">＋ 文章</button><button type="button" data-block-add-image="${esc(r.id)}">＋ 画像</button><button type="button" data-block-add-youtube="${esc(r.id)}">＋ YouTube</button><button type="button" data-block-add-bgm="${esc(r.id)}">＋ BGM</button></div>
+     <div class="article-block-toolbar"><button type="button" data-block-add-text="${esc(r.id)}">＋ 文章</button><button type="button" data-block-add-image="${esc(r.id)}">＋ 画像</button><button type="button" data-block-add-conversation="${esc(r.id)}">＋ 会話ログ</button><button type="button" data-block-add-youtube="${esc(r.id)}">＋ YouTube</button><button type="button" data-block-add-bgm="${esc(r.id)}">＋ BGM</button></div><div class="small muted article-block-help">同じ種類のブロックを何個でも追加できます。文章の途中に画像・会話・動画・BGMを挟めます。</div>
      <div class="article-blocks"></div>
      <div class="lib-article-share-row">
        <div><label>共有設定</label><select class="articleShareEnabled"><option value="0">自分のみ</option><option value="1">リンク限定</option></select></div>
        <div><label>共有パスワード <span class="small muted">（任意）</span></label><input class="articlePassword" type="password" autocomplete="new-password" placeholder="設定する場合のみ入力"></div>
      </div>
-     <div class="lib-article-share-note">共有は次の工程でブロック表示に対応します。今は記事作成を先に完成させています。</div>
+     <div class="lib-article-share-note">リンク限定＋パスワード設定は保持されます。会話ログを含む共有表示は次段階で仕上げます。</div>
      <div class="album-actions"><button type="button" data-article-save="${esc(r.id)}">保存</button><button type="button" data-article-cancel="${esc(r.id)}">キャンセル</button></div>
    </div>
  </section>`;
@@ -2087,9 +2121,13 @@ function editorBlocks(ed){
    const type=row.dataset.blockType,id=row.dataset.blockId||TRPG39.uuid();
    if(type==="image")return {id,type,url:row.querySelector('.articleBlockImageUrl')?.value.trim()||"",caption:row.querySelector('.articleBlockCaption')?.value.trim()||""};
    if(type==="youtube")return {id,type,url:row.querySelector('.articleBlockYoutubeUrl')?.value.trim()||"",caption:row.querySelector('.articleBlockCaption')?.value.trim()||""};
+   if(type==="conversation"){
+     const raw=row.querySelector('.articleConversationRaw')?.value||"";
+     return {id,type,caption:row.querySelector('.articleConversationCaption')?.value.trim()||"",raw,lines:normalizeConversationLines({raw})};
+   }
    if(type==="bgm")return {id,type,libraryId:row.querySelector('.articleBgmLibraryId')?.value||"",title:row.querySelector('.articleBgmTitle')?.value.trim()||"",artist:row.querySelector('.articleBgmArtist')?.value.trim()||"",scene:row.querySelector('.articleBgmScene')?.value.trim()||"",tags:normalizeBgmTags(row.querySelector('.articleBgmTags')?.value||""),sourceLabel:row.querySelector('.articleBgmSourceLabel')?.value.trim()||"",sourceUrl:row.querySelector('.articleBgmSourceUrl')?.value.trim()||"",audioUrl:row.querySelector('.articleBgmAudioUrl')?.value.trim()||"",localAudioId:row.querySelector('.articleBgmLocalId')?.value||"",localFileName:row.querySelector('.articleBgmLocalName')?.value||"",memo:row.querySelector('.articleBgmMemo')?.value||""};
    return {id,type:"text",text:row.querySelector('.articleBlockText')?.value||""};
- }).filter(b=>b.type==="text"?b.text.trim():(b.type==="bgm"?bgmBlockHasContent(b):b.url.trim()));
+ }).filter(b=>b.type==="text"?b.text.trim():(b.type==="conversation"?conversationBlockHasContent(b):(b.type==="bgm"?bgmBlockHasContent(b):b.url.trim())));
 }
 function renderArticleEditorBlocks(ed,blocks){
  const wrap=ed.querySelector('.article-blocks');if(!wrap)return;
@@ -2097,7 +2135,14 @@ function renderArticleEditorBlocks(ed,blocks){
  bindArticleEditorBlockControls(ed);
 }
 function addEditorBlock(ed,type){
- const blocks=editorBlocks(ed);blocks.push(type==="text"?{id:TRPG39.uuid(),type,text:""}:type==="bgm"?{id:TRPG39.uuid(),type,libraryId:"",title:"",artist:"",scene:"",tags:[],sourceLabel:"",sourceUrl:"",audioUrl:"",localAudioId:"",localFileName:"",memo:""}:{id:TRPG39.uuid(),type,url:"",caption:""});renderArticleEditorBlocks(ed,blocks);
+ const blocks=editorBlocks(ed);
+ blocks.push(
+   type==="text"?{id:TRPG39.uuid(),type,text:""}:
+   type==="conversation"?{id:TRPG39.uuid(),type,caption:"",raw:"",lines:[]}:
+   type==="bgm"?{id:TRPG39.uuid(),type,libraryId:"",title:"",artist:"",scene:"",tags:[],sourceLabel:"",sourceUrl:"",audioUrl:"",localAudioId:"",localFileName:"",memo:""}:
+   {id:TRPG39.uuid(),type,url:"",caption:""}
+ );
+ renderArticleEditorBlocks(ed,blocks);
 }
 function moveEditorBlock(ed,id,delta){
  const blocks=editorBlocks(ed),i=blocks.findIndex(b=>b.id===id),j=i+delta;if(i<0||j<0||j>=blocks.length)return;[blocks[i],blocks[j]]=[blocks[j],blocks[i]];renderArticleEditorBlocks(ed,blocks);
@@ -2178,6 +2223,7 @@ function bindArticlePageButtons(){
  document.querySelectorAll('[data-article-cancel]').forEach(b=>b.onclick=()=>{const ed=document.getElementById(`articleEditor-${b.dataset.articleCancel}`);if(ed)ed.hidden=true});
  document.querySelectorAll('[data-block-add-text]').forEach(b=>b.onclick=()=>{const ed=document.getElementById(`articleEditor-${b.dataset.blockAddText}`);if(ed)addEditorBlock(ed,"text")});
  document.querySelectorAll('[data-block-add-image]').forEach(b=>b.onclick=()=>{const ed=document.getElementById(`articleEditor-${b.dataset.blockAddImage}`);if(ed)addEditorBlock(ed,"image")});
+ document.querySelectorAll('[data-block-add-conversation]').forEach(b=>b.onclick=()=>{const ed=document.getElementById(`articleEditor-${b.dataset.blockAddConversation}`);if(ed)addEditorBlock(ed,"conversation")});
  document.querySelectorAll('[data-block-add-youtube]').forEach(b=>b.onclick=()=>{const ed=document.getElementById(`articleEditor-${b.dataset.blockAddYoutube}`);if(ed)addEditorBlock(ed,"youtube")});
  document.querySelectorAll('[data-block-add-bgm]').forEach(b=>b.onclick=()=>{const ed=document.getElementById(`articleEditor-${b.dataset.blockAddBgm}`);if(ed)addEditorBlock(ed,"bgm")});
 }

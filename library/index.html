@@ -2373,9 +2373,28 @@ function conversationResolvedPc(line){
    const pc=anyPcById(line.pcRefId);
    if(pc)return pc;
  }
- if(line?.pcName){
-   const matches=allLibraryPcs().filter(p=>p.name===line.pcName);
-   if(matches.length)return matches[0];
+
+ // 新形式：保存済み正式PC名
+ const names=[line?.pcName,line?.speaker].map(v=>String(v||"").trim()).filter(Boolean);
+ for(const name of names){
+   const matches=allLibraryPcs().filter(p=>String(p.name||"").trim()===name);
+   if(matches.length){
+     // 同名が複数ある場合は、画像を持つ登録PCを優先する。
+     return matches.find(p=>String(p.image||"").trim()) || matches.find(p=>p.ownerType==="self") || matches[0];
+   }
+
+   // PLAYERS側の「登録PC」表示と同じく、TRPG39.loadPCsにも直接照会。
+   const direct=(TRPG39.loadPCs?TRPG39.loadPCs():pcs).find(p=>String(p.name||"").trim()===name);
+   if(direct){
+     return {
+       id:String(direct.id||""),
+       name:String(direct.name||name),
+       image:String(direct.image||""),
+       system:String(direct.system||""),
+       ownerType:"registered",
+       registeredId:String(direct.id||"")
+     };
+   }
  }
  return null;
 }

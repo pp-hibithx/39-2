@@ -2134,7 +2134,7 @@ function articlePagesHtml(r){
        <div><label>共有設定</label><select class="articleShareEnabled"><option value="0">自分のみ</option><option value="1">リンク限定</option></select></div>
        <div><label>共有パスワード <span class="small muted">（任意）</span></label><input class="articlePassword" type="password" autocomplete="new-password" placeholder="設定する場合のみ入力"></div>
      </div>
-     <div class="lib-article-share-note">リンク限定＋パスワード設定は保持されます。会話ログを含む共有表示は次段階で仕上げます。</div>
+     <div class="lib-article-share-note">共有URLには文章・複数画像・会話ログ・YouTube・BGMの並び順をそのまま送ります。パスワード設定も保持されます。</div>
      <div class="album-actions"><button type="button" data-article-save="${esc(r.id)}">保存</button><button type="button" data-article-cancel="${esc(r.id)}">キャンセル</button></div>
    </div>
  </section>`;
@@ -2240,7 +2240,12 @@ async function shareArticlePage(runId,pageId){
  if(!page.shareEnabled)return alert("この記事は「自分のみ」です。編集から共有設定を「リンク限定」にしてください。");
  if(!(TRPG39Cloud&&TRPG39Cloud.configured()))return alert("共有機能の設定がありません。");
  const {group,run}=articleContextForRun(runId),cover=(run?.items||[]).flatMap(x=>x.imageUrls||[]).find(Boolean)||group?.thumbnailUrl||"";
- const payload={kind:"library-article",version:2,title:page.title||"卓記事",body:page.body||"",blocks:normalizedArticleBlocks(page),scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",updatedAt:page.updatedAt||""};
+ const sharedBlocks=normalizedArticleBlocks(page).map(b=>{
+   if(b.type==="conversation")return {...b,lines:normalizeConversationLines(b)};
+   if(b.type==="image")return {...b,url:String(b.url||"").trim(),caption:String(b.caption||"").trim()};
+   return {...b};
+ });
+ const payload={kind:"library-article",version:3,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",updatedAt:page.updatedAt||""};
  try{let shareId=page.shareId||"";if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);else shareId=await TRPG39Cloud.createSharedPage(payload);saveArticlePagesForRun(runId,pages.map(p=>p.id===page.id?{...p,shareId}:p));const previewUrl=new URL("https://sakumeru-share.sakumeru.workers.dev/");previewUrl.searchParams.set("id",shareId);previewUrl.searchParams.set("type","article");showShareUrl(previewUrl.href,page.passwordProtected?"この記事の共有URLです。パスワード保護情報も共有データに含めました。":"この記事の共有URLです。") }catch(e){console.error(e);alert(e.message||e)}
 }
 function bindArticlePageButtons(){

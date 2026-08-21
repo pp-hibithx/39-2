@@ -868,6 +868,13 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 }
 .article-conversation-speaker span{min-width:0;overflow-wrap:anywhere}
 </style>
+
+<style>
+.guest-pc-image-editor{margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+.guest-pc-image-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:end}
+.guest-pc-image-row button{width:auto;white-space:nowrap}
+@media(max-width:620px){.guest-pc-image-row{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -2371,7 +2378,10 @@ function conversationEnrichLines(row,lines){
 function conversationResolvedPc(line){
  if(line?.pcRefId){
    const pc=anyPcById(line.pcRefId);
-   if(pc)return pc;
+   if(pc){
+     if(pc.ownerType==="guest"&&!pc.image)pc.image=guestPcImage(pc.playerId,pc.plName,pc.name);
+     return pc;
+   }
  }
 
  // 新形式：保存済み正式PC名
@@ -2734,7 +2744,7 @@ function allLibraryPcs(){
          plName,
          playerId,
          system:String(rec.system||""),
-         image:"",
+         image:guestPcImage(playerId,plName,pcName),
          registeredId:""
        });
      }
@@ -3598,6 +3608,27 @@ function playerRoleRecords(player){
 
  return {kp:groupByRun(kp),pl:groupByRun(pl),unknown:groupByRun(unknown)};
 }
+
+const GUEST_PC_IMAGE_KEY="saku_meru_guest_pc_images_v1";
+function loadGuestPcImages(){
+ try{
+   const v=JSON.parse(localStorage.getItem(GUEST_PC_IMAGE_KEY)||"{}");
+   return v&&typeof v==="object"?v:{};
+ }catch{return {}}
+}
+function guestPcImageKey(playerId,plName,pcName){
+ const owner=String(playerId||"").trim()||("name:"+String(plName||"").normalize("NFKC").trim().toLowerCase());
+ const pc=String(pcName||"").normalize("NFKC").trim().toLowerCase();
+ return `${owner}::${pc}`;
+}
+function guestPcImage(playerId,plName,pcName){
+ return String(loadGuestPcImages()[guestPcImageKey(playerId,plName,pcName)]||"");
+}
+function saveGuestPcImage(playerId,plName,pcName,url){
+ const all=loadGuestPcImages(),key=guestPcImageKey(playerId,plName,pcName),value=String(url||"").trim();
+ if(value)all[key]=value;else delete all[key];
+ localStorage.setItem(GUEST_PC_IMAGE_KEY,JSON.stringify(all));
+}
 function playerRegisteredPcs(player){
  const map=new Map();
  data.forEach(x=>{
@@ -3605,8 +3636,10 @@ function playerRegisteredPcs(player){
    rows.forEach(r=>{
      const name=String(r.pcName||"").trim();
      if(!name)return;
-     if(!map.has(name))map.set(name,{name,system:x.system||"",count:0,pc:null,records:[]});
+     if(!map.has(name))map.set(name,{name,system:x.system||"",count:0,pc:null,records:[],playerId:String(r.playerId||player.id||""),plName:String(r.plName||player.name||"")});
      const item=map.get(name);
+     if(!item.playerId&&r.playerId)item.playerId=String(r.playerId);
+     if(!item.plName&&r.plName)item.plName=String(r.plName);
      item.records.push({record:x,row:r});
    });
  });
@@ -4019,13 +4052,14 @@ function renderPlayerDetail(player){
 
    <section class="player-section">
      <h3>${esc(player.name)}の登録PC</h3>
-     <div class="player-card-grid">${pcsForPlayer.length?pcsForPlayer.map(p=>`<div class="player-pc-card">
+     <div class="player-card-grid">${pcsForPlayer.length?pcsForPlayer.map(p=>{const guestImage=guestPcImage(p.playerId,p.plName,p.name),displayImage=p.pc?.image||guestImage||"";return `<div class="player-pc-card" data-player-pc-card="${esc(p.name)}">
        <div class="player-pc-row">
-         ${p.pc?.image?`<img class="player-pc-thumb" src="${esc(p.pc.image)}" alt="">`:""}
+         ${displayImage?`<img class="player-pc-thumb" src="${esc(displayImage)}" alt="">`:""}
          <div><strong>${esc(p.name)}</strong><div class="small muted">${esc(p.system||p.pc?.system||"")}</div><div class="small muted">使用 ${p.count}卓</div>${p.pc?.id?`<a class="link" href="../pcs/index.html?focus=${encodeURIComponent(p.pc.id)}">PC情報を見る</a>`:""}</div>
        </div>
+       ${!p.pc?.image?`<div class="guest-pc-image-editor"><label>同卓PC画像 <span class="small muted">（このPC専用）</span></label><div class="guest-pc-image-row"><input type="url" data-guest-pc-image-input value="${esc(guestImage)}" placeholder="画像URL"><button type="button" data-save-guest-pc-image data-player-id="${esc(p.playerId)}" data-pl-name="${esc(p.plName)}" data-pc-name="${esc(p.name)}">画像を保存</button></div></div>`:""}
        ${playerPcHistoryHtml(player,p)}
-     </div>`).join(""):'<div class="small muted">登録PCはまだありません。</div>'}</div>
+     </div>`}).join(""):'<div class="small muted">登録PCはまだありません。</div>'}</div>
    </section>
 
    <section class="player-section">
@@ -4062,6 +4096,12 @@ function renderPlayerDetail(player){
    </section>
  </div>`;
 
+
+ q("list").querySelectorAll("[data-save-guest-pc-image]").forEach(btn=>btn.onclick=()=>{
+   const card=btn.closest("[data-player-pc-card]"),input=card?.querySelector("[data-guest-pc-image-input]");
+   saveGuestPcImage(btn.dataset.playerId,btn.dataset.plName,btn.dataset.pcName,input?.value||"");
+   renderPlayerDetail(player);
+ });
  q("backToPlayers").onclick=()=>{focusedPlayerId="";playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()};
  q("openPlayerRelationFromDetail").onclick=()=>openPlayerRelationshipGraph(player.id);
  q("playerDetailRole").onchange=()=>{playerDetailRoleFilter=q("playerDetailRole").value;renderPlayerDetail(player)};

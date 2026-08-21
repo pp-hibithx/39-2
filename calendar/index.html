@@ -438,6 +438,115 @@
   }
 }
 </style>
+
+<style>
+/* v8.4: owner area is a toolbar + full-width status, not left/right columns */
+#scheduleRoomOwnerActions{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:12px!important;
+  align-items:stretch!important;
+}
+#scheduleRoomOwnerActions > .schedule-owner-controls{
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  gap:8px!important;
+  width:100%!important;
+}
+#scheduleRoomOwnerActions > .schedule-owner-controls > button{
+  width:auto!important;
+  min-width:0!important;
+  min-height:40px!important;
+  margin:0!important;
+  padding:0 14px!important;
+}
+#scheduleRoomOwnerActions > .schedule-owner-controls > #schedulePublishCandidates,
+#scheduleRoomOwnerActions > .schedule-owner-controls > #scheduleConfirmSelected{
+  min-height:42px!important;
+  font-weight:700!important;
+}
+#scheduleRoomOwnerActions > .schedule-owner-status-pane{
+  display:block!important;
+  width:100%!important;
+  margin:0!important;
+}
+#scheduleRoomOwnerState{
+  margin:0 0 8px!important;
+}
+#scheduleRoomResponses{
+  width:100%!important;
+  margin:0!important;
+}
+#scheduleRoomResponses .schedule-owner-status,
+#scheduleRoomResponses .schedule-confirmed-summary{
+  margin-top:0!important;
+}
+@media(max-width:800px){
+  #scheduleRoomOwnerActions > .schedule-owner-controls{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+  }
+  #scheduleRoomOwnerActions > .schedule-owner-controls > button{
+    width:100%!important;
+  }
+}
+@media(max-width:520px){
+  #scheduleRoomOwnerActions > .schedule-owner-controls{
+    grid-template-columns:1fr!important;
+  }
+}
+</style>
+
+<style>
+/* v8.5: uniform owner action buttons */
+#scheduleRoomOwnerActions > .schedule-owner-controls{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(150px,1fr))!important;
+  gap:8px!important;
+  width:100%!important;
+  align-items:stretch!important;
+}
+#scheduleRoomOwnerActions > .schedule-owner-controls > button{
+  width:100%!important;
+  min-width:0!important;
+  min-height:44px!important;
+  padding:0 12px!important;
+  margin:0!important;
+  border-radius:9px!important;
+  font-weight:700!important;
+  border:1px solid var(--line)!important;
+  background:var(--panel)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  line-height:1.3!important;
+}
+#scheduleRoomOwnerActions > .schedule-owner-controls > button:hover{
+  border-color:var(--accent)!important;
+  background:color-mix(in srgb,var(--accent) 10%,var(--panel))!important;
+}
+#scheduleRoomOwnerActions > .schedule-owner-controls > #schedulePublishCandidates,
+#scheduleRoomOwnerActions > .schedule-owner-controls > #scheduleConfirmSelected{
+  border-color:var(--accent)!important;
+  background:color-mix(in srgb,var(--accent) 18%,var(--panel))!important;
+}
+#scheduleRoomOwnerActions > .schedule-owner-controls > #scheduleReschedule{
+  border-style:dashed!important;
+}
+@media(max-width:900px){
+  #scheduleRoomOwnerActions > .schedule-owner-controls{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:520px){
+  #scheduleRoomOwnerActions > .schedule-owner-controls{
+    grid-template-columns:1fr!important;
+  }
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">

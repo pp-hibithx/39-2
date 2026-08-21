@@ -2130,7 +2130,11 @@ async function hydrateGuestPcAvatars(root=document){
  const nodes=[...root.querySelectorAll("img[data-guest-avatar-pc]")];
  for(const img of nodes){
    try{
-     const u=await guestPcImageObjectUrl(img.dataset.guestAvatarPlayer||"",img.dataset.guestAvatarPl||"",img.dataset.guestAvatarPc||"");
+     let u=await guestPcImageObjectUrl(img.dataset.guestAvatarPlayer||"",img.dataset.guestAvatarPl||"",img.dataset.guestAvatarPc||"");
+     if(!u){
+       const row=await findGuestPcImageFileByPcName(img.dataset.guestAvatarPc||"");
+       if(row?.blob)u=URL.createObjectURL(row.blob);
+     }
      if(u)img.src=u;
    }catch(e){console.warn("guest avatar load failed",e)}
  }
@@ -2324,10 +2328,12 @@ async function conversationLineShareImage(line){
  if(pc.ownerType==="guest"){
    const meta=guestPcImageMeta(pc.playerId,pc.plName,pc.name);
    if(meta.local){
-     const row=await getGuestPcImageFile(guestPcImageKey(pc.playerId,pc.plName,pc.name));
+     const row=await guestPcImageFileResolved(pc.playerId,pc.plName,pc.name);
      if(row?.blob)return await uploadArticleImageBlob(row.blob,row.name||`${pc.name}.png`);
    }
    if(meta.url)return await imageSourceToShareUrl(meta.url,`${pc.name}.png`);
+   const fallbackRow=await findGuestPcImageFileByPcName(pc.name);
+   if(fallbackRow?.blob)return await uploadArticleImageBlob(fallbackRow.blob,fallbackRow.name||`${pc.name}.png`);
  }
 
  // 自PCなど登録済み画像。
@@ -3754,6 +3760,26 @@ async function guestPcImageObjectUrl(playerId,plName,pcName){
  const row=await getGuestPcImageFile(key);
  return row?.blob?URL.createObjectURL(row.blob):"";
 }
+async function findGuestPcImageFileByPcName(pcName){
+ const target=String(pcName||"").normalize("NFKC").trim().toLowerCase();
+ if(!target)return null;
+ const db=await openGuestPcImageDb();
+ const rows=await new Promise((resolve,reject)=>{
+   const tx=db.transaction(GUEST_PC_IMAGE_STORE,"readonly");
+   const req=tx.objectStore(GUEST_PC_IMAGE_STORE).getAll();
+   req.onsuccess=()=>resolve(Array.isArray(req.result)?req.result:[]);
+   req.onerror=()=>reject(req.error);
+ });
+ db.close();
+ const suffix="::"+target;
+ return rows.find(r=>String(r?.key||"").endsWith(suffix))||null;
+}
+async function guestPcImageFileResolved(playerId,plName,pcName){
+ const direct=await getGuestPcImageFile(guestPcImageKey(playerId,plName,pcName));
+ if(direct?.blob)return direct;
+ return await findGuestPcImageFileByPcName(pcName);
+}
+
 
 function loadGuestPcImages(){
  try{

@@ -2132,7 +2132,7 @@ function articlePagesHtml(r){
      <div class="article-blocks"></div>
      <div class="lib-article-share-row">
        <div><label>共有設定</label><select class="articleShareEnabled"><option value="0">自分のみ</option><option value="1">リンク限定</option></select></div>
-       <div><label>共有パスワード <span class="small muted">（任意）</span></label><input class="articlePassword" type="password" autocomplete="new-password" placeholder="設定する場合のみ入力"></div>
+       <div><label>共有パスワード <span class="small muted">（任意）</span></label><input class="articlePassword" type="password" autocomplete="new-password" placeholder="設定する場合のみ入力"></div><div><label>パスワードのヒント <span class="small muted">（任意）</span></label><input class="articlePasswordHint" value="${esc(p.passwordHint||"")}" placeholder="例：Cから始めて5文字（英字）"></div>
      </div>
      <div class="lib-article-share-note">共有URLには文章・複数画像・会話ログ・YouTube・BGMの並び順をそのまま送ります。パスワード設定も保持されます。</div>
      <div class="album-actions"><button type="button" data-article-save="${esc(r.id)}">保存</button><button type="button" data-article-cancel="${esc(r.id)}">キャンセル</button></div>
@@ -2227,10 +2227,10 @@ async function saveArticlePage(runId){
  if(!title&&!blocks.length)return alert("ページタイトルか記事ブロックを入力してください。");
  const badYoutube=blocks.find(b=>b.type==="youtube"&&!youtubeVideoId(b.url));if(badYoutube)return alert("正しく読み込めないYouTube URLがあります。");
  const pages=articlePagesForRun(runId).slice(),id=ed.querySelector('.articleEditId').value||TRPG39.uuid(),now=new Date().toISOString().slice(0,16).replace('T',' ');
- const i=pages.findIndex(p=>p.id===id),old=i>=0?pages[i]:{},shareEnabled=ed.querySelector('.articleShareEnabled').value==="1",password=ed.querySelector('.articlePassword').value;
+ const i=pages.findIndex(p=>p.id===id),old=i>=0?pages[i]:{},shareEnabled=ed.querySelector('.articleShareEnabled').value==="1",password=ed.querySelector('.articlePassword').value,passwordHint=ed.querySelector('.articlePasswordHint')?.value.trim()||"";
  let passwordHash=old.passwordHash||"",passwordProtected=!!old.passwordProtected;if(password){passwordHash=await sha256Text(password);passwordProtected=true}if(!shareEnabled){passwordHash="";passwordProtected=false}
  const legacyBody=blocks.filter(b=>b.type==="text").map(b=>b.text).join("\n\n");
- const page={...old,id,title:title||"無題",body:legacyBody,blocks,shareEnabled,passwordProtected,passwordHash,createdAt:i>=0?(old.createdAt||now):now,updatedAt:now};
+ const page={...old,id,title:title||"無題",body:legacyBody,blocks,shareEnabled,passwordProtected,passwordHash,passwordHint,createdAt:i>=0?(old.createdAt||now):now,updatedAt:now};
  if(i>=0)pages[i]=page;else pages.push(page);saveArticlePagesForRun(runId,pages);render();
 }
 function deleteArticlePage(runId,pageId){if(!confirm("この卓記事ページを削除しますか？"))return;saveArticlePagesForRun(runId,articlePagesForRun(runId).filter(p=>p.id!==pageId));render()}
@@ -2245,7 +2245,7 @@ async function shareArticlePage(runId,pageId){
    if(b.type==="image")return {...b,url:String(b.url||"").trim(),caption:String(b.caption||"").trim()};
    return {...b};
  });
- const payload={kind:"library-article",version:3,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",updatedAt:page.updatedAt||""};
+ const payload={kind:"library-article",version:3,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
  try{let shareId=page.shareId||"";if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);else shareId=await TRPG39Cloud.createSharedPage(payload);saveArticlePagesForRun(runId,pages.map(p=>p.id===page.id?{...p,shareId}:p));const previewUrl=new URL("https://sakumeru-share.sakumeru.workers.dev/");previewUrl.searchParams.set("id",shareId);previewUrl.searchParams.set("type","article");showShareUrl(previewUrl.href,page.passwordProtected?"この記事の共有URLです。パスワード保護情報も共有データに含めました。":"この記事の共有URLです。") }catch(e){console.error(e);alert(e.message||e)}
 }
 function bindArticlePageButtons(){

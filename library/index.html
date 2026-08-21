@@ -903,6 +903,12 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .share-diagnostic-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;flex-wrap:wrap}
 .share-diagnostic-actions button{width:auto}
 </style>
+
+<style>
+.payload-avatar-preview{display:grid;grid-template-columns:48px minmax(0,1fr);gap:9px;align-items:center;margin-top:8px}
+.payload-avatar-preview img{width:46px;height:46px;border-radius:50%;object-fit:cover;object-position:top center;border:1px solid var(--line)}
+.payload-avatar-preview .small{overflow-wrap:anywhere;word-break:break-all}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -2411,6 +2417,49 @@ async function diagnoseConversationShareImages(blocks){
  }
  return rows;
 }
+
+function conversationPayloadDiagnostic(blocks){
+ const rows=[],seen=new Set();
+ for(const b of blocks||[]){
+   if(b?.type!=="conversation")continue;
+   for(const line of normalizeConversationLines(b)){
+     const name=String(line.pcName||line.speaker||"").trim();
+     const image=String(line.pcImage||"").trim();
+     const key=`${name}::${image}`;
+     if(seen.has(key))continue;
+     seen.add(key);
+     rows.push({
+       pcName:name,
+       speaker:String(line.speaker||""),
+       pcRefId:String(line.pcRefId||""),
+       pcImage:image
+     });
+   }
+ }
+ return rows;
+}
+function conversationPayloadDiagnosticHtml(rows){
+ if(!rows.length)return '<div class="small muted">最終payloadに会話PC情報がありません。</div>';
+ return `<div class="share-diagnostic-list">${rows.map(r=>`
+   <div class="share-diagnostic-row ${r.pcImage?"ok":"ng"}">
+     <strong>${esc(r.pcName||r.speaker||"名前不明")}</strong>
+     <div>pcName：${r.pcName?"✓":"×"} ／ pcImage：${r.pcImage?"✓":"×"} ／ pcRefId：${r.pcRefId?"あり":"なし"}</div>
+     ${r.pcImage?`<div class="payload-avatar-preview"><img src="${esc(r.pcImage)}" alt=""><div class="small muted">${esc(r.pcImage)}</div></div>`:`<div class="share-diagnostic-error">最終payloadの pcImage が空です。</div>`}
+   </div>`).join("")}</div>`;
+}
+async function showFinalPayloadDiagnostic(blocks){
+ const rows=conversationPayloadDiagnostic(blocks);
+ return new Promise(resolve=>{
+   document.getElementById("conversationPayloadDiagnostic")?.remove();
+   const wrap=document.createElement("div");
+   wrap.id="conversationPayloadDiagnostic";
+   wrap.className="share-diagnostic-modal";
+   wrap.innerHTML=`<div class="share-diagnostic-panel"><h3>SHAREへ送る最終会話データ</h3><p class="small muted">ここに表示されている pcImage が、実際に共有payloadへ入る値です。</p>${conversationPayloadDiagnosticHtml(rows)}<div class="share-diagnostic-actions"><button type="button" data-payload-close>閉じる</button><button type="button" data-payload-continue>このpayloadで共有</button></div></div>`;
+   document.body.appendChild(wrap);
+   wrap.querySelector("[data-payload-close]").onclick=()=>{wrap.remove();resolve(false)};
+   wrap.querySelector("[data-payload-continue]").onclick=()=>{wrap.remove();resolve(true)};
+ });
+}
 function conversationShareDiagnosticHtml(rows){
  if(!rows.length)return '<div class="small muted">会話ログ内にPC情報がありません。</div>';
  return `<div class="share-diagnostic-list">${rows.map(r=>{
@@ -2766,11 +2815,10 @@ async function shareArticlePage(runId,pageId){
      if(b.type==="image")return {...b,url:String(b.url||"").trim(),caption:String(b.caption||"").trim()};
      return {...b};
    });
-   const diagnostic=await diagnoseConversationShareImages(baseBlocks);
-   const proceed=await showConversationShareDiagnostic(diagnostic);
-   if(!proceed)return;
    const sharedBlocks=await prepareConversationBlocksForShare(baseBlocks);
-   const payload={kind:"library-article",version:6,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
+   const proceed=await showFinalPayloadDiagnostic(sharedBlocks);
+   if(!proceed)return;
+   const payload={kind:"library-article",version:7,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
    let shareId=page.shareId||"";
    if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);else shareId=await TRPG39Cloud.createSharedPage(payload);
    saveArticlePagesForRun(runId,pages.map(p=>p.id===page.id?{...p,shareId}:p));

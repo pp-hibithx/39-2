@@ -875,6 +875,14 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .guest-pc-image-row button{width:auto;white-space:nowrap}
 @media(max-width:620px){.guest-pc-image-row{grid-template-columns:1fr}}
 </style>
+
+<style>
+.guest-pc-image-file-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:end;margin-bottom:6px}
+.guest-pc-image-file-row button{width:auto;white-space:nowrap}
+.guest-pc-image-preview{margin-top:8px}
+.guest-pc-image-preview img{display:block;width:110px;height:110px;object-fit:cover;object-position:top center;border-radius:9px;border:1px solid var(--line)}
+@media(max-width:620px){.guest-pc-image-file-row{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -2117,6 +2125,16 @@ async function saveLocalArticleAudio(file,existingId=""){
 async function getLocalArticleAudio(id){
  if(!id)return null;const db=await openArticleAudioDb();const row=await new Promise((resolve,reject)=>{const tx=db.transaction(ARTICLE_AUDIO_STORE,"readonly"),req=tx.objectStore(ARTICLE_AUDIO_STORE).get(id);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error)});db.close();return row;
 }
+
+async function hydrateGuestPcAvatars(root=document){
+ const nodes=[...root.querySelectorAll("img[data-guest-avatar-pc]")];
+ for(const img of nodes){
+   try{
+     const u=await guestPcImageObjectUrl(img.dataset.guestAvatarPlayer||"",img.dataset.guestAvatarPl||"",img.dataset.guestAvatarPc||"");
+     if(u)img.src=u;
+   }catch(e){console.warn("guest avatar load failed",e)}
+ }
+}
 async function hydrateLocalArticleAudio(root=document){
  const nodes=[...root.querySelectorAll('audio[data-local-audio-id]')];
  for(const el of nodes){try{const row=await getLocalArticleAudio(el.dataset.localAudioId);if(!row?.blob)continue;const url=URL.createObjectURL(row.blob);el.src=url;el.dataset.objectUrl=url;el.closest('.article-bgm-card')?.querySelector('.article-local-audio')?.replaceChildren(document.createTextNode(`この端末：${row.name||"MP3"}`))}catch(e){console.warn("local audio load failed",e)}}
@@ -2184,8 +2202,9 @@ function articleBlocksHtml(page){
    if(b.type==="conversation"){
      const lines=normalizeConversationLines(b);if(!lines.length)return "";
      return `<section class="article-conversation">${b.caption?`<div class="article-conversation-caption">${esc(b.caption)}</div>`:""}${lines.map(v=>{
-       const pc=conversationResolvedPc(v),name=pc?.name||v.pcName||v.speaker||"",image=pc?.image||v.pcImage||"";
-       return `<div class="article-conversation-line">${name?`<div class="article-conversation-speaker">${image?`<img class="article-conversation-avatar" src="${esc(image)}" alt="" loading="lazy">`:""}<span>${esc(name)}</span></div>`:""}<div class="article-conversation-text">${esc(v.text)}</div></div>`;
+       const pc=conversationResolvedPc(v),name=pc?.name||v.pcName||v.speaker||"",image=pc?.image||v.pcImage||"",guestMeta=pc?.ownerType==="guest"?guestPcImageMeta(pc.playerId,pc.plName,pc.name):null;
+       const localAttrs=guestMeta?.local?` data-guest-avatar-player="${esc(pc.playerId||"")}" data-guest-avatar-pl="${esc(pc.plName||"")}" data-guest-avatar-pc="${esc(pc.name||"")}"`:"";
+       return `<div class="article-conversation-line">${name?`<div class="article-conversation-speaker">${image?`<img class="article-conversation-avatar" src="${esc(image)}" alt="" loading="lazy">`:(guestMeta?.local?`<img class="article-conversation-avatar" alt=""${localAttrs}>`:"")}<span>${esc(name)}</span></div>`:""}<div class="article-conversation-text">${esc(v.text)}</div></div>`;
      }).join("")}</section>`;
    }
    if(b.type==="youtube"){
@@ -3610,6 +3629,54 @@ function playerRoleRecords(player){
 }
 
 const GUEST_PC_IMAGE_KEY="saku_meru_guest_pc_images_v1";
+
+const GUEST_PC_IMAGE_DB="saku_meru_guest_pc_images_db_v1";
+const GUEST_PC_IMAGE_STORE="images";
+function openGuestPcImageDb(){
+ return new Promise((resolve,reject)=>{
+   const req=indexedDB.open(GUEST_PC_IMAGE_DB,1);
+   req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(GUEST_PC_IMAGE_STORE))db.createObjectStore(GUEST_PC_IMAGE_STORE,{keyPath:"key"})};
+   req.onsuccess=()=>resolve(req.result);
+   req.onerror=()=>reject(req.error);
+ });
+}
+async function saveGuestPcImageFile(key,file){
+ if(!file)throw new Error("画像ファイルを選択してください。");
+ if(file.size>15*1024*1024)throw new Error("画像は15MB以下を目安にしてください。");
+ const db=await openGuestPcImageDb();
+ await new Promise((resolve,reject)=>{
+   const tx=db.transaction(GUEST_PC_IMAGE_STORE,"readwrite");
+   tx.objectStore(GUEST_PC_IMAGE_STORE).put({key,name:file.name,type:file.type||"image/png",blob:file,updatedAt:Date.now()});
+   tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+ });
+ db.close();
+ return key;
+}
+async function getGuestPcImageFile(key){
+ if(!key)return null;
+ const db=await openGuestPcImageDb();
+ const row=await new Promise((resolve,reject)=>{
+   const tx=db.transaction(GUEST_PC_IMAGE_STORE,"readonly"),req=tx.objectStore(GUEST_PC_IMAGE_STORE).get(key);
+   req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);
+ });
+ db.close();return row;
+}
+async function deleteGuestPcImageFile(key){
+ if(!key)return;
+ const db=await openGuestPcImageDb();
+ await new Promise((resolve,reject)=>{
+   const tx=db.transaction(GUEST_PC_IMAGE_STORE,"readwrite");
+   tx.objectStore(GUEST_PC_IMAGE_STORE).delete(key);
+   tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+ });
+ db.close();
+}
+async function guestPcImageObjectUrl(playerId,plName,pcName){
+ const key=guestPcImageKey(playerId,plName,pcName);
+ const row=await getGuestPcImageFile(key);
+ return row?.blob?URL.createObjectURL(row.blob):"";
+}
+
 function loadGuestPcImages(){
  try{
    const v=JSON.parse(localStorage.getItem(GUEST_PC_IMAGE_KEY)||"{}");
@@ -3622,11 +3689,18 @@ function guestPcImageKey(playerId,plName,pcName){
  return `${owner}::${pc}`;
 }
 function guestPcImage(playerId,plName,pcName){
- return String(loadGuestPcImages()[guestPcImageKey(playerId,plName,pcName)]||"");
+ const v=loadGuestPcImages()[guestPcImageKey(playerId,plName,pcName)];
+ if(v&&typeof v==="object")return String(v.url||"");
+ return String(v||"");
 }
-function saveGuestPcImage(playerId,plName,pcName,url){
+function guestPcImageMeta(playerId,plName,pcName){
+ const v=loadGuestPcImages()[guestPcImageKey(playerId,plName,pcName)];
+ if(v&&typeof v==="object")return v;
+ return {url:String(v||""),local:false};
+}
+function saveGuestPcImage(playerId,plName,pcName,url,local=false){
  const all=loadGuestPcImages(),key=guestPcImageKey(playerId,plName,pcName),value=String(url||"").trim();
- if(value)all[key]=value;else delete all[key];
+ if(value||local)all[key]={url:value,local:!!local};else delete all[key];
  localStorage.setItem(GUEST_PC_IMAGE_KEY,JSON.stringify(all));
 }
 function playerRegisteredPcs(player){
@@ -4057,7 +4131,16 @@ function renderPlayerDetail(player){
          ${displayImage?`<img class="player-pc-thumb" src="${esc(displayImage)}" alt="">`:""}
          <div><strong>${esc(p.name)}</strong><div class="small muted">${esc(p.system||p.pc?.system||"")}</div><div class="small muted">使用 ${p.count}卓</div>${p.pc?.id?`<a class="link" href="../pcs/index.html?focus=${encodeURIComponent(p.pc.id)}">PC情報を見る</a>`:""}</div>
        </div>
-       ${!p.pc?.image?`<div class="guest-pc-image-editor"><label>同卓PC画像 <span class="small muted">（このPC専用）</span></label><div class="guest-pc-image-row"><input type="url" data-guest-pc-image-input value="${esc(guestImage)}" placeholder="画像URL"><button type="button" data-save-guest-pc-image data-player-id="${esc(p.playerId)}" data-pl-name="${esc(p.plName)}" data-pc-name="${esc(p.name)}">画像を保存</button></div></div>`:""}
+       ${!p.pc?.image?`<div class="guest-pc-image-editor" data-guest-pc-editor data-player-id="${esc(p.playerId)}" data-pl-name="${esc(p.plName)}" data-pc-name="${esc(p.name)}">
+         <label>同卓PC画像 <span class="small muted">（このPC専用）</span></label>
+         <div class="guest-pc-image-file-row">
+           <input type="file" data-guest-pc-image-file accept="image/jpeg,image/png,image/webp,image/gif">
+           <button type="button" data-save-guest-pc-file>画像ファイルを保存</button>
+         </div>
+         <div class="small muted">PC内の画像を選べます。必要なら下のURL入力も使えます。</div>
+         <div class="guest-pc-image-row"><input type="url" data-guest-pc-image-input value="${esc(guestImage)}" placeholder="画像URL（任意）"><button type="button" data-save-guest-pc-image>URLを保存</button><button type="button" class="danger" data-delete-guest-pc-image>画像を削除</button></div>
+         <div class="guest-pc-image-preview" data-guest-pc-image-preview></div>
+       </div>`:""}
        ${playerPcHistoryHtml(player,p)}
      </div>`}).join(""):'<div class="small muted">登録PCはまだありません。</div>'}</div>
    </section>
@@ -4097,10 +4180,46 @@ function renderPlayerDetail(player){
  </div>`;
 
 
- q("list").querySelectorAll("[data-save-guest-pc-image]").forEach(btn=>btn.onclick=()=>{
-   const card=btn.closest("[data-player-pc-card]"),input=card?.querySelector("[data-guest-pc-image-input]");
-   saveGuestPcImage(btn.dataset.playerId,btn.dataset.plName,btn.dataset.pcName,input?.value||"");
-   renderPlayerDetail(player);
+ q("list").querySelectorAll("[data-guest-pc-editor]").forEach(async editor=>{
+   const playerId=editor.dataset.playerId||"",plName=editor.dataset.plName||"",pcName=editor.dataset.pcName||"",preview=editor.querySelector("[data-guest-pc-image-preview]");
+   const meta=guestPcImageMeta(playerId,plName,pcName);
+   let currentUrl=meta.url||"";
+   if(meta.local){
+     try{currentUrl=await guestPcImageObjectUrl(playerId,plName,pcName)}catch(_){}
+   }
+   if(preview)preview.innerHTML=currentUrl?`<img src="${esc(currentUrl)}" alt="">`:'<div class="small muted">画像未設定</div>';
+
+   editor.querySelector("[data-guest-pc-image-file]")?.addEventListener("change",e=>{
+     const file=e.target.files?.[0];
+     if(!file||!preview)return;
+     const u=URL.createObjectURL(file);
+     preview.innerHTML=`<img src="${esc(u)}" alt="">`;
+   });
+
+   editor.querySelector("[data-save-guest-pc-file]")?.addEventListener("click",async()=>{
+     const file=editor.querySelector("[data-guest-pc-image-file]")?.files?.[0];
+     if(!file)return alert("画像ファイルを選択してください。");
+     try{
+       const key=guestPcImageKey(playerId,plName,pcName);
+       await saveGuestPcImageFile(key,file);
+       saveGuestPcImage(playerId,plName,pcName,"",true);
+       renderPlayerDetail(player);
+     }catch(e){console.error(e);alert(e.message||e)}
+   });
+
+   editor.querySelector("[data-save-guest-pc-image]")?.addEventListener("click",async()=>{
+     const input=editor.querySelector("[data-guest-pc-image-input]"),url=input?.value.trim()||"";
+     try{await deleteGuestPcImageFile(guestPcImageKey(playerId,plName,pcName))}catch(_){}
+     saveGuestPcImage(playerId,plName,pcName,url,false);
+     renderPlayerDetail(player);
+   });
+
+   editor.querySelector("[data-delete-guest-pc-image]")?.addEventListener("click",async()=>{
+     if(!confirm("この同卓PC画像を削除しますか？"))return;
+     try{await deleteGuestPcImageFile(guestPcImageKey(playerId,plName,pcName))}catch(_){}
+     saveGuestPcImage(playerId,plName,pcName,"",false);
+     renderPlayerDetail(player);
+   });
  });
  q("backToPlayers").onclick=()=>{focusedPlayerId="";playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()};
  q("openPlayerRelationFromDetail").onclick=()=>openPlayerRelationshipGraph(player.id);
@@ -4292,7 +4411,7 @@ function render(){
    });
    bindRunMergeRepair();
    bindCoverAdjustButtons();
-   bindArticlePageButtons();hydrateLocalArticleAudio(q("list"));
+   bindArticlePageButtons();hydrateGuestPcAvatars(document);hydrateLocalArticleAudio(q("list"));
  }else{
    q("list").classList.add("library-grid");
    const visibleGroups=groups.filter(groupMatchesPlayFilter);

@@ -2275,15 +2275,41 @@ function conversationParseAny(raw){
 }
 
 
-function conversationPcChoices(){
- const out=[];
+function conversationRunId(row){
+ const ed=row?.closest(".lib-article-editor");
+ const id=String(ed?.id||"");
+ return id.startsWith("articleEditor-")?id.slice("articleEditor-".length):"";
+}
+function conversationPcChoices(row){
+ const seen=new Set(),out=[];
+ const add=(name,source="登録PC",id="")=>{
+   name=String(name||"").trim();if(!name||seen.has(name))return;
+   seen.add(name);out.push({id:String(id||""),name,source});
+ };
+
+ // 最優先：今開いている陣に実際に参加しているPC
+ const runId=conversationRunId(row);
+ if(runId){
+   const roster=ensureRunRosterFromData(runId)||getRunRoster(runId);
+   (roster?.selfPcs||[]).forEach(p=>add(p.pcName,"この陣・自PC",p.pcId));
+   (roster?.participants||[]).forEach(p=>add(p.pcName,"この陣・同卓PC",""));
+
+   // rosterが古い場合も、陣の全記録から拾う
+   data.filter(x=>String(x.runId||"")===String(runId)).forEach(rec=>{
+     storedSelfPcRows(rec).forEach(p=>add(p.pcName,"この陣・自PC",p.pcId));
+     rowsFromRecord(rec).forEach(p=>add(p.pcName,"この陣・同卓PC",""));
+   });
+ }
+
+ // 次にPCページへ登録済みの自PC
  try{
    (pcs||[]).forEach(p=>{
      const name=String(p.name||p.pcName||p.characterName||"").trim();
-     if(name)out.push({id:String(p.id||""),name});
+     add(name,"登録PC",p.id);
    });
  }catch(_){}
- return [...new Map(out.map(x=>[x.name,x])).values()].sort((a,b)=>a.name.localeCompare(b.name,"ja"));
+
+ return out;
 }
 function conversationSpeakerMap(row,speaker){
  const key=String(speaker||"");
@@ -2328,7 +2354,7 @@ function renderConversationImport(row,rows){
  const box=row.querySelector(".conversation-import-results"),footer=row.querySelector(".conversation-import-footer");
  row._conversationRows=rows;
  const speakers=[...new Set(rows.map(v=>String(v.speaker||"").trim()).filter(Boolean))];
- const pcList=conversationPcChoices();
+ const pcList=conversationPcChoices(row);
  const listId=`conversationPcList-${row.dataset.blockId}`;
 
  const mapping=speakers.length?`<div class="conversation-speaker-map"><strong>ログに発言者名がある場合</strong><div class="small muted">SPEAKER_00 や HOS などを、そのままPC名へ置き換えられます。</div><div class="conversation-speaker-map-grid">${speakers.map(sp=>`<label><span>${esc(sp)}</span><input data-conversation-speaker-map="${esc(sp)}" value="${esc(sp)}" list="${esc(listId)}"></label>`).join("")}</div></div>`:"";
@@ -2338,15 +2364,15 @@ function renderConversationImport(row,rows){
      <div class="conversation-ab-map-card">
        <div class="conversation-ab-key">A</div>
        <label>ログ上の話者名<input data-conversation-ab-log="A" value="A" placeholder="例：HOS"></label>
-       <label>PC<input data-conversation-ab-pc="A" value="" list="${esc(listId)}" placeholder="例：犀川 慶"></label>
+       <label>PC <span class="small muted">（この陣のPC優先）</span><input data-conversation-ab-pc="A" value="" list="${esc(listId)}" placeholder="この陣のPCを選択"></label>
      </div>
      <div class="conversation-ab-map-card">
        <div class="conversation-ab-key">B</div>
        <label>ログ上の話者名<input data-conversation-ab-log="B" value="B" placeholder="例：HON"></label>
-       <label>PC<input data-conversation-ab-pc="B" value="" list="${esc(listId)}" placeholder="PCを選択"></label>
+       <label>PC <span class="small muted">（この陣のPC優先）</span><input data-conversation-ab-pc="B" value="" list="${esc(listId)}" placeholder="この陣のPCを選択"></label>
      </div>
    </div>
-   <datalist id="${esc(listId)}">${pcList.map(p=>`<option value="${esc(p.name)}"></option>`).join("")}<option value="KP"></option><option value="KPC"></option><option value="SKP"></option></datalist>
+   <datalist id="${esc(listId)}">${pcList.map(p=>`<option value="${esc(p.name)}" label="${esc(p.source||"")}"></option>`).join("")}<option value="KP" label="役割"></option><option value="KPC" label="役割"></option><option value="SKP" label="役割"></option></datalist>
    <div class="conversation-ab-actions"><button type="button" data-conversation-auto-ab="A">Aから交互</button><button type="button" data-conversation-auto-ab="B">Bから交互</button><button type="button" data-conversation-clear-ab>割り当て解除</button></div>
  </div>`;
 

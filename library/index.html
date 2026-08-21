@@ -2294,6 +2294,66 @@ async function uploadArticleImageFile(file){
  const r=await fetch(base.replace(/\/$/,"")+"/functions/v1/image-upload",{method:"POST",headers:{apikey:key},body:fd});
  const body=await r.json().catch(()=>({}));if(!r.ok)throw new Error(body.error||("アップロードエラー "+r.status));return body.publicUrl||"";
 }
+
+async function uploadArticleImageBlob(blob,name="pc-avatar.png"){
+ if(!blob)throw new Error("共有するPC画像を取得できませんでした。");
+ const type=blob.type||"image/png";
+ const ext=type.includes("jpeg")?"jpg":type.includes("webp")?"webp":type.includes("gif")?"gif":"png";
+ const safeName=String(name||`pc-avatar.${ext}`).replace(/[^\w.\-]+/g,"_");
+ const file=blob instanceof File?blob:new File([blob],safeName,{type});
+ return await uploadArticleImageFile(file);
+}
+async function imageSourceToShareUrl(src,name="pc-avatar.png"){
+ src=String(src||"").trim();
+ if(!src)return "";
+ // すでに外部から読めるURLなら、そのまま共有データへ。
+ if(/^https?:\/\//i.test(src))return src;
+ // data URL / blob URL は共有先から読めないためアップロード。
+ if(/^data:|^blob:/i.test(src)){
+   const r=await fetch(src);
+   if(!r.ok)throw new Error("PC画像を読み込めませんでした。");
+   return await uploadArticleImageBlob(await r.blob(),name);
+ }
+ return "";
+}
+async function conversationLineShareImage(line){
+ const pc=conversationResolvedPc(line);
+ if(!pc)return String(line?.pcImage||"");
+
+ // 同卓PCのローカル画像はIndexedDBから直接アップロード。
+ if(pc.ownerType==="guest"){
+   const meta=guestPcImageMeta(pc.playerId,pc.plName,pc.name);
+   if(meta.local){
+     const row=await getGuestPcImageFile(guestPcImageKey(pc.playerId,pc.plName,pc.name));
+     if(row?.blob)return await uploadArticleImageBlob(row.blob,row.name||`${pc.name}.png`);
+   }
+   if(meta.url)return await imageSourceToShareUrl(meta.url,`${pc.name}.png`);
+ }
+
+ // 自PCなど登録済み画像。
+ const src=String(pc.image||line?.pcImage||"");
+ return await imageSourceToShareUrl(src,`${pc.name||line?.speaker||"pc"}.png`);
+}
+async function prepareConversationBlocksForShare(blocks){
+ const cache=new Map();
+ const out=[];
+ for(const b of blocks){
+   if(b.type!=="conversation"){out.push(b);continue}
+   const lines=[];
+   for(const line of normalizeConversationLines(b)){
+     const pc=conversationResolvedPc(line);
+     const cacheKey=pc?`${pc.ownerType||""}:${pc.id||pc.playerId||""}:${pc.name||line.speaker||""}`:`line:${line.pcImage||""}`;
+     let image=cache.get(cacheKey);
+     if(image===undefined){
+       try{image=await conversationLineShareImage(line)}catch(e){console.warn("会話PC画像の共有アップロードに失敗",e);image=""}
+       cache.set(cacheKey,image||"");
+     }
+     lines.push({...line,pcName:pc?.name||line.pcName||line.speaker||"",pcImage:image||""});
+   }
+   out.push({...b,lines});
+ }
+ return out;
+}
 function updateYoutubeEditorPreview(row){
  const id=youtubeVideoId(row.querySelector('.articleBlockYoutubeUrl')?.value||""),box=row.querySelector('.article-youtube-preview');if(!box)return;
  box.innerHTML=id?`<div class="lib-article-youtube"><iframe src="https://www.youtube-nocookie.com/embed/${esc(id)}" title="YouTube preview" loading="lazy" allowfullscreen></iframe></div>`:'<div class="small muted">YouTubeのURLを貼ると、ここに動画が表示されます。</div>';
@@ -2395,6 +2455,29 @@ function conversationEnrichLines(row,lines){
  });
 }
 function conversationResolvedPc(line){
+ const names=[line?.pcName,line?.speaker].map(v=>String(v||"").trim()).filter(Boolean);
+
+ // 1. 同名の「登録済み自PC」を最優先。
+ // 古い会話ログにguest側pcRefIdが残っていても、自PC画像を失わない。
+ const own=(TRPG39.loadPCs?TRPG39.loadPCs():pcs);
+ for(const name of names){
+   const direct=own.find(p=>String(p.name||"").trim()===name);
+   if(direct){
+     return {
+       id:String(direct.id||""),
+       name:String(direct.name||name),
+       image:String(direct.image||""),
+       system:String(direct.system||""),
+       ownerType:"self",
+       ownerLabel:"自分",
+       plName:"自分",
+       playerId:"",
+       registeredId:String(direct.id||"")
+     };
+   }
+ }
+
+ // 2. 保存済みPC IDを使う。
  if(line?.pcRefId){
    const pc=anyPcById(line.pcRefId);
    if(pc){
@@ -2403,26 +2486,13 @@ function conversationResolvedPc(line){
    }
  }
 
- // 新形式：保存済み正式PC名
- const names=[line?.pcName,line?.speaker].map(v=>String(v||"").trim()).filter(Boolean);
+ // 3. 名前から同卓PCを再検索。
  for(const name of names){
    const matches=allLibraryPcs().filter(p=>String(p.name||"").trim()===name);
    if(matches.length){
-     // 同名が複数ある場合は、画像を持つ登録PCを優先する。
-     return matches.find(p=>String(p.image||"").trim()) || matches.find(p=>p.ownerType==="self") || matches[0];
-   }
-
-   // PLAYERS側の「登録PC」表示と同じく、TRPG39.loadPCsにも直接照会。
-   const direct=(TRPG39.loadPCs?TRPG39.loadPCs():pcs).find(p=>String(p.name||"").trim()===name);
-   if(direct){
-     return {
-       id:String(direct.id||""),
-       name:String(direct.name||name),
-       image:String(direct.image||""),
-       system:String(direct.system||""),
-       ownerType:"registered",
-       registeredId:String(direct.id||"")
-     };
+     const hit=matches.find(p=>String(p.image||"").trim()) || matches[0];
+     if(hit.ownerType==="guest"&&!hit.image)hit.image=guestPcImage(hit.playerId,hit.plName,hit.name);
+     return hit;
    }
  }
  return null;
@@ -2585,13 +2655,21 @@ async function shareArticlePage(runId,pageId){
  if(!page.shareEnabled)return alert("この記事は「自分のみ」です。編集から共有設定を「リンク限定」にしてください。");
  if(!(TRPG39Cloud&&TRPG39Cloud.configured()))return alert("共有機能の設定がありません。");
  const {group,run}=articleContextForRun(runId),cover=(run?.items||[]).flatMap(x=>x.imageUrls||[]).find(Boolean)||group?.thumbnailUrl||"";
- const sharedBlocks=normalizedArticleBlocks(page).map(b=>{
-   if(b.type==="conversation")return {...b,lines:normalizeConversationLines(b)};
-   if(b.type==="image")return {...b,url:String(b.url||"").trim(),caption:String(b.caption||"").trim()};
-   return {...b};
- });
- const payload={kind:"library-article",version:4,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
- try{let shareId=page.shareId||"";if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);else shareId=await TRPG39Cloud.createSharedPage(payload);saveArticlePagesForRun(runId,pages.map(p=>p.id===page.id?{...p,shareId}:p));const previewUrl=new URL("https://sakumeru-share.sakumeru.workers.dev/");previewUrl.searchParams.set("id",shareId);previewUrl.searchParams.set("type","article");showShareUrl(previewUrl.href,page.passwordProtected?"この記事の共有URLです。パスワード保護情報も共有データに含めました。":"この記事の共有URLです。") }catch(e){console.error(e);alert(e.message||e)}
+ try{
+   const baseBlocks=normalizedArticleBlocks(page).map(b=>{
+     if(b.type==="conversation")return {...b,lines:normalizeConversationLines(b)};
+     if(b.type==="image")return {...b,url:String(b.url||"").trim(),caption:String(b.caption||"").trim()};
+     return {...b};
+   });
+   const sharedBlocks=await prepareConversationBlocksForShare(baseBlocks);
+   const payload={kind:"library-article",version:5,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
+   let shareId=page.shareId||"";
+   if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);else shareId=await TRPG39Cloud.createSharedPage(payload);
+   saveArticlePagesForRun(runId,pages.map(p=>p.id===page.id?{...p,shareId}:p));
+   const previewUrl=new URL("https://sakumeru-share.sakumeru.workers.dev/");
+   previewUrl.searchParams.set("id",shareId);previewUrl.searchParams.set("type","article");
+   showShareUrl(previewUrl.href,page.passwordProtected?"この記事の共有URLです。会話で使ったPC画像も共有用に反映しました。":"この記事の共有URLです。会話で使ったPC画像も共有用に反映しました。");
+ }catch(e){console.error(e);alert(e.message||e)}
 }
 function bindArticlePageButtons(){
  document.querySelectorAll('[data-article-new]').forEach(b=>b.onclick=()=>openArticleEditor(b.dataset.articleNew));

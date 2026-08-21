@@ -1089,6 +1089,7 @@ let playerListSort="name";
 let playerArchiveFilter="active";
 let playerDetailRoleFilter="all";
 let playerDetailSystemFilter="all";
+let playerDetailPcFilter="all";
 
 {let changed=false;data=data.map(x=>{if(!x.spoilerBody&&x.spoiler){changed=true;return TRPG39.normalizeAlbum({...x,spoilerBody:x.spoiler,spoiler:""})}return x});if(changed)TRPG39.saveAlbum(data);}
 
@@ -3599,26 +3600,17 @@ function closePlayerRelationshipGraph(){
 function renderPlayerDetail(player){
  const pcsForPlayer=playerRegisteredPcs(player),allHistory=playerAllRoleRecords(player),external=externalPlayedFor(player.id);
  const availableRoles=playerAvailableRoles(player),availableSystems=playerAvailableSystems(player);
+ const availablePcs=[...new Set(allHistory.map(v=>String(v.row?.pcName||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ja"));
  const history=allHistory.filter(v=>
    (playerDetailRoleFilter==="all"||v.role===playerDetailRoleFilter) &&
-   (playerDetailSystemFilter==="all"||playerRecordSystem(v)===playerDetailSystemFilter)
+   (playerDetailSystemFilter==="all"||playerRecordSystem(v)===playerDetailSystemFilter) &&
+   (playerDetailPcFilter==="all"||String(v.row?.pcName||"").trim()===playerDetailPcFilter)
  );
 
  q("summary").textContent=`${player.name}視点の記録`;
  q("list").classList.remove("library-grid");
  q("list").innerHTML=`<div class="player-detail">
    <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="backToPlayers" type="button">← 同卓者一覧へ</button><button id="openPlayerRelationFromDetail" class="player-rel-open" type="button">同卓者関係図</button></div>
-
-   <section class="player-section">
-     <h3>${esc(player.name)}の登録PC</h3>
-     <div class="player-card-grid">${pcsForPlayer.length?pcsForPlayer.map(p=>`<div class="player-pc-card">
-       <div class="player-pc-row">
-         ${p.pc?.image?`<img class="player-pc-thumb" src="${esc(p.pc.image)}" alt="">`:""}
-         <div><strong>${esc(p.name)}</strong><div class="small muted">${esc(p.system||p.pc?.system||"")}</div><div class="small muted">使用 ${p.count}卓</div>${p.pc?.id?`<a class="link" href="../pcs/index.html?focus=${encodeURIComponent(p.pc.id)}">PC情報を見る</a>`:""}</div>
-       </div>
-       ${playerPcHistoryHtml(player,p)}
-     </div>`).join(""):'<div class="small muted">登録PCはまだありません。</div>'}</div>
-   </section>
 
    <section class="player-section">
      <div style="display:flex;gap:12px;align-items:end;justify-content:space-between;flex-wrap:wrap">
@@ -3631,6 +3623,10 @@ function renderPlayerDetail(player){
          <div style="min-width:150px"><label>役割</label><select id="playerDetailRole">
            <option value="all">すべて</option>
            ${availableRoles.map(r=>`<option value="${esc(r)}" ${playerDetailRoleFilter===r?"selected":""}>${esc(playerRoleLabel(r))}</option>`).join("")}
+         </select></div>
+         <div style="min-width:160px"><label>PC</label><select id="playerDetailPc">
+           <option value="all">すべて</option>
+           ${availablePcs.map(p=>`<option value="${esc(p)}" ${playerDetailPcFilter===p?"selected":""}>${esc(p)}</option>`).join("")}
          </select></div>
        </div>
      </div>
@@ -3654,10 +3650,11 @@ function renderPlayerDetail(player){
    </section>
  </div>`;
 
- q("backToPlayers").onclick=()=>{focusedPlayerId="";playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()};
+ q("backToPlayers").onclick=()=>{focusedPlayerId="";playerDetailRoleFilter="all";playerDetailSystemFilter="all";playerDetailPcFilter="all";render()};
  q("openPlayerRelationFromDetail").onclick=()=>openPlayerRelationshipGraph(player.id);
  q("playerDetailRole").onchange=()=>{playerDetailRoleFilter=q("playerDetailRole").value;renderPlayerDetail(player)};
  q("playerDetailSystem").onchange=()=>{playerDetailSystemFilter=q("playerDetailSystem").value;renderPlayerDetail(player)};
+ q("playerDetailPc").onchange=()=>{playerDetailPcFilter=q("playerDetailPc").value;renderPlayerDetail(player)};
  q("addExternalPlayed").onclick=()=>{
    const sid=q("externalScenario").value;
    if(!sid)return alert("シナリオを選んでください。");
@@ -3713,7 +3710,7 @@ function renderPlayerView(){
    </div>
  </article>`).join(""):'<div class="empty">該当する同卓者がいません。</div>'}</div>`;
  q("openPlayerRelationSelf").onclick=()=>openPlayerRelationshipGraph(PLAYER_REL_SELF_ID);
- document.querySelectorAll("[data-player-focus]").forEach(card=>{card.onclick=()=>{focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()};card.onkeydown=e=>{if(e.key==="Enter"){focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";playerDetailSystemFilter="all";render()}}});
+ document.querySelectorAll("[data-player-focus]").forEach(card=>{card.onclick=()=>{focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";playerDetailSystemFilter="all";playerDetailPcFilter="all";render()};card.onkeydown=e=>{if(e.key==="Enter"){focusedPlayerId=card.dataset.playerFocus;playerDetailRoleFilter="all";playerDetailSystemFilter="all";playerDetailPcFilter="all";render()}}});
  document.querySelectorAll("[data-player-archive]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();setPlayerArchived(b.dataset.playerArchive,b.dataset.archived!=="1")});
  document.querySelectorAll("[data-player-delete]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();deletePlayerFromDirectory(b.dataset.playerDelete)});
 }

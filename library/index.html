@@ -836,7 +836,20 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .conversation-ab-buttons button{cursor:pointer!important}
 .conversation-ab-buttons button.active{outline:2px solid var(--accent)!important;outline-offset:1px!important;font-weight:700!important;background:color-mix(in srgb,var(--accent) 18%,var(--panel))!important}
 .conversation-import-speaker{font-weight:700}
-</style></head>
+</style>
+<style>
+.conversation-ab-map-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:9px}
+.conversation-ab-map-card{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:end;padding:9px;border:1px solid var(--line);border-radius:9px}
+.conversation-ab-key{font-weight:800;font-size:16px;align-self:center}
+.conversation-ab-map-card label{display:grid;gap:3px;font-size:11px;color:var(--muted)}
+.conversation-ab-map-card input{font-size:13px}
+@media(max-width:760px){
+ .conversation-ab-map-grid{grid-template-columns:1fr}
+ .conversation-ab-map-card{grid-template-columns:auto 1fr}
+ .conversation-ab-map-card label:last-child{grid-column:2}
+}
+</style>
+</head>
 <body>
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
@@ -2261,17 +2274,30 @@ function conversationParseAny(raw){
  return conversationParseText(t);
 }
 
+
 function conversationPcChoices(){
- const out=[];try{(pcs||[]).forEach(p=>{const name=String(p.name||p.pcName||p.characterName||"").trim();if(name)out.push(name)})}catch(_){}
- return [...new Set(out)].sort((a,b)=>a.localeCompare(b,"ja"));
+ const out=[];
+ try{
+   (pcs||[]).forEach(p=>{
+     const name=String(p.name||p.pcName||p.characterName||"").trim();
+     if(name)out.push({id:String(p.id||""),name});
+   });
+ }catch(_){}
+ return [...new Map(out.map(x=>[x.name,x])).values()].sort((a,b)=>a.name.localeCompare(b.name,"ja"));
 }
 function conversationSpeakerMap(row,speaker){
  const key=String(speaker||"");
  const el=[...row.querySelectorAll("[data-conversation-speaker-map]")].find(x=>x.dataset.conversationSpeakerMap===key);
  return String(el?.value||key).trim();
 }
-function conversationABName(row,key){
- return String(row.querySelector(`[data-conversation-ab-name="${key}"]`)?.value||key).trim();
+function conversationABLogName(row,key){
+ return String(row.querySelector(`[data-conversation-ab-log="${key}"]`)?.value||key).trim();
+}
+function conversationABPcName(row,key){
+ return String(row.querySelector(`[data-conversation-ab-pc="${key}"]`)?.value||"").trim();
+}
+function conversationABDisplayName(row,key){
+ return conversationABPcName(row,key)||conversationABLogName(row,key)||key;
 }
 function conversationRefreshRows(row){
  const rows=row._conversationRows||[];
@@ -2289,7 +2315,7 @@ function conversationAssignRow(row,index,key){
  line.dataset.ab=key;
  line.querySelectorAll("[data-conversation-ab]").forEach(b=>b.classList.toggle("active",b.dataset.conversationAb===key));
  const speaker=line.querySelector(".conversation-import-speaker");
- if(speaker)speaker.textContent=`${key}：${conversationABName(row,key)}`;
+ if(speaker)speaker.textContent=`${key}：${conversationABDisplayName(row,key)}`;
 }
 function conversationAutoAlternate(row,startKey="A"){
  let key=startKey;
@@ -2302,27 +2328,60 @@ function renderConversationImport(row,rows){
  const box=row.querySelector(".conversation-import-results"),footer=row.querySelector(".conversation-import-footer");
  row._conversationRows=rows;
  const speakers=[...new Set(rows.map(v=>String(v.speaker||"").trim()).filter(Boolean))];
- const listId=`conversationPcList-${row.dataset.blockId}`,pcsList=conversationPcChoices();
- const mapping=speakers.length?`<div class="conversation-speaker-map"><strong>発言者をPC／表示名に紐付け</strong><div class="small muted">ログに発言者名がある場合はこちらを使います。</div><div class="conversation-speaker-map-grid">${speakers.map(sp=>`<label><span>${esc(sp)}</span><input data-conversation-speaker-map="${esc(sp)}" value="${esc(sp)}" list="${esc(listId)}"></label>`).join("")}</div><datalist id="${esc(listId)}">${pcsList.map(n=>`<option value="${esc(n)}"></option>`).join("")}<option value="KP"></option><option value="KPC"></option><option value="SKP"></option></datalist></div>`:"";
- const abPanel=`<div class="conversation-ab-panel"><strong>発言者なしログの割り当て</strong><div class="small muted">A/BにPCや表示名を設定して、各発言のA・Bボタンで割り当てます。</div><div class="conversation-ab-names"><label>A <input data-conversation-ab-name="A" value="A" list="${esc(listId)}"></label><label>B <input data-conversation-ab-name="B" value="B" list="${esc(listId)}"></label></div><div class="conversation-ab-actions"><button type="button" data-conversation-auto-ab="A">Aから交互</button><button type="button" data-conversation-auto-ab="B">Bから交互</button><button type="button" data-conversation-clear-ab>割り当て解除</button></div></div>`;
+ const pcList=conversationPcChoices();
+ const listId=`conversationPcList-${row.dataset.blockId}`;
+
+ const mapping=speakers.length?`<div class="conversation-speaker-map"><strong>ログに発言者名がある場合</strong><div class="small muted">SPEAKER_00 や HOS などを、そのままPC名へ置き換えられます。</div><div class="conversation-speaker-map-grid">${speakers.map(sp=>`<label><span>${esc(sp)}</span><input data-conversation-speaker-map="${esc(sp)}" value="${esc(sp)}" list="${esc(listId)}"></label>`).join("")}</div></div>`:"";
+
+ const abPanel=`<div class="conversation-ab-panel"><strong>発言者なしログのA/B割り当て</strong><div class="small muted">A/Bは一時的な振り分け記号です。ログ上の話者名と、正式なPCを別々に設定できます。</div>
+   <div class="conversation-ab-map-grid">
+     <div class="conversation-ab-map-card">
+       <div class="conversation-ab-key">A</div>
+       <label>ログ上の話者名<input data-conversation-ab-log="A" value="A" placeholder="例：HOS"></label>
+       <label>PC<input data-conversation-ab-pc="A" value="" list="${esc(listId)}" placeholder="例：犀川 慶"></label>
+     </div>
+     <div class="conversation-ab-map-card">
+       <div class="conversation-ab-key">B</div>
+       <label>ログ上の話者名<input data-conversation-ab-log="B" value="B" placeholder="例：HON"></label>
+       <label>PC<input data-conversation-ab-pc="B" value="" list="${esc(listId)}" placeholder="PCを選択"></label>
+     </div>
+   </div>
+   <datalist id="${esc(listId)}">${pcList.map(p=>`<option value="${esc(p.name)}"></option>`).join("")}<option value="KP"></option><option value="KPC"></option><option value="SKP"></option></datalist>
+   <div class="conversation-ab-actions"><button type="button" data-conversation-auto-ab="A">Aから交互</button><button type="button" data-conversation-auto-ab="B">Bから交互</button><button type="button" data-conversation-clear-ab>割り当て解除</button></div>
+ </div>`;
+
  const controls=rows.length?`<div class="conversation-import-controls"><input class="conversation-import-search" placeholder="発言を検索"><select class="conversation-import-speaker-filter"><option value="">発言者：すべて</option>${speakers.map(sp=>`<option value="${esc(sp)}">${esc(sp)}</option>`).join("")}</select></div>`:"";
+
  box.innerHTML=rows.length?`${mapping}${abPanel}${controls}<div class="conversation-import-count">${rows.length}件抽出</div>${rows.map((v,i)=>`<div class="conversation-import-row" data-conversation-index="${i}" data-ab=""><input type="checkbox" data-conversation-pick="${i}" checked><div class="conversation-ab-buttons"><button type="button" data-conversation-ab="A">A</button><button type="button" data-conversation-ab="B">B</button></div><span class="conversation-import-speaker">${esc(v.speaker||"未割当")}</span><span>${esc(v.text||"")}</span></div>`).join("")}`:'<div class="small muted">発言を抽出できませんでした。</div>';
  footer.hidden=!rows.length;
+
  row.querySelector(".conversation-import-search")?.addEventListener("input",()=>conversationRefreshRows(row));
  row.querySelector(".conversation-import-speaker-filter")?.addEventListener("change",()=>conversationRefreshRows(row));
+
  row.querySelectorAll("[data-conversation-ab]").forEach(btn=>btn.onclick=e=>{
    e.preventDefault();e.stopPropagation();
    const line=btn.closest(".conversation-import-row");if(!line)return;
    conversationAssignRow(row,Number(line.dataset.conversationIndex),btn.dataset.conversationAb);
  });
- row.querySelectorAll("[data-conversation-ab-name]").forEach(inp=>inp.addEventListener("input",()=>{
-   const key=inp.dataset.conversationAbName;
+
+ row.querySelectorAll("[data-conversation-ab-log],[data-conversation-ab-pc]").forEach(inp=>inp.addEventListener("input",()=>{
+   const key=inp.dataset.conversationAbLog||inp.dataset.conversationAbPc;
    row.querySelectorAll(`.conversation-import-row[data-ab="${key}"]`).forEach(line=>conversationAssignRow(row,Number(line.dataset.conversationIndex),key));
  }));
- row.querySelectorAll("[data-conversation-auto-ab]").forEach(btn=>btn.onclick=e=>{e.preventDefault();conversationAutoAlternate(row,btn.dataset.conversationAutoAb||"A")});
+
+ row.querySelectorAll("[data-conversation-auto-ab]").forEach(btn=>btn.onclick=e=>{
+   e.preventDefault();
+   conversationAutoAlternate(row,btn.dataset.conversationAutoAb||"A");
+ });
+
  row.querySelector("[data-conversation-clear-ab]")?.addEventListener("click",e=>{
    e.preventDefault();
-   row.querySelectorAll(".conversation-import-row").forEach(line=>{line.dataset.ab="";line.querySelectorAll("[data-conversation-ab]").forEach(b=>b.classList.remove("active"));const idx=Number(line.dataset.conversationIndex),v=row._conversationRows?.[idx],sp=line.querySelector(".conversation-import-speaker");if(sp)sp.textContent=v?.speaker||"未割当"});
+   row.querySelectorAll(".conversation-import-row").forEach(line=>{
+     line.dataset.ab="";
+     line.querySelectorAll("[data-conversation-ab]").forEach(b=>b.classList.remove("active"));
+     const idx=Number(line.dataset.conversationIndex),v=row._conversationRows?.[idx],sp=line.querySelector(".conversation-import-speaker");
+     if(sp)sp.textContent=v?.speaker||"未割当";
+   });
  });
 }
 function bindArticleEditorBlockControls(ed){
@@ -2336,7 +2395,7 @@ function bindArticleEditorBlockControls(ed){
  ed.querySelectorAll('[data-conversation-parse]').forEach(b=>b.onclick=()=>{const row=b.closest('.article-block');renderConversationImport(row,conversationParseAny(row.querySelector('.conversationImportText')?.value||''))});
  ed.querySelectorAll('[data-conversation-select-all]').forEach(b=>b.onclick=()=>b.closest('.article-block')?.querySelectorAll('[data-conversation-pick]').forEach(x=>x.checked=true));
  ed.querySelectorAll('[data-conversation-select-none]').forEach(b=>b.onclick=()=>b.closest('.article-block')?.querySelectorAll('[data-conversation-pick]').forEach(x=>x.checked=false));
- ed.querySelectorAll('[data-conversation-insert]').forEach(b=>b.onclick=()=>{const row=b.closest('.article-block'),ta=row?.querySelector('.articleConversationRaw'),rows=row?._conversationRows||[],picked=[];row?.querySelectorAll('[data-conversation-pick]').forEach(ch=>{if(!ch.checked)return;const idx=Number(ch.dataset.conversationPick),v=rows[idx];if(!v)return;const line=row.querySelector(`.conversation-import-row[data-conversation-index="${idx}"]`),ab=line?.dataset.ab||"";const name=ab?conversationABName(row,ab):conversationSpeakerMap(row,v.speaker||"");picked.push({speaker:name,text:v.text||''})});if(!picked.length)return alert('追加する発言を選択してください。');const add=conversationRaw(picked);ta.value=ta.value.trim()?ta.value.trim()+'\n'+add:add;row.querySelector('.conversation-importer').hidden=true});
+ ed.querySelectorAll('[data-conversation-insert]').forEach(b=>b.onclick=()=>{const row=b.closest('.article-block'),ta=row?.querySelector('.articleConversationRaw'),rows=row?._conversationRows||[],picked=[];row?.querySelectorAll('[data-conversation-pick]').forEach(ch=>{if(!ch.checked)return;const idx=Number(ch.dataset.conversationPick),v=rows[idx];if(!v)return;const line=row.querySelector(`.conversation-import-row[data-conversation-index="${idx}"]`),ab=line?.dataset.ab||"";const name=ab?conversationABDisplayName(row,ab):conversationSpeakerMap(row,v.speaker||"");picked.push({speaker:name,text:v.text||''})});if(!picked.length)return alert('追加する発言を選択してください。');const add=conversationRaw(picked);ta.value=ta.value.trim()?ta.value.trim()+'\n'+add:add;row.querySelector('.conversation-importer').hidden=true});
  ed.querySelectorAll('[data-block-upload]').forEach(b=>b.onclick=async()=>{
    const row=b.closest('.article-block'),file=row?.querySelector('.articleBlockImageFile')?.files?.[0],status=row?.querySelector('.article-upload-status');
    try{b.disabled=true;if(status)status.textContent="アップロード中…";const url=await uploadArticleImageFile(file);row.querySelector('.articleBlockImageUrl').value=url;const pv=row.querySelector('.article-block-preview'),note=row.querySelector('.article-image-placeholder-note');pv.hidden=false;if(note)note.hidden=true;pv.innerHTML=`<img src="${esc(url)}" alt="">`;if(status)status.textContent="アップロードしました。"}catch(e){console.error(e);if(status)status.textContent="";alert(e.message||e)}finally{b.disabled=false}

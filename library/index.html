@@ -831,7 +831,12 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
  .conversation-import-row>span:last-child{grid-column:3}
 }
 </style>
-</head>
+<style>
+.conversation-import-row{cursor:default!important}
+.conversation-ab-buttons button{cursor:pointer!important}
+.conversation-ab-buttons button.active{outline:2px solid var(--accent)!important;outline-offset:1px!important;font-weight:700!important;background:color-mix(in srgb,var(--accent) 18%,var(--panel))!important}
+.conversation-import-speaker{font-weight:700}
+</style></head>
 <body>
 <header class="site-header"><div class="wrap">
 <h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1>
@@ -2230,10 +2235,11 @@ function conversationParseText(raw){
  const out=[];
  for(const rawLine of String(raw||"").split(/\r?\n/)){
    const line=rawLine.trim();if(!line)continue;
+   const anon=line.match(/^[｜|：:]\s*(.+)$/);
+   if(anon){out.push({speaker:"",text:anon[1].trim()});continue}
    const m=line.match(/^(.{1,60}?)[｜|：:]\s*(.+)$/);
-   if(m)out.push({speaker:m[1].trim(),text:m[2].trim()});
-   else if(out.length)out[out.length-1].text+="\n"+line;
-   else out.push({speaker:"",text:line});
+   if(m){out.push({speaker:m[1].trim(),text:m[2].trim()});continue}
+   out.push({speaker:"",text:line});
  }
  return out;
 }
@@ -2282,6 +2288,8 @@ function conversationAssignRow(row,index,key){
  if(!line)return;
  line.dataset.ab=key;
  line.querySelectorAll("[data-conversation-ab]").forEach(b=>b.classList.toggle("active",b.dataset.conversationAb===key));
+ const speaker=line.querySelector(".conversation-import-speaker");
+ if(speaker)speaker.textContent=`${key}：${conversationABName(row,key)}`;
 }
 function conversationAutoAlternate(row,startKey="A"){
  let key=startKey;
@@ -2298,7 +2306,7 @@ function renderConversationImport(row,rows){
  const mapping=speakers.length?`<div class="conversation-speaker-map"><strong>発言者をPC／表示名に紐付け</strong><div class="small muted">ログに発言者名がある場合はこちらを使います。</div><div class="conversation-speaker-map-grid">${speakers.map(sp=>`<label><span>${esc(sp)}</span><input data-conversation-speaker-map="${esc(sp)}" value="${esc(sp)}" list="${esc(listId)}"></label>`).join("")}</div><datalist id="${esc(listId)}">${pcsList.map(n=>`<option value="${esc(n)}"></option>`).join("")}<option value="KP"></option><option value="KPC"></option><option value="SKP"></option></datalist></div>`:"";
  const abPanel=`<div class="conversation-ab-panel"><strong>発言者なしログの割り当て</strong><div class="small muted">A/BにPCや表示名を設定して、各発言のA・Bボタンで割り当てます。</div><div class="conversation-ab-names"><label>A <input data-conversation-ab-name="A" value="A" list="${esc(listId)}"></label><label>B <input data-conversation-ab-name="B" value="B" list="${esc(listId)}"></label></div><div class="conversation-ab-actions"><button type="button" data-conversation-auto-ab="A">Aから交互</button><button type="button" data-conversation-auto-ab="B">Bから交互</button><button type="button" data-conversation-clear-ab>割り当て解除</button></div></div>`;
  const controls=rows.length?`<div class="conversation-import-controls"><input class="conversation-import-search" placeholder="発言を検索"><select class="conversation-import-speaker-filter"><option value="">発言者：すべて</option>${speakers.map(sp=>`<option value="${esc(sp)}">${esc(sp)}</option>`).join("")}</select></div>`:"";
- box.innerHTML=rows.length?`${mapping}${abPanel}${controls}<div class="conversation-import-count">${rows.length}件抽出</div>${rows.map((v,i)=>`<label class="conversation-import-row" data-conversation-index="${i}" data-ab=""><input type="checkbox" data-conversation-pick="${i}" checked><div class="conversation-ab-buttons"><button type="button" data-conversation-ab="A">A</button><button type="button" data-conversation-ab="B">B</button></div><span class="conversation-import-speaker">${esc(v.speaker||"発言者未設定")}</span><span>${esc(v.text||"")}</span></label>`).join("")}`:'<div class="small muted">発言を抽出できませんでした。</div>';
+ box.innerHTML=rows.length?`${mapping}${abPanel}${controls}<div class="conversation-import-count">${rows.length}件抽出</div>${rows.map((v,i)=>`<div class="conversation-import-row" data-conversation-index="${i}" data-ab=""><input type="checkbox" data-conversation-pick="${i}" checked><div class="conversation-ab-buttons"><button type="button" data-conversation-ab="A">A</button><button type="button" data-conversation-ab="B">B</button></div><span class="conversation-import-speaker">${esc(v.speaker||"未割当")}</span><span>${esc(v.text||"")}</span></div>`).join("")}`:'<div class="small muted">発言を抽出できませんでした。</div>';
  footer.hidden=!rows.length;
  row.querySelector(".conversation-import-search")?.addEventListener("input",()=>conversationRefreshRows(row));
  row.querySelector(".conversation-import-speaker-filter")?.addEventListener("change",()=>conversationRefreshRows(row));
@@ -2307,10 +2315,14 @@ function renderConversationImport(row,rows){
    const line=btn.closest(".conversation-import-row");if(!line)return;
    conversationAssignRow(row,Number(line.dataset.conversationIndex),btn.dataset.conversationAb);
  });
+ row.querySelectorAll("[data-conversation-ab-name]").forEach(inp=>inp.addEventListener("input",()=>{
+   const key=inp.dataset.conversationAbName;
+   row.querySelectorAll(`.conversation-import-row[data-ab="${key}"]`).forEach(line=>conversationAssignRow(row,Number(line.dataset.conversationIndex),key));
+ }));
  row.querySelectorAll("[data-conversation-auto-ab]").forEach(btn=>btn.onclick=e=>{e.preventDefault();conversationAutoAlternate(row,btn.dataset.conversationAutoAb||"A")});
  row.querySelector("[data-conversation-clear-ab]")?.addEventListener("click",e=>{
    e.preventDefault();
-   row.querySelectorAll(".conversation-import-row").forEach(line=>{line.dataset.ab="";line.querySelectorAll("[data-conversation-ab]").forEach(b=>b.classList.remove("active"))});
+   row.querySelectorAll(".conversation-import-row").forEach(line=>{line.dataset.ab="";line.querySelectorAll("[data-conversation-ab]").forEach(b=>b.classList.remove("active"));const idx=Number(line.dataset.conversationIndex),v=row._conversationRows?.[idx],sp=line.querySelector(".conversation-import-speaker");if(sp)sp.textContent=v?.speaker||"未割当"});
  });
 }
 function bindArticleEditorBlockControls(ed){

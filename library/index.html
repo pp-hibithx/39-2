@@ -1029,75 +1029,6 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   width:140px;
 }
 </style>
-
-<style>
-.lib-speed-diagnostic{
- display:flex;
- align-items:flex-start;
- gap:10px;
- flex-wrap:wrap;
- margin:8px 0 4px;
-}
-.lib-speed-diagnostic>button{
- width:auto;
- font-size:11px;
- padding:5px 9px;
- opacity:.78;
-}
-#librarySpeedDiagnosticResult{
- flex:1 1 360px;
- min-width:280px;
-}
-.lib-speed-result-box{
- border:1px solid var(--line);
- border-radius:9px;
- padding:9px 11px;
- line-height:1.65;
- background:rgba(255,255,255,.012);
-}
-</style>
-
-<style>
-#librarySpeedDiagnosticPanel{
- display:flex!important;
- align-items:flex-start;
- gap:10px;
- flex-wrap:wrap;
- width:100%;
- margin:8px 0 10px;
- grid-column:1 / -1;
-}
-#librarySpeedDiagnosticPanel>button{
- display:inline-flex!important;
- width:auto!important;
- min-height:34px;
- padding:6px 10px!important;
- font-size:12px;
- opacity:1;
-}
-#librarySpeedDiagnosticResult{
- flex:1 1 360px;
- min-width:280px;
-}
-</style>
-
-<style>
-#librarySpeedDiagnosticPanel{
- display:flex!important;
- align-items:flex-start;
- gap:10px;
- flex-wrap:wrap;
- width:100%;
- margin:10px 0 12px;
-}
-#librarySpeedDiagnosticPanel>button{
- display:inline-flex!important;
- width:auto!important;
- min-height:32px;
- padding:5px 10px!important;
- font-size:12px;
-}
-</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -1133,10 +1064,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
     <div id="playerSortField" hidden><label>並び順</label><select id="playerListSort"><option value="name">50音順</option><option value="count">同卓回数順</option><option value="recent">最終同卓日順</option></select></div>
     <div id="playerArchiveField" hidden><label>表示</label><select id="playerArchiveFilter"><option value="active">通常</option><option value="archived">アーカイブ</option><option value="all">すべて</option></select></div>
   </div>
-  
-
-</div>
-<div id="list" class="lib-list"></div>
+  <div id="list" class="lib-list"></div>
 </section>
 
 <section class="lib-panel library-editor" id="libraryEditor" hidden>
@@ -1225,7 +1153,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.18.4</div></main>
+</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.18.1</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -5324,92 +5252,6 @@ document.addEventListener("click",e=>{
 });
 q("articleImageViewerClose").onclick=()=>q("articleImageViewer").close();
 q("articleImageViewer").addEventListener("click",e=>{if(e.target===q("articleImageViewer"))q("articleImageViewer").close()});
-
-async function runLibrarySpeedDiagnostic(){
- const out=q("librarySpeedDiagnosticResult");
- if(!out)return;
- const btn=q("runLibrarySpeedDiagnostic");
- if(btn)btn.disabled=true;
- out.hidden=false;
- out.textContent="計測中…";
-
- const rows=[];
- const measure=(label,fn)=>{
-   const t=performance.now();
-   let value;
-   try{value=fn()}
-   catch(e){
-     rows.push({label,ms:performance.now()-t,error:e?.message||String(e)});
-     return null;
-   }
-   rows.push({label,ms:performance.now()-t});
-   return value;
- };
-
- // Yield once so the click itself is not included.
- await new Promise(r=>setTimeout(r,30));
-
- rows.push({label:"LIBRARY記録数",value:Array.isArray(data)?data.length:0});
- rows.push({label:"SCENARIO数",value:Array.isArray(scenarios)?scenarios.length:0});
- rows.push({label:"PC数",value:Array.isArray(pcs)?pcs.length:0});
- rows.push({label:"PLAYERS数",value:Array.isArray(players)?players.length:0});
-
- const filtered=measure("filteredData()",()=>filteredData());
- const grouped=measure("groupData(filteredData)",()=>groupData(filtered||[]));
-
- if(Array.isArray(grouped)){
-   const visible=measure("表示条件フィルター",()=>grouped.filter(groupMatchesPlayFilter))||[];
-
-   measure("全カードHTML生成",()=>visible.map(libraryGridCard).join(""));
-   measure("先頭6カードHTML生成",()=>visible.slice(0,6).map(libraryGridCard).join(""));
-
-   // These are common helpers used repeatedly while building cards.
-   measure("scenarioById × 全グループ",()=>visible.forEach(g=>scenarioById(g.scenarioId)));
-   measure("年判定 × 全グループ",()=>visible.forEach(g=>libraryGroupYear(g)));
- }
-
- // Measure one PC candidate build without touching editor state.
- measure("PC候補並び替え",()=>sortedSelfPcCandidates(""));
-
- // Browser-side resource summary, especially image pressure.
- const resources=performance.getEntriesByType("resource");
- const imgs=resources.filter(r=>/\.(?:png|jpe?g|webp|gif)(?:[?#]|$)/i.test(r.name));
- const totalImgMs=imgs.reduce((a,r)=>a+(r.duration||0),0);
- rows.push({label:"読み込み済み画像数",value:imgs.length});
- rows.push({label:"画像リソース合計時間",ms:totalImgMs});
-
- const longEntries=performance.getEntriesByType?.("longtask")||[];
- rows.push({label:"Long Task件数",value:longEntries.length});
-
- const html=rows.map(r=>{
-   if(r.error)return `<div><b>${esc(r.label)}</b>：エラー ${esc(r.error)}</div>`;
-   if(r.value!==undefined)return `<div><b>${esc(r.label)}</b>：${esc(r.value)}</div>`;
-   const ms=Number(r.ms||0);
-   const mark=ms>=500?"⚠ ":ms>=100?"△ ":"";
-   return `<div>${mark}<b>${esc(r.label)}</b>：${ms.toFixed(1)} ms</div>`;
- }).join("");
-
- out.innerHTML=`<div class="lib-speed-result-box">
-   <div><strong>LIBRARY速度診断</strong></div>
-   ${html}
-   <div class="small muted" style="margin-top:7px">※ 診断は読み込み後の処理速度を測ります。保存データは変更しません。</div>
- </div>`;
- if(btn)btn.disabled=false;
-}
-
-function mountLibrarySpeedDiagnostic(){
- if(q("librarySpeedDiagnosticPanel"))return;
- const list=q("list");
- if(!list||!list.parentElement)return;
- const panel=document.createElement("div");
- panel.id="librarySpeedDiagnosticPanel";
- panel.className="lib-speed-diagnostic-panel";
- panel.innerHTML='<button id="runLibrarySpeedDiagnostic" type="button">速度診断</button><div id="librarySpeedDiagnosticResult" class="small muted" hidden></div>';
- list.parentElement.insertBefore(panel,list);
- q("runLibrarySpeedDiagnostic").onclick=runLibrarySpeedDiagnostic;
-}
-
-
 q("xPreviewText").oninput=updateXPreviewCount;q("xPreviewCancel").onclick=()=>q("xPreviewDialog").close();q("xPreviewPost").onclick=confirmPostAlbumToX;
 q("search").oninput=()=>{focusedScenarioKey="";focusedRunId="";focusedPlayerId="";render()};
 q("playerListSort").onchange=()=>{playerListSort=q("playerListSort").value;render()};
@@ -5421,7 +5263,6 @@ q("coverSave").onclick=()=>{
  if(coverEditingRunId)saveRunCoverPosition(coverEditingRunId,coverEditingY);
  closeCoverEditor();
  render();
-mountLibrarySpeedDiagnostic();
 };
 q("coverEditor").addEventListener("click",e=>{if(e.target===q("coverEditor"))closeCoverEditor()});
 q("coverPreview").addEventListener("pointerdown",e=>{coverDragStartY=e.clientY;coverDragStartPos=coverEditingY;q("coverPreview").setPointerCapture(e.pointerId)});

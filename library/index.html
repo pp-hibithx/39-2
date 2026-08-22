@@ -989,6 +989,18 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-year-panel{display:grid}
 .lib-year-panel[hidden]{display:none!important}
 </style>
+
+<style>
+.lib-year-filter-row{
+ display:flex;
+ align-items:end;
+ gap:8px;
+ margin:10px 0 12px;
+ max-width:220px;
+}
+.lib-year-filter-row label{font-size:12px;color:var(--muted)}
+.lib-year-filter-row select{width:140px}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -1113,7 +1125,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.17</div></main>
+</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.18</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -5023,58 +5035,22 @@ function bindRunMergeRepair(){
 }
 
 
-let libraryYearMode="year";
-const libraryCurrentYear=String(new Date().getFullYear());
+
+let libraryYearFilter=String(new Date().getFullYear());
 
 function libraryGroupYear(g){
  const d=String(g.lastDate||g.firstDate||"").trim();
  const m=d.match(/^(\d{4})/);
  return m?m[1]:"日付なし";
 }
-function groupScenariosByYear(groups){
- const map=new Map();
- groups.forEach(g=>{
-   const y=libraryGroupYear(g);
-   if(!map.has(y))map.set(y,[]);
-   map.get(y).push(g);
- });
- const years=[...map.keys()].sort((a,b)=>{
-   if(a==="日付なし")return 1;
-   if(b==="日付なし")return -1;
-   return Number(b)-Number(a);
- });
- return years.map(y=>({year:y,groups:map.get(y)}));
+function availableLibraryYears(groups){
+ return [...new Set(groups.map(libraryGroupYear))]
+   .sort((a,b)=>{
+     if(a==="日付なし")return 1;
+     if(b==="日付なし")return -1;
+     return Number(b)-Number(a);
+   });
 }
-function bindYearSections(){
- document.querySelectorAll("[data-library-year-toggle]").forEach(btn=>{
-   btn.onclick=()=>{
-     const year=btn.dataset.libraryYearToggle||"";
-     const panel=document.querySelector(`[data-library-year-panel="${CSS.escape(year)}"]`);
-     if(!panel)return;
-     const open=panel.hidden;
-     panel.hidden=!open;
-     btn.setAttribute("aria-expanded",open?"true":"false");
-     const mark=btn.querySelector(".lib-year-mark");
-     if(mark)mark.textContent=open?"▼":"▶";
-     if(open && panel.dataset.rendered!=="1"){
-       const ids=JSON.parse(panel.dataset.groupIds||"[]");
-       const all=groupData(filteredData());
-       const map=new Map(all.map(g=>[g.key,g]));
-       const rows=ids.map(id=>map.get(id)).filter(Boolean);
-       panel.innerHTML=rows.map(libraryGridCard).join("");
-       panel.dataset.rendered="1";
-       bindLibraryGridCards(panel);
-     }
-   };
- });
- document.querySelectorAll("[data-library-year-mode]").forEach(btn=>{
-   btn.onclick=()=>{
-     libraryYearMode=btn.dataset.libraryYearMode||"year";
-     render();
-   };
- });
-}
-
 let libraryGridRenderGeneration=0;
 function bindLibraryGridCards(root=q("list")){
  root.querySelectorAll("[data-library-focus]:not([data-grid-bound])").forEach(card=>{
@@ -5143,17 +5119,37 @@ function render(){
    bindArticlePageButtons();hydrateGuestPcAvatars(document);hydrateLocalArticleAudio(q("list"));
  }else{
    q("list").classList.remove("library-grid");
-   const visibleGroups=groups.filter(groupMatchesPlayFilter);
+   const visibleGroupsAll=groups.filter(groupMatchesPlayFilter);
+   const years=availableLibraryYears(visibleGroupsAll);
+
+   // If current year has no records, default to newest available year.
+   if(libraryYearFilter!=="all" && !years.includes(libraryYearFilter)){
+     libraryYearFilter=years[0]||"all";
+   }
+
    q("list").innerHTML=playFilterTabsHtml()+`
-     <div class="lib-year-mode-tabs">
-       <button type="button" data-library-year-mode="year" class="${libraryYearMode==="year"?"active":""}">年ごと</button>
-       <button type="button" data-library-year-mode="all" class="${libraryYearMode==="all"?"active":""}">すべて表示</button>
+     <div class="lib-year-filter-row">
+       <label for="libraryYearFilter">最新卓年</label>
+       <select id="libraryYearFilter">
+         ${years.map(y=>`<option value="${esc(y)}" ${libraryYearFilter===y?"selected":""}>${esc(y==="日付なし"?"日付なし":y+"年")}</option>`).join("")}
+         <option value="all" ${libraryYearFilter==="all"?"selected":""}>すべて</option>
+       </select>
      </div>`;
+
    bindPlayFilterTabs();
+
+   q("libraryYearFilter").onchange=()=>{
+     libraryYearFilter=q("libraryYearFilter").value||"all";
+     render();
+   };
+
+   const visibleGroups=libraryYearFilter==="all"
+     ? visibleGroupsAll
+     : visibleGroupsAll.filter(g=>libraryGroupYear(g)===libraryYearFilter);
 
    if(!visibleGroups.length){
      q("list").insertAdjacentHTML("beforeend",'<div class="empty">該当する記録がありません。</div>');
-   }else if(libraryYearMode==="all"){
+   }else{
      q("list").classList.add("library-grid");
      const batchSize=32;
      let rendered=0;
@@ -5167,29 +5163,7 @@ function render(){
        if(rendered<visibleGroups.length)scheduleLibraryGridBatch(appendBatch);
      };
      appendBatch();
-   }else{
-     const yearGroups=groupScenariosByYear(visibleGroups);
-     q("list").insertAdjacentHTML("beforeend",`<div class="lib-year-sections">${yearGroups.map(row=>{
-       const open=row.year===libraryCurrentYear;
-       const ids=JSON.stringify(row.groups.map(g=>g.key)).replace(/"/g,"&quot;");
-       return `<section class="lib-year-section">
-         <button type="button" class="lib-year-header" data-library-year-toggle="${esc(row.year)}" aria-expanded="${open?"true":"false"}">
-           <span class="lib-year-mark">${open?"▼":"▶"}</span>
-           <strong>${esc(row.year==="日付なし"?"日付なし":row.year+"年")}</strong>
-           <span class="small muted">${row.groups.length}シナリオ</span>
-         </button>
-         <div class="lib-year-panel library-grid"
-              data-library-year-panel="${esc(row.year)}"
-              data-group-ids="${ids}"
-              data-rendered="${open?"1":"0"}"
-              ${open?"":"hidden"}>
-           ${open?row.groups.map(libraryGridCard).join(""):""}
-         </div>
-       </section>`;
-     }).join("")}</div>`);
-     bindLibraryGridCards();
    }
-   bindYearSections();
  }
 
  document.querySelectorAll("[data-add-scenario]").forEach(b=>b.onclick=e=>{

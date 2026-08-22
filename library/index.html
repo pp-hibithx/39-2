@@ -1056,6 +1056,30 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
  background:rgba(255,255,255,.012);
 }
 </style>
+
+<style>
+#librarySpeedDiagnosticPanel{
+ display:flex!important;
+ align-items:flex-start;
+ gap:10px;
+ flex-wrap:wrap;
+ width:100%;
+ margin:8px 0 10px;
+ grid-column:1 / -1;
+}
+#librarySpeedDiagnosticPanel>button{
+ display:inline-flex!important;
+ width:auto!important;
+ min-height:34px;
+ padding:6px 10px!important;
+ font-size:12px;
+ opacity:1;
+}
+#librarySpeedDiagnosticResult{
+ flex:1 1 360px;
+ min-width:280px;
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -1092,7 +1116,8 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
     <div id="playerArchiveField" hidden><label>表示</label><select id="playerArchiveFilter"><option value="active">通常</option><option value="archived">アーカイブ</option><option value="all">すべて</option></select></div>
   </div>
   
-<div class="lib-speed-diagnostic">
+
+<div id="librarySpeedDiagnosticPanel" class="lib-speed-diagnostic-panel">
   <button id="runLibrarySpeedDiagnostic" type="button">速度診断</button>
   <div id="librarySpeedDiagnosticResult" class="small muted" hidden></div>
 </div>
@@ -1185,7 +1210,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.18.2</div></main>
+</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.18.3</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>

@@ -766,6 +766,62 @@ function scenarioShareFlags(x){
 
  return out;
 }
+
+const MY_SCENARIO_CHUNK_IDS_KEY="39x2_fixed_scenario_share_chunk_ids_v1";
+
+function loadScenarioChunkIds(){
+ try{
+   const v=JSON.parse(localStorage.getItem(MY_SCENARIO_CHUNK_IDS_KEY)||"[]");
+   return Array.isArray(v)?v.filter(Boolean):[];
+ }catch{return []}
+}
+function saveScenarioChunkIds(ids){
+ localStorage.setItem(MY_SCENARIO_CHUNK_IDS_KEY,JSON.stringify((ids||[]).filter(Boolean)));
+}
+function chunkScenarioItemsByBytes(items,maxBytes=42000){
+ const chunks=[];
+ let current=[],size=2;
+ const bytes=v=>new TextEncoder().encode(JSON.stringify(v)).length;
+ for(const item of items){
+   const n=bytes(item)+(current.length?1:0);
+   if(current.length&&size+n>maxBytes){
+     chunks.push(current);
+     current=[];
+     size=2;
+   }
+   current.push(item);
+   size+=n;
+ }
+ if(current.length)chunks.push(current);
+ return chunks;
+}
+async function saveScenarioShareChunks(items){
+ const chunks=chunkScenarioItemsByBytes(items);
+ const oldIds=loadScenarioChunkIds();
+ const ids=[];
+ for(let i=0;i<chunks.length;i++){
+   const payload={
+     kind:"scenario-list-chunk",
+     version:1,
+     index:i,
+     count:chunks.length,
+     items:chunks[i]
+   };
+   let cid=oldIds[i]||"";
+   if(cid){
+     try{
+       await TRPG39Cloud.updateSharedPage(cid,payload);
+     }catch(e){
+       console.warn("既存チャンク更新失敗。新規作成へ切替",e);
+       cid="";
+     }
+   }
+   if(!cid)cid=await TRPG39Cloud.createSharedPage(payload);
+   ids.push(cid);
+ }
+ saveScenarioChunkIds(ids);
+ return ids;
+}
 async function shareScenarioList(){
  // 共有URLは1人につき1本。
  // 現在画面で選んでいる「所持」「気になる」等や検索条件には影響されず、
@@ -817,19 +873,30 @@ async function shareScenarioList(){
  });
  const payload={
    kind:"scenario-list",
-   version:6,
-   shareFormat:"scenario-shelf-v6",
+   version:7,
+   shareFormat:"scenario-shelf-v7-chunked",
    title:"シナリオ一覧",
    updatedAt:new Date().toISOString(),
    items
  };
  try{
    if(TRPG39Cloud && TRPG39Cloud.configured()){
+     const chunkIds=await saveScenarioShareChunks(items);
+     const manifest={
+       kind:"scenario-list-manifest",
+       version:1,
+       shareFormat:"scenario-shelf-v7-chunked",
+       title:"シナリオ一覧",
+       updatedAt:new Date().toISOString(),
+       totalCount:items.length,
+       chunkCount:chunkIds.length,
+       chunkIds
+     };
      let shareId=localStorage.getItem(MY_FIXED_SHARE_KEY)||"";
      if(shareId && TRPG39Cloud.updateSharedPage){
-       await TRPG39Cloud.updateSharedPage(shareId,payload);
+       await TRPG39Cloud.updateSharedPage(shareId,manifest);
      }else{
-       shareId=await TRPG39Cloud.createSharedPage(payload);
+       shareId=await TRPG39Cloud.createSharedPage(manifest);
        localStorage.setItem(MY_FIXED_SHARE_KEY,shareId);
      }
      const url=(TRPG39 && typeof TRPG39.makeShortShareUrl==="function")

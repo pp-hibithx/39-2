@@ -2998,25 +2998,142 @@ async function saveArticlePage(runId){
 }
 function deleteArticlePage(runId,pageId){if(!confirm("この卓記事ページを削除しますか？"))return;saveArticlePagesForRun(runId,articlePagesForRun(runId).filter(p=>p.id!==pageId));render()}
 function articleContextForRun(runId){const groups=groupData(data),g=groups.find(x=>(x.runs||[]).some(r=>r.id===runId)),r=g?.runs?.find(x=>x.id===runId);return {group:g,run:r}}
+
+function articleOgpWrapLines(ctx,text,maxWidth,maxLines=2){
+ const chars=[...String(text||"").trim()];
+ if(!chars.length)return [""];
+ const lines=[];
+ let line="";
+ for(const ch of chars){
+   const test=line+ch;
+   if(line&&ctx.measureText(test).width>maxWidth){
+     lines.push(line);
+     line=ch;
+     if(lines.length>=maxLines)break;
+   }else line=test;
+ }
+ if(lines.length<maxLines&&line)lines.push(line);
+ if(lines.length>maxLines)lines.length=maxLines;
+
+ const used=lines.join("").length;
+ if(used<chars.length&&lines.length){
+   let last=lines[lines.length-1];
+   while(last&&ctx.measureText(last+"…").width>maxWidth)last=last.slice(0,-1);
+   lines[lines.length-1]=last+"…";
+ }
+ return lines;
+}
+
+async function createArticleOgpPng(scenarioTitle,articleTitle){
+ const canvas=document.createElement("canvas");
+ canvas.width=1200;canvas.height=630;
+ const ctx=canvas.getContext("2d");
+
+ // SAKU+MERU共通記事サムネ
+ ctx.fillStyle="#111318";
+ ctx.fillRect(0,0,1200,630);
+
+ const grd=ctx.createLinearGradient(0,0,1200,630);
+ grd.addColorStop(0,"rgba(223,184,92,.12)");
+ grd.addColorStop(0.55,"rgba(255,255,255,.018)");
+ grd.addColorStop(1,"rgba(223,184,92,.05)");
+ ctx.fillStyle=grd;
+ ctx.fillRect(0,0,1200,630);
+
+ // accent lines
+ ctx.fillStyle="#d9b85b";
+ ctx.fillRect(72,68,8,494);
+ ctx.fillRect(72,68,220,3);
+
+ // brand
+ ctx.fillStyle="rgba(255,255,255,.62)";
+ ctx.font='600 26px system-ui, "Yu Gothic", "Meiryo", sans-serif';
+ ctx.fillText("SAKU+MERU  🌺  卓記事",110,108);
+
+ // scenario
+ ctx.fillStyle="#f2e6bd";
+ ctx.font='700 38px system-ui, "Yu Gothic", "Meiryo", sans-serif';
+ const scenarioLines=articleOgpWrapLines(ctx,`『${scenarioTitle||"シナリオ"}』`,1000,2);
+ scenarioLines.forEach((line,i)=>ctx.fillText(line,110,176+i*48));
+
+ // spoiler warning pill
+ const warningY=scenarioLines.length>1?280:236;
+ ctx.font='700 28px system-ui, "Yu Gothic", "Meiryo", sans-serif';
+ const warning="⚠ ネタバレ注意";
+ const ww=ctx.measureText(warning).width;
+ ctx.fillStyle="rgba(217,184,91,.14)";
+ ctx.beginPath();
+ if(ctx.roundRect)ctx.roundRect(110,warningY-35,ww+42,54,27);
+ else ctx.rect(110,warningY-35,ww+42,54);
+ ctx.fill();
+ ctx.strokeStyle="rgba(217,184,91,.58)";
+ ctx.lineWidth=2;ctx.stroke();
+ ctx.fillStyle="#f0cf78";
+ ctx.fillText(warning,131,warningY+2);
+
+ // article title
+ const titleY=warningY+110;
+ ctx.fillStyle="#ffffff";
+ ctx.font='800 58px system-ui, "Yu Gothic", "Meiryo", sans-serif';
+ const titleLines=articleOgpWrapLines(ctx,articleTitle||"卓記事",990,3);
+ titleLines.forEach((line,i)=>ctx.fillText(line,110,titleY+i*72));
+
+ // footer
+ ctx.fillStyle="rgba(255,255,255,.42)";
+ ctx.font='500 22px system-ui, "Yu Gothic", "Meiryo", sans-serif';
+ ctx.fillText("TRPG Session Article",110,570);
+
+ return await new Promise((resolve,reject)=>{
+   canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("記事サムネイルを生成できませんでした。")),"image/png",0.92);
+ });
+}
+
+async function uploadArticleOgpImage(blob,pageId=""){
+ if(!blob)throw new Error("記事サムネイル画像がありません。");
+ const cfg=window.SUPABASE_CONFIG||{};
+ const base=String(cfg.projectUrl||"").trim();
+ const key=String(cfg.publishableKey||"").trim();
+ if(!base||!key)throw new Error("Supabase設定がありません。");
+
+ const syncId=window.TRPG39Sync?.getSyncId?.()||localStorage.getItem("39x2_cloud_sync_id_v1")||"";
+ if(!syncId)throw new Error("同期コードが見つかりません。先にBACKUPでクラウド同期を設定してください。");
+
+ const file=new File([blob],`article-ogp-${pageId||Date.now()}.png`,{type:"image/png"});
+ const fd=new FormData();
+ fd.append("file",file);
+ fd.append("sync_id",syncId);
+
+ const r=await fetch(base.replace(/\/$/,"")+"/functions/v1/image-upload",{
+   method:"POST",
+   headers:{apikey:key},
+   body:fd
+ });
+ const body=await r.json().catch(()=>({}));
+ if(!r.ok)throw new Error(body.error||("記事サムネイルのアップロードに失敗しました（"+r.status+"）"));
+ if(!body.publicUrl)throw new Error("記事サムネイルの公開URLを取得できませんでした。");
+ return body.publicUrl;
+}
 async function shareArticlePage(runId,pageId){
  const pages=articlePagesForRun(runId),page=pages.find(p=>p.id===pageId);if(!page)return alert("記事ページが見つかりません。");
  if(!page.shareEnabled)return alert("この記事は「自分のみ」です。編集から共有設定を「リンク限定」にしてください。");
  if(!(TRPG39Cloud&&TRPG39Cloud.configured()))return alert("共有機能の設定がありません。");
- const {group,run}=articleContextForRun(runId),cover=(run?.items||[]).flatMap(x=>x.imageUrls||[]).find(Boolean)||group?.thumbnailUrl||"";
+ const {group,run}=articleContextForRun(runId);
  try{
+   const ogpBlob=await createArticleOgpPng(group?.title||"シナリオ",page.title||"卓記事");
+   const articleOgpImage=await uploadArticleOgpImage(ogpBlob,page.id);
    const baseBlocks=normalizedArticleBlocks(page).map(b=>{
      if(b.type==="conversation")return {...b,lines:normalizeConversationLines(b)};
      if(b.type==="image")return {...b,url:String(b.url||"").trim(),caption:String(b.caption||"").trim()};
      return {...b};
    });
    const sharedBlocks=await prepareConversationBlocksForShare(baseBlocks);
-   const payload={kind:"library-article",version:8,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:cover,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
+   const payload={kind:"library-article",version:9,title:page.title||"卓記事",body:page.body||"",blocks:sharedBlocks,scenarioTitle:group?.title||"",runLabel:run?.label||"",image:articleOgpImage,articleOgpImage,ogpKind:"article",spoilerWarning:true,shareMode:"link",passwordRequired:!!page.passwordProtected,passwordHash:page.passwordHash||"",passwordHint:page.passwordHint||"",updatedAt:page.updatedAt||""};
    let shareId=page.shareId||"";
    if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);else shareId=await TRPG39Cloud.createSharedPage(payload);
-   saveArticlePagesForRun(runId,pages.map(p=>p.id===page.id?{...p,shareId}:p));
+   saveArticlePagesForRun(runId,pages.map(p=>p.id===page.id?{...p,shareId,articleOgpImage}:p));
    const previewUrl=new URL("https://sakumeru-share.sakumeru.workers.dev/");
    previewUrl.searchParams.set("id",shareId);previewUrl.searchParams.set("type","article");
-   showShareUrl(previewUrl.href,page.passwordProtected?"この記事の共有URLです。パスワードと会話PC画像を反映しました。":"この記事の共有URLです。会話PC画像を反映しました。");
+   showShareUrl(previewUrl.href,page.passwordProtected?"この記事の共有URLです。記事専用サムネ・パスワード・会話PC画像を反映しました。":"この記事の共有URLです。記事専用サムネと会話PC画像を反映しました。");
  }catch(e){console.error(e);alert(e.message||e)}
 }
 function bindArticlePageButtons(){

@@ -326,7 +326,16 @@
  const reportHtml=p=>{const rows=Array.isArray(p.participantRows)?p.participantRows.slice():[];if(p.selfRole)rows.push({role:p.selfRole,ho:p.selfHo||"",plName:"自分",pcName:p.selfRole==="PL"?(p.selfPcName||""):""});return rows.length?`<div class="share-report-block"><strong>参加</strong>${rows.map(r=>`<div>${esc(r.ho?`${r.ho}：`:r.role?`${r.role}：`:"")}${esc(r.plName||"")}${r.pcName?` / ${esc(r.pcName)}`:""}</div>`).join("")}</div>`:""};
  const id=new URLSearchParams(location.search).get("id")||location.hash.replace(/^#/,"");if(!id){box.innerHTML="<p>共有IDがありません。</p>";return}
  try{
-  const payload=await TRPG39Cloud.getSharedPage(id);if(!payload)throw new Error("共有データが見つかりません");const p=Array.isArray(payload)?{kind:"scenario-list",items:payload}:payload;
+  const payload=await TRPG39Cloud.getSharedPage(id);if(!payload)throw new Error("共有データが見つかりません");let p=Array.isArray(payload)?{kind:"scenario-list",items:payload}:payload;
+  if(p.kind==="scenario-list-manifest"){
+    const ids=Array.isArray(p.chunkIds)?p.chunkIds.filter(Boolean):[];
+    if(!ids.length)p={kind:"scenario-list",title:p.title||"シナリオ一覧",updatedAt:p.updatedAt||"",items:[]};
+    else{
+      const parts=await Promise.all(ids.map(cid=>TRPG39Cloud.getSharedPage(cid)));
+      const items=parts.flatMap(part=>Array.isArray(part?.items)?part.items:[]);
+      p={kind:"scenario-list",version:p.version||1,title:p.title||"シナリオ一覧",updatedAt:p.updatedAt||"",items};
+    }
+  }
   if(p.kind==="library-article"){unlockArticle(p);return}
   if(p.kind==="library-session"){box.innerHTML=`<h2>${esc(p.title||"LIBRARY")}</h2><div class="share-meta">${p.system?`<span class="badge">${esc(p.system)}</span>`:""}${p.date?`<span class="badge">${esc(p.date)}</span>`:""}</div>${p.image?`<img src="${esc(p.image)}" alt="" style="max-width:420px;width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:10px">`:""}${reportHtml(p)}${p.comment?`<div class="share-report-block"><strong>ひとこと</strong><p style="white-space:pre-wrap">${esc(p.comment)}</p></div>`:""}${p.spoiler?`<details class="share-spoiler"><summary>⚠ ネタバレ</summary><div class="spoiler-body">${esc(p.spoiler)}</div></details>`:""}`;return}
   if(p.kind==="calendar-schedule-match"){

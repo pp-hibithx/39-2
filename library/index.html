@@ -1029,6 +1029,11 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   width:140px;
 }
 </style>
+
+<style>
+.lib-article-lazy-body{padding:10px 12px}
+.lib-article-page[open]>.lib-article-lazy-body{border-top:1px solid var(--line)}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -1153,7 +1158,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.18.1</div></main>
+</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.18.2</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1382,12 +1387,28 @@ function selectedThumbRunId(scenarioId,title=""){
 }
 
 const RUN_ARTICLE_PAGES_KEY="saku_meru_library_run_article_pages_v1";
+let _runArticlePagesCache=null;
 function loadRunArticlePages(){
- try{const v=JSON.parse(localStorage.getItem(RUN_ARTICLE_PAGES_KEY)||"{}");return v&&typeof v==="object"?v:{}}catch{return {}}
+ if(_runArticlePagesCache)return _runArticlePagesCache;
+ try{
+   const v=JSON.parse(localStorage.getItem(RUN_ARTICLE_PAGES_KEY)||"{}");
+   _runArticlePagesCache=v&&typeof v==="object"?v:{};
+ }catch{_runArticlePagesCache={}}
+ return _runArticlePagesCache;
 }
-function saveRunArticlePages(v){try{localStorage.setItem(RUN_ARTICLE_PAGES_KEY,JSON.stringify(v))}catch{}}
-function articlePagesForRun(runId){const all=loadRunArticlePages();return Array.isArray(all[runId])?all[runId]:[]}
-function saveArticlePagesForRun(runId,pages){const all=loadRunArticlePages();if(pages?.length)all[runId]=pages;else delete all[runId];saveRunArticlePages(all)}
+function saveRunArticlePages(v){
+ _runArticlePagesCache=v&&typeof v==="object"?v:{};
+ try{localStorage.setItem(RUN_ARTICLE_PAGES_KEY,JSON.stringify(_runArticlePagesCache))}catch{}
+}
+function articlePagesForRun(runId){
+ const all=loadRunArticlePages();
+ return Array.isArray(all[runId])?all[runId]:[];
+}
+function saveArticlePagesForRun(runId,pages){
+ const all=loadRunArticlePages();
+ if(pages?.length)all[runId]=pages;else delete all[runId];
+ saveRunArticlePages(all);
+}
 
 let _runCoverPositionsCache=null;
 function loadRunCoverPositions(){
@@ -2678,9 +2699,9 @@ function articlePagesHtml(r){
  const pages=articlePagesForRun(r.id).slice().sort((a,b)=>String(a.createdAt||"").localeCompare(String(b.createdAt||"")));
  return `<section class="lib-article-pages">
    <div class="lib-article-pages-head"><div><strong>卓記事</strong><div class="small muted">1ページの中に文章・画像・会話ログ・YouTube・BGMを好きな順で何個でも追加できます。</div></div><button type="button" data-article-new="${esc(r.id)}">＋ ページを追加</button></div>
-   <div class="lib-article-page-list">${pages.length?pages.map((p,i)=>`<details class="lib-article-page" ${i===0?"open":""}>
+   <div class="lib-article-page-list">${pages.length?pages.map((p,i)=>`<details class="lib-article-page" data-article-lazy-page="${esc(p.id)}" data-run-id="${esc(r.id)}">
      <summary><div><div class="lib-article-page-title">${esc(p.title||`ページ ${i+1}`)} <span class="lib-article-share-badge">${esc(articleShareLabel(p))}</span></div><div class="lib-article-page-meta">${esc(p.updatedAt||p.createdAt||"")}</div></div><span>▼</span></summary>
-     ${articleBlocksHtml(p)}
+     <div class="lib-article-lazy-body" data-article-lazy-body="${esc(p.id)}"><div class="small muted">記事を開くと本文を読み込みます。</div></div>
      <div class="lib-article-page-actions">${p.shareEnabled?`<button type="button" data-article-share="${esc(p.id)}" data-run-id="${esc(r.id)}">共有URL</button>`:""}<button type="button" data-article-edit="${esc(p.id)}" data-run-id="${esc(r.id)}">編集</button><button type="button" class="danger" data-article-delete="${esc(p.id)}" data-run-id="${esc(r.id)}">削除</button></div>
    </details>`).join(""):'<div class="small muted">卓記事ページはまだありません。</div>'}</div>
    <div class="lib-article-editor" id="articleEditor-${esc(r.id)}" hidden>
@@ -3253,7 +3274,30 @@ async function shareArticlePage(runId,pageId){
    showShareUrl(previewUrl.href,page.passwordProtected?"この記事の共有URLです。記事専用サムネ・パスワード・会話PC画像を反映しました。":"この記事の共有URLです。記事専用サムネと会話PC画像を反映しました。");
  }catch(e){console.error(e);alert(e.message||e)}
 }
+
+function loadLazyArticlePage(details){
+ if(!details||details.dataset.articleLoaded==="1")return;
+ const runId=details.dataset.runId||"",pageId=details.dataset.articleLazyPage||"";
+ const body=details.querySelector("[data-article-lazy-body]");
+ if(!body)return;
+ const page=articlePagesForRun(runId).find(p=>String(p.id)===String(pageId));
+ if(!page){
+   body.innerHTML='<div class="small muted">記事が見つかりません。</div>';
+   return;
+ }
+ body.innerHTML=articleBlocksHtml(page);
+ details.dataset.articleLoaded="1";
+ hydrateGuestPcAvatars(body);
+ hydrateLocalArticleAudio(body);
+}
+function bindLazyArticlePages(){
+ document.querySelectorAll("details[data-article-lazy-page]:not([data-lazy-bound])").forEach(d=>{
+   d.dataset.lazyBound="1";
+   d.addEventListener("toggle",()=>{if(d.open)loadLazyArticlePage(d)});
+ });
+}
 function bindArticlePageButtons(){
+ bindLazyArticlePages();
  document.querySelectorAll('[data-article-new]').forEach(b=>b.onclick=()=>openArticleEditor(b.dataset.articleNew));
  document.querySelectorAll('[data-article-edit]').forEach(b=>b.onclick=()=>openArticleEditor(b.dataset.runId,b.dataset.articleEdit));
  document.querySelectorAll('[data-article-delete]').forEach(b=>b.onclick=()=>deleteArticlePage(b.dataset.runId,b.dataset.articleDelete));

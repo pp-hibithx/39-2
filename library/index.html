@@ -1071,7 +1071,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.13</div></main>
+</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.14</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1261,7 +1261,9 @@ const SCENARIO_THUMB_MODE_KEY="saku_meru_library_scenario_thumb_mode_v1";
 function scenarioThumbChoiceKey(scenarioId,title=""){
  return scenarioId?`id:${scenarioId}`:`title:${normTitle(title)}`;
 }
+let _scenarioThumbPrefsCache=null;
 function loadScenarioThumbPrefs(){
+ if(_scenarioThumbPrefsCache)return _scenarioThumbPrefsCache;
  let modes={};
  try{
    const v=JSON.parse(localStorage.getItem(SCENARIO_THUMB_MODE_KEY)||"{}");
@@ -1276,7 +1278,8 @@ function loadScenarioThumbPrefs(){
      });
    }
  }catch{}
- return modes;
+ _scenarioThumbPrefsCache=modes;
+ return _scenarioThumbPrefsCache;
 }
 function scenarioThumbPref(scenarioId,title=""){
  const key=scenarioThumbChoiceKey(scenarioId,title),all=loadScenarioThumbPrefs();
@@ -1289,6 +1292,7 @@ function saveScenarioThumbPref(scenarioId,title,pref){
  const mode=["auto","scenario","run"].includes(pref?.mode)?pref.mode:"auto",runId=String(pref?.runId||"");
  if(mode==="auto")delete all[key];else all[key]={mode,runId};
  localStorage.setItem(SCENARIO_THUMB_MODE_KEY,JSON.stringify(all));
+ _scenarioThumbPrefsCache=all;
 }
 function selectedThumbRunId(scenarioId,title=""){
  const p=scenarioThumbPref(scenarioId,title);
@@ -1303,17 +1307,20 @@ function saveRunArticlePages(v){try{localStorage.setItem(RUN_ARTICLE_PAGES_KEY,J
 function articlePagesForRun(runId){const all=loadRunArticlePages();return Array.isArray(all[runId])?all[runId]:[]}
 function saveArticlePagesForRun(runId,pages){const all=loadRunArticlePages();if(pages?.length)all[runId]=pages;else delete all[runId];saveRunArticlePages(all)}
 
+let _runCoverPositionsCache=null;
 function loadRunCoverPositions(){
+ if(_runCoverPositionsCache)return _runCoverPositionsCache;
  try{
    const v=JSON.parse(localStorage.getItem(RUN_COVER_POS_KEY)||"{}");
-   return v&&typeof v==="object"?v:{};
- }catch{return {}}
+   _runCoverPositionsCache=v&&typeof v==="object"?v:{};
+ }catch{_runCoverPositionsCache={}}
+ return _runCoverPositionsCache;
 }
 function saveRunCoverPosition(id,y){
  if(!id)return;
  const all=loadRunCoverPositions();
  all[id]=Math.max(0,Math.min(100,Math.round(Number(y)||50)));
- try{localStorage.setItem(RUN_COVER_POS_KEY,JSON.stringify(all))}catch{}
+ try{localStorage.setItem(RUN_COVER_POS_KEY,JSON.stringify(all));_runCoverPositionsCache=all}catch{}
 }
 const runCoverY=id=>{
  const all=loadRunCoverPositions();
@@ -1613,7 +1620,11 @@ function renderScenarioSearch(){
   box.classList.add("open");
   box.querySelectorAll("[data-scenario-choice]").forEach(b=>b.onclick=()=>chooseScenario(b.dataset.scenarioChoice));
 }
-function scenarioById(id){return scenarios.find(s=>s.id===id)}
+let _scenarioByIdMap=null;
+function scenarioById(id){
+ if(!_scenarioByIdMap)_scenarioByIdMap=new Map(scenarios.map(s=>[String(s.id||""),s]));
+ return _scenarioByIdMap.get(String(id||""));
+}
 function facilitatorConfig(source={}){const scenario=scenarioById(source.scenarioId||q("scenarioSelect").value)||{};const system=source.system||q("system").value||scenario.system||"";const mode=source.facilitatorTermMode||q("facilitatorTermMode")?.value||scenario.facilitatorTermMode||"auto";const custom=source.facilitatorTermCustom||q("facilitatorTermCustom")?.value||scenario.facilitatorTermCustom||"";const label=source.facilitatorLabel||TRPG39.resolveFacilitatorLabel?.(system,{facilitatorTermMode:mode,facilitatorTermCustom:custom})||"GM";const less=source.facilitatorless!==undefined?!!source.facilitatorless:(source.facilitatorPresence||q("facilitatorPresence")?.value||scenario.facilitatorPresence||"present")==="less";return {label,less,mode,custom}}
 function roleOptions(selected="",label="GM"){const base=["PL",label,...(label==="KP"?["SKP"]:[]),"見学","その他"];if(selected&&!base.includes(selected))base.splice(1,0,selected);return [...new Set(base)].map(v=>`<option ${v===selected?"selected":""}>${esc(v)}</option>`).join("")}
 function updateFacilitatorControls(fromScenario=false){const scenario=scenarioById(q("scenarioSelect").value)||{};if(fromScenario){q("facilitatorPresence").value=scenario.facilitatorPresence||"present";q("facilitatorTermMode").value=scenario.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=scenario.facilitatorTermCustom||""}const cfg=facilitatorConfig({});q("facilitatorTermCustom").hidden=q("facilitatorTermMode").value!=="custom";const old=q("role").value||"PL";q("role").innerHTML=roleOptions(old,cfg.label);if(cfg.less&&["KP","DL","GM"].includes(q("role").value))q("role").value="PL";[...q("participantRows").querySelectorAll(".partRole")].forEach(sel=>{const old=sel.value||"PL";sel.innerHTML=roleOptions(old,cfg.label)});return cfg}
@@ -4969,7 +4980,20 @@ function bindRunMergeRepair(){
  };
 }
 
+let libraryGridRenderGeneration=0;
+function bindLibraryGridCards(root=q("list")){
+ root.querySelectorAll("[data-library-focus]:not([data-grid-bound])").forEach(card=>{
+   card.dataset.gridBound="1";
+   card.onclick=()=>{focusedScenarioKey=card.dataset.libraryFocus;render()};
+   card.onkeydown=e=>{if(e.key==="Enter"){focusedScenarioKey=card.dataset.libraryFocus;render()}};
+ });
+}
+function scheduleLibraryGridBatch(fn){
+ if("requestIdleCallback" in window)requestIdleCallback(fn,{timeout:120});
+ else setTimeout(fn,16);
+}
 function render(){
+ const gridGeneration=++libraryGridRenderGeneration;
  syncLibraryView();
  if(libraryView==="pc"){renderPcView();return}
  if(libraryView==="player"){renderPlayerView();return}
@@ -5025,12 +5049,24 @@ function render(){
  }else{
    q("list").classList.add("library-grid");
    const visibleGroups=groups.filter(groupMatchesPlayFilter);
-   q("list").innerHTML=playFilterTabsHtml()+(visibleGroups.length?visibleGroups.map(libraryGridCard).join(""):'<div class="empty">該当する記録がありません。</div>');
+   q("list").innerHTML=playFilterTabsHtml();
    bindPlayFilterTabs();
-   document.querySelectorAll("[data-library-focus]").forEach(card=>{
-     card.onclick=()=>{focusedScenarioKey=card.dataset.libraryFocus;render()};
-     card.onkeydown=e=>{if(e.key==="Enter"){focusedScenarioKey=card.dataset.libraryFocus;render()}};
-   });
+   if(!visibleGroups.length){
+     q("list").insertAdjacentHTML("beforeend",'<div class="empty">該当する記録がありません。</div>');
+   }else{
+     const batchSize=32;
+     let rendered=0;
+     const appendBatch=()=>{
+       if(gridGeneration!==libraryGridRenderGeneration)return;
+       const chunk=visibleGroups.slice(rendered,rendered+batchSize);
+       if(!chunk.length)return;
+       q("list").insertAdjacentHTML("beforeend",chunk.map(libraryGridCard).join(""));
+       rendered+=chunk.length;
+       bindLibraryGridCards();
+       if(rendered<visibleGroups.length)scheduleLibraryGridBatch(appendBatch);
+     };
+     appendBatch();
+   }
  }
 
  document.querySelectorAll("[data-add-scenario]").forEach(b=>b.onclick=e=>{

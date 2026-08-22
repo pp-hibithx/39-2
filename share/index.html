@@ -154,13 +154,6 @@
 @media(max-width:390px){.share-scenario-grid{grid-template-columns:1fr}}
 </style>
 
-<style>
-.share-scenario-legend{margin-top:2px;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
-.share-scenario-legend summary{cursor:pointer;font-size:12px;font-weight:700}
-.share-scenario-legend-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;margin-top:9px;font-size:11px;color:var(--muted)}
-.share-scenario-legend-grid b{color:var(--text);margin-right:4px}
-@media(max-width:620px){.share-scenario-legend-grid{grid-template-columns:1fr}}
-</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav></div></header>
@@ -291,22 +284,7 @@
          <div class="share-scenario-number-filter"><label>遊べる時間</label><input id="sharedScenarioHours" type="number" min="0.5" step="0.5" placeholder="最大h" value="${esc(state.hours)}"></div>
          <div class="share-scenario-tag-filter"><label>タグ</label><select id="sharedScenarioTag"><option value="">すべて</option>${allTags.map(t=>`<option value="${esc(t)}" ${state.tag===t?"selected":""}>${esc(t)}</option>`).join("")}</select></div>
        </div>
-
-       <details class="share-scenario-legend">
-         <summary>分類について</summary>
-         <div class="share-scenario-legend-grid">
-           <span><b>所持</b> シナリオ所持済み・回せます</span>
-           <span><b>回した</b> KP／GM等で回したことがあります</span>
-           <span><b>部屋あり</b> セッション部屋を準備済みです</span>
-           <span><b>通過済み</b> PLとして参加済みです</span>
-           <span><b>視聴済み</b> 内容を知っているためPL参加できません</span>
-           <span><b>気になる</b> 行きたいシナリオです</span>
-           <span><b>通過予定</b> PL参加予定があります</span>
-           <span><b>回す予定</b> KP／GM等の予定があります</span>
-         </div>
-       </details>
-
-       <div class="share-scenario-system-tabs">
+<div class="share-scenario-system-tabs">
          ${systemKeys.map(k=>`<button type="button" class="share-scenario-system-tab ${activeSystem===k?"active":""}" data-shared-system="${esc(k)}">${esc(sharedSystemLabel(k,items))}<span class="share-scenario-system-count">${k==="all"?items.length:(systemCounts.get(k)||0)}</span></button>`).join("")}
        </div>
 

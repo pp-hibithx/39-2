@@ -1001,6 +1001,34 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-year-filter-row label{font-size:12px;color:var(--muted)}
 .lib-year-filter-row select{width:140px}
 </style>
+
+<style>
+#list.library-grid > .library-play-tabs,
+#list.library-grid > .lib-year-filter-bar{
+  grid-column:1 / -1;
+}
+.lib-year-filter-bar{
+  display:flex;
+  align-items:flex-end;
+  margin:4px 0 2px;
+}
+.lib-year-filter-row{
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+  margin:0;
+  max-width:none;
+}
+.lib-year-filter-row label{
+  font-size:12px;
+  color:var(--muted);
+  margin:0 0 7px;
+  white-space:nowrap;
+}
+.lib-year-filter-row select{
+  width:140px;
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -1125,7 +1153,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.18</div></main>
+</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.18.1</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -5128,12 +5156,14 @@ function render(){
    }
 
    q("list").innerHTML=playFilterTabsHtml()+`
-     <div class="lib-year-filter-row">
-       <label for="libraryYearFilter">最新卓年</label>
-       <select id="libraryYearFilter">
-         ${years.map(y=>`<option value="${esc(y)}" ${libraryYearFilter===y?"selected":""}>${esc(y==="日付なし"?"日付なし":y+"年")}</option>`).join("")}
-         <option value="all" ${libraryYearFilter==="all"?"selected":""}>すべて</option>
-       </select>
+     <div class="lib-year-filter-bar">
+       <div class="lib-year-filter-row">
+         <label for="libraryYearFilter">最新卓年</label>
+         <select id="libraryYearFilter">
+           ${years.map(y=>`<option value="${esc(y)}" ${libraryYearFilter===y?"selected":""}>${esc(y==="日付なし"?"日付なし":y+"年")}</option>`).join("")}
+           <option value="all" ${libraryYearFilter==="all"?"selected":""}>すべて</option>
+         </select>
+       </div>
      </div>`;
 
    bindPlayFilterTabs();

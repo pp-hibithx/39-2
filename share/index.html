@@ -154,6 +154,22 @@
 @media(max-width:390px){.share-scenario-grid{grid-template-columns:1fr}}
 </style>
 
+
+<style>
+.shared-article-image,.share-article-image,.article-image-block,figure.article-image{
+ max-width:520px;margin:10px auto;text-align:center
+}
+.shared-article-image img,.share-article-image img,.article-image-block img,figure.article-image img,
+[data-shared-article-image]{
+ width:auto!important;max-width:100%!important;max-height:360px!important;height:auto!important;
+ object-fit:contain;cursor:zoom-in;border-radius:10px
+}
+.share-article-viewer{border:0;padding:0;background:transparent;max-width:none;max-height:none}
+.share-article-viewer::backdrop{background:rgba(0,0,0,.82)}
+.share-article-viewer-panel{position:relative;width:min(96vw,1500px);height:min(92vh,1100px);display:grid;place-items:center}
+.share-article-viewer-panel img{max-width:100%;max-height:100%;object-fit:contain;border-radius:10px}
+.share-article-viewer-close{position:absolute;right:8px;top:8px;width:38px!important;height:38px;padding:0!important;border-radius:999px!important;background:rgba(0,0,0,.72)!important;color:#fff!important;font-size:22px}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav></div></header>
@@ -555,4 +571,23 @@
   box.innerHTML="<p>この共有データ形式には対応していません。</p>";
  }catch(e){console.error(e);box.innerHTML=`<p>共有ページを読み込めませんでした。<br><span class="small">${esc(e.message||e)}</span></p>`}
 })();
-</script></body></html>
+</script><dialog id="shareArticleImageViewer" class="share-article-viewer">
+ <div class="share-article-viewer-panel">
+  <button type="button" id="shareArticleImageViewerClose" class="share-article-viewer-close">×</button>
+  <img id="shareArticleImageViewerImg" alt="拡大画像">
+ </div>
+</dialog>
+<script>
+(()=>{
+ const viewer=document.getElementById("shareArticleImageViewer"),viewImg=document.getElementById("shareArticleImageViewerImg");
+ document.addEventListener("click",e=>{
+   const img=e.target.closest(".shared-article-image img,.share-article-image img,.article-image-block img,figure.article-image img,[data-shared-article-image]");
+   if(!img||!viewer||!viewImg)return;
+   viewImg.src=img.src||img.getAttribute("src")||"";
+   if(viewImg.src)viewer.showModal();
+ });
+ document.getElementById("shareArticleImageViewerClose")?.addEventListener("click",()=>viewer.close());
+ viewer?.addEventListener("click",e=>{if(e.target===viewer)viewer.close()});
+})();
+</script>
+</body></html>

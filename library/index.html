@@ -1080,6 +1080,24 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
  min-width:280px;
 }
 </style>
+
+<style>
+#librarySpeedDiagnosticPanel{
+ display:flex!important;
+ align-items:flex-start;
+ gap:10px;
+ flex-wrap:wrap;
+ width:100%;
+ margin:10px 0 12px;
+}
+#librarySpeedDiagnosticPanel>button{
+ display:inline-flex!important;
+ width:auto!important;
+ min-height:32px;
+ padding:5px 10px!important;
+ font-size:12px;
+}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -1117,9 +1135,6 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
   </div>
   
 
-<div id="librarySpeedDiagnosticPanel" class="lib-speed-diagnostic-panel">
-  <button id="runLibrarySpeedDiagnostic" type="button">速度診断</button>
-  <div id="librarySpeedDiagnosticResult" class="small muted" hidden></div>
 </div>
 <div id="list" class="lib-list"></div>
 </section>
@@ -1210,7 +1225,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.18.3</div></main>
+</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.18.4</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -5381,7 +5396,19 @@ async function runLibrarySpeedDiagnostic(){
  </div>`;
  if(btn)btn.disabled=false;
 }
-q("runLibrarySpeedDiagnostic").onclick=runLibrarySpeedDiagnostic;
+
+function mountLibrarySpeedDiagnostic(){
+ if(q("librarySpeedDiagnosticPanel"))return;
+ const list=q("list");
+ if(!list||!list.parentElement)return;
+ const panel=document.createElement("div");
+ panel.id="librarySpeedDiagnosticPanel";
+ panel.className="lib-speed-diagnostic-panel";
+ panel.innerHTML='<button id="runLibrarySpeedDiagnostic" type="button">速度診断</button><div id="librarySpeedDiagnosticResult" class="small muted" hidden></div>';
+ list.parentElement.insertBefore(panel,list);
+ q("runLibrarySpeedDiagnostic").onclick=runLibrarySpeedDiagnostic;
+}
+
 
 q("xPreviewText").oninput=updateXPreviewCount;q("xPreviewCancel").onclick=()=>q("xPreviewDialog").close();q("xPreviewPost").onclick=confirmPostAlbumToX;
 q("search").oninput=()=>{focusedScenarioKey="";focusedRunId="";focusedPlayerId="";render()};
@@ -5394,6 +5421,7 @@ q("coverSave").onclick=()=>{
  if(coverEditingRunId)saveRunCoverPosition(coverEditingRunId,coverEditingY);
  closeCoverEditor();
  render();
+mountLibrarySpeedDiagnostic();
 };
 q("coverEditor").addEventListener("click",e=>{if(e.target===q("coverEditor"))closeCoverEditor()});
 q("coverPreview").addEventListener("pointerdown",e=>{coverDragStartY=e.clientY;coverDragStartPos=coverEditingY;q("coverPreview").setPointerCapture(e.pointerId)});

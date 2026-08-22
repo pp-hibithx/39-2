@@ -1071,7 +1071,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.12</div></main>
+</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.13</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1390,7 +1390,7 @@ function migrateRunIds(){
 }
 migrateRunIds();
 
-const persist=()=>TRPG39.saveAlbum(data);
+const persist=()=>{invalidatePcUsageIndex();TRPG39.saveAlbum(data)};
 
 const RUN_ROSTER_STORE_KEY="trpg39.library.runRoster.v1";
 function loadRunRosterStore(){
@@ -1466,18 +1466,51 @@ function librarySystemFamily(value){
  if(/(coc|クトゥルフ|新クトゥルフ|6版|7版|6th|7th)/.test(s))return "coc";
  return s;
 }
-function pcHistorySystems(pc){
- const names=new Set([pc?.name].map(v=>String(v||"").normalize("NFKC").trim().toLowerCase()).filter(Boolean));
- const out=new Set();
- data.forEach(rec=>{
-   const own=storedSelfPcRows(rec).some(r=>{
-     if(pc?.id&&r.pcId&&String(r.pcId)===String(pc.id))return true;
-     return names.has(String(r.pcName||"").normalize("NFKC").trim().toLowerCase());
-   });
-   if(own&&rec.system)out.add(librarySystemFamily(rec.system));
- });
- return out;
+
+let _pcUsageIndexCache=null;
+let _pcUsageIndexStamp="";
+
+function pcUsageIndexStamp(){
+ return `${data.length}:${pcs.length}:${data.map(x=>`${x.id||""}:${x.runId||""}:${x.system||""}:${x.pcId||""}:${x.pcName||""}:${(storedSelfPcRows(x)||[]).map(r=>`${r.pcId||""}/${r.pcName||""}`).join(",")}`).join("|")}`;
 }
+function buildPcUsageIndex(){
+ const stamp=pcUsageIndexStamp();
+ if(_pcUsageIndexCache&&_pcUsageIndexStamp===stamp)return _pcUsageIndexCache;
+ const byId=new Map(),byName=new Map();
+ const ensure=(pcId="",pcName="")=>{
+   const id=String(pcId||"").trim();
+   const name=String(pcName||"").normalize("NFKC").trim().toLowerCase();
+   let row=(id&&byId.get(id))||(name&&byName.get(name))||null;
+   if(!row)row={systems:new Set(),runsBySystem:new Map(),allRuns:new Set()};
+   if(id)byId.set(id,row);
+   if(name)byName.set(name,row);
+   return row;
+ };
+ data.forEach(rec=>{
+   const family=librarySystemFamily(rec.system);
+   const runKey=rec.runId?`run:${rec.runId}`:`record:${rec.id}`;
+   storedSelfPcRows(rec).forEach(r=>{
+     const row=ensure(r.pcId,r.pcName);
+     if(family)row.systems.add(family);
+     row.allRuns.add(runKey);
+     if(family){
+       if(!row.runsBySystem.has(family))row.runsBySystem.set(family,new Set());
+       row.runsBySystem.get(family).add(runKey);
+     }
+   });
+ });
+ _pcUsageIndexStamp=stamp;
+ _pcUsageIndexCache={byId,byName};
+ return _pcUsageIndexCache;
+}
+function invalidatePcUsageIndex(){_pcUsageIndexCache=null;_pcUsageIndexStamp=""}
+function pcUsageRow(pc){
+ const idx=buildPcUsageIndex();
+ const id=String(pc?.id||"").trim();
+ const name=String(pc?.name||"").normalize("NFKC").trim().toLowerCase();
+ return (id&&idx.byId.get(id))||(name&&idx.byName.get(name))||null;
+}
+function pcHistorySystems(pc){return pcUsageRow(pc)?.systems||new Set()}
 function pcMatchesCurrentSystem(pc,systemValue=q("system")?.value||""){
  const target=librarySystemFamily(systemValue);
  if(!target)return true;
@@ -1487,17 +1520,9 @@ function pcMatchesCurrentSystem(pc,systemValue=q("system")?.value||""){
  return !history.size||history.has(target);
 }
 function pcContinuationCount(pc,systemValue=q("system")?.value||""){
- const target=librarySystemFamily(systemValue),runs=new Set();
- data.forEach(rec=>{
-   if(target&&librarySystemFamily(rec.system)!==target)return;
-   const rows=storedSelfPcRows(rec);
-   const hit=rows.some(r=>{
-     if(pc?.id&&r.pcId&&String(r.pcId)===String(pc.id))return true;
-     return String(r.pcName||"").normalize("NFKC").trim().toLowerCase()===String(pc?.name||"").normalize("NFKC").trim().toLowerCase();
-   });
-   if(hit)runs.add(rec.runId?`run:${rec.runId}`:`record:${rec.id}`);
- });
- return runs.size;
+ const target=librarySystemFamily(systemValue),row=pcUsageRow(pc);
+ if(!row)return 0;
+ return target?(row.runsBySystem.get(target)?.size||0):row.allRuns.size;
 }
 function sortedSelfPcCandidates(selectedId=""){
  const all=TRPG39.loadPCs?TRPG39.loadPCs():pcs;
@@ -1517,8 +1542,7 @@ function sortedSelfPcCandidates(selectedId=""){
 function refreshSelfPcSelectOptions(){
  q("selfPcRows")?.querySelectorAll(".self-pc-row").forEach(row=>{
    const sel=row.querySelector(".selfPcSelect"),inp=row.querySelector(".selfPcName");
-   const current=sel?.value||"";
-   const rows=sortedSelfPcCandidates(current);
+   const current=sel?.value||"",rows=sortedSelfPcCandidates(current);
    if(sel){
      sel.innerHTML='<option value="">直接入力</option>'+rows.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
      if(current&&rows.some(p=>String(p.id)===String(current)))sel.value=current;

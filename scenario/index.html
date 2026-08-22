@@ -739,13 +739,39 @@ function showShareUrl(url,message){
   }
 }
 
+
+function scenarioShareFlags(x){
+ const out={owned:false,played:false,watched:false,planned:false,kpDone:false,kpPlanned:false,wish:false,roomReady:false};
+
+ // 現行形式
+ const sources=[x?.flags,x?.classifications,x?.status,x?.statuses];
+ for(const src of sources){
+   if(!src||typeof src!=="object"||Array.isArray(src))continue;
+   Object.keys(out).forEach(k=>{if(src[k]===true)out[k]=true});
+ }
+
+ // 互換用の直下boolean
+ Object.keys(out).forEach(k=>{if(x?.[k]===true)out[k]=true});
+
+ // 過去のラベル配列
+ const labels=[
+   ...(Array.isArray(x?.labels)?x.labels:[]),
+   ...(Array.isArray(x?.statusLabels)?x.statusLabels:[])
+ ].map(v=>String(v||"").trim());
+ const labelMap={
+   所持:"owned",通過済み:"played",視聴済み:"watched",通過予定:"planned",
+   回した:"kpDone",回す予定:"kpPlanned",気になる:"wish",部屋あり:"roomReady"
+ };
+ labels.forEach(v=>{const k=labelMap[v];if(k)out[k]=true});
+
+ return out;
+}
 async function shareScenarioList(){
  // 共有URLは1人につき1本。
  // 現在画面で選んでいる「所持」「気になる」等や検索条件には影響されず、
  // 登録済みの全シナリオ＋各分類をまとめて共有する。
  const items=data.map(x=>{
-   const state={};
-   Object.keys(flags).forEach(k=>state[k]=!!(x.flags&&x.flags[k]));
+   const state=scenarioShareFlags(x);
    const statusKeys=Object.keys(state).filter(k=>state[k]);
    const statusLabels=statusKeys.map(k=>flags[k]).filter(Boolean);
    return {
@@ -791,8 +817,8 @@ async function shareScenarioList(){
  });
  const payload={
    kind:"scenario-list",
-   version:5,
-   shareFormat:"scenario-shelf-v5",
+   version:6,
+   shareFormat:"scenario-shelf-v6",
    title:"シナリオ一覧",
    updatedAt:new Date().toISOString(),
    items

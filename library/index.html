@@ -924,6 +924,12 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-grid-thumb-wrap{position:relative}
 .lib-grid-thumb-source{position:absolute;right:6px;bottom:6px;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.68);color:#fff;font-size:10px;line-height:1.4}
 </style>
+
+<style>
+.lib-run-thumb-selected{position:absolute;left:6px;top:6px;padding:3px 7px;border-radius:999px;background:rgba(0,0,0,.72);color:#fff;font-size:10px;font-weight:700}
+.lib-run-card-actions{margin-top:7px}
+.lib-run-card-actions button{width:auto;font-size:11px;padding:5px 8px}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -1226,6 +1232,26 @@ let focusedScenarioKey="";
 let focusedRunId="";
 let libraryPlayFilter="all";
 const RUN_COVER_POS_KEY="saku_meru_library_run_cover_position_v2";
+
+const SCENARIO_THUMB_RUN_KEY="saku_meru_library_scenario_thumb_run_v1";
+function loadScenarioThumbRuns(){
+ try{
+   const v=JSON.parse(localStorage.getItem(SCENARIO_THUMB_RUN_KEY)||"{}");
+   return v&&typeof v==="object"?v:{};
+ }catch{return {}}
+}
+function scenarioThumbChoiceKey(scenarioId,title=""){
+ return scenarioId?`id:${scenarioId}`:`title:${normTitle(title)}`;
+}
+function selectedThumbRunId(scenarioId,title=""){
+ return String(loadScenarioThumbRuns()[scenarioThumbChoiceKey(scenarioId,title)]||"");
+}
+function saveSelectedThumbRunId(scenarioId,title,runId=""){
+ const all=loadScenarioThumbRuns(),key=scenarioThumbChoiceKey(scenarioId,title);
+ if(runId)all[key]=runId;else delete all[key];
+ localStorage.setItem(SCENARIO_THUMB_RUN_KEY,JSON.stringify(all));
+}
+
 const RUN_ARTICLE_PAGES_KEY="saku_meru_library_run_article_pages_v1";
 function loadRunArticlePages(){
  try{const v=JSON.parse(localStorage.getItem(RUN_ARTICLE_PAGES_KEY)||"{}");return v&&typeof v==="object"?v:{}}catch{return {}}
@@ -1817,18 +1843,25 @@ function groupData(xs){
      else r.label=`${++displayKpNo}陣目`;
    });
    const s=scenarioById(g.scenarioId);
+   const chosenRunId=selectedThumbRunId(g.scenarioId,g.title);
+   const chosenRun=chosenRunId?(g.runs||[]).find(r=>String(r.id)===String(chosenRunId)):null;
+   const chosenImage=chosenRun
+     ? ((chosenRun.items||[]).flatMap(x=>normalizedReportImages(x.imageUrls||[]))[0]||"")
+     : "";
    const screenshotItem=[...g.items].sort((a,b)=>bySessionStart(b,a)).find(x=>(x.imageUrls||[])[0]);
    const screenshotThumb=(screenshotItem?.imageUrls||[])[0]||"";
+   const preferredThumb=chosenImage||screenshotThumb;
    if(s){
      g.title=s.title||g.title;
      g.system=s.system||"";
-     // LIBRARYは「遊んだ記録」が主役。卓スクショがあれば最優先、なければSCENARIO画像。
-     g.thumbnailUrl=screenshotThumb||s.thumbnailUrl||"";
-     g.thumbnailSource=screenshotThumb?"session":"scenario";
+     g.thumbnailUrl=preferredThumb||s.thumbnailUrl||"";
+     g.thumbnailSource=chosenImage?"chosenRun":(screenshotThumb?"session":"scenario");
+     g.thumbnailRunId=chosenImage?chosenRunId:"";
    }else{
      g.system=g.items.find(x=>x.system)?.system||"";
-     g.thumbnailUrl=screenshotThumb;
-     g.thumbnailSource=screenshotThumb?"session":"none";
+     g.thumbnailUrl=preferredThumb;
+     g.thumbnailSource=chosenImage?"chosenRun":(screenshotThumb?"session":"none");
+     g.thumbnailRunId=chosenImage?chosenRunId:"";
    }
    g.people=[...new Set(g.items.flatMap(x=>x.participants||[]))];
    g.pcs=[...new Set(g.items.map(x=>x.pcName).filter(Boolean))];
@@ -2187,7 +2220,7 @@ function libraryGridCard(g){
    g.lastDate?`最終 ${g.lastDate}`:""
  ].filter(Boolean).join(" ／ ");
  return `<article class="lib-grid-card" data-library-focus="${esc(g.key)}" tabindex="0">
-   <div class="lib-grid-thumb-wrap">${g.thumbnailUrl?`<img class="lib-grid-thumb" src="${esc(g.thumbnailUrl)}" alt="" loading="lazy">${g.thumbnailSource==="session"?`<span class="lib-grid-thumb-source">卓SS</span>`:""}`:`<div class="lib-grid-placeholder">🌺</div>`}</div>
+   <div class="lib-grid-thumb-wrap">${g.thumbnailUrl?`<img class="lib-grid-thumb" src="${esc(g.thumbnailUrl)}" alt="" loading="lazy">${g.thumbnailSource==="chosenRun"?`<span class="lib-grid-thumb-source">指定卓SS</span>`:(g.thumbnailSource==="session"?`<span class="lib-grid-thumb-source">卓SS</span>`:"")}`:`<div class="lib-grid-placeholder">🌺</div>`}</div>
    <div class="lib-grid-body">
      <div class="lib-grid-title">${esc(g.title)}</div>
      <div class="lib-grid-meta">${g.system?`<span class="badge">${esc(g.system)}</span>`:""}<span class="badge">${runCountForGroup(g)}陣</span><span class="badge">${g.items.length}記録</span></div>
@@ -2222,14 +2255,15 @@ function runCardHtml(g,r){
  const images=[...new Set(r.items.flatMap(x=>x.imageUrls||[]).filter(Boolean))];
  const dates=r.items.map(x=>x.date).filter(Boolean).sort();
  const range=dates.length?(dates[0]+(dates.length>1&&dates.at(-1)!==dates[0]?`〜${dates.at(-1)}`:"")):"";
+ const selected=String(selectedThumbRunId(g.scenarioId,g.title))===String(r.id);
  return `<article class="lib-run-card" data-run-focus="${esc(r.id)}" tabindex="0">
    <input type="checkbox" class="lib-run-merge-check" data-run-merge="${esc(r.id)}" aria-label="${esc(r.label||"開催記録")}を統合対象に選択">
-   <div class="lib-run-card-thumb-wrap">${images[0]?`<img class="lib-run-card-thumb" src="${esc(images[0])}" alt="" loading="lazy" style="object-position:50% ${runCoverY(r.id)}%"><button type="button" class="lib-cover-adjust" data-cover-adjust="${esc(r.id)}" data-cover-image="${esc(images[0])}">位置を調整</button>`:`<div class="lib-run-card-placeholder">🌺</div>`}</div>
+   <div class="lib-run-card-thumb-wrap">${images[0]?`<img class="lib-run-card-thumb" src="${esc(images[0])}" alt="" loading="lazy" style="object-position:50% ${runCoverY(r.id)}%"><button type="button" class="lib-cover-adjust" data-cover-adjust="${esc(r.id)}" data-cover-image="${esc(images[0])}">位置を調整</button>${selected?`<span class="lib-run-thumb-selected">代表サムネ</span>`:""}`:`<div class="lib-run-card-placeholder">🌺</div>`}</div>
    <div class="lib-run-card-body">
      <div class="lib-run-card-title">${esc(r.label||"開催記録")}</div>
      <div class="lib-run-card-meta">${r.items.length}日${range?` ／ ${esc(range)}`:""}</div>
      ${xReportsForRun(r).length?`<div class="lib-run-card-images">卓報告 ${xReportsForRun(r).length}件</div>`:""}
-     ${images.length?`<div class="lib-run-card-images">スクショ ${images.length}枚${images.length>1?` ／ ほか${images.length-1}枚`:""}</div>`:""}
+     ${images.length?`<div class="lib-run-card-images">スクショ ${images.length}枚${images.length>1?` ／ ほか${images.length-1}枚`:""}</div><div class="lib-run-card-actions"><button type="button" data-thumb-run="${esc(r.id)}" data-thumb-scenario="${esc(g.scenarioId||"")}" data-thumb-title="${esc(g.title)}">${selected?"自動選択に戻す":"この陣をサムネにする"}</button></div>`:""}
    </div>
  </article>`;
 }
@@ -4665,7 +4699,14 @@ function render(){
    q("list").innerHTML=playFilterTabsHtml()+focusedGroupHtml(focused);bindPlayFilterTabs();
    q("libraryBackToGrid").onclick=()=>{focusedScenarioKey="";focusedRunId="";render()};
    q("backToRuns")?.addEventListener("click",()=>{focusedRunId="";render()});
-   document.querySelectorAll("[data-run-focus]").forEach(card=>{
+   document.querySelectorAll("[data-thumb-run]").forEach(b=>b.onclick=e=>{
+   e.preventDefault();e.stopPropagation();
+   const scenarioId=b.dataset.thumbScenario||"",title=b.dataset.thumbTitle||"",runId=b.dataset.thumbRun||"";
+   const current=selectedThumbRunId(scenarioId,title);
+   saveSelectedThumbRunId(scenarioId,title,String(current)===String(runId)?"":runId);
+   render();
+ });
+ document.querySelectorAll("[data-run-focus]").forEach(card=>{
      card.onclick=e=>{if(e.target.closest("[data-run-merge]"))return;focusedRunId=card.dataset.runFocus;render()};
      card.onkeydown=e=>{if(e.key==="Enter"&&!e.target.closest("[data-run-merge]")){focusedRunId=card.dataset.runFocus;render()}};
    });

@@ -181,7 +181,7 @@
  const box=document.getElementById("shareContent");
  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  async function sha256Text(text){const bytes=new TextEncoder().encode(String(text||""));const hash=await crypto.subtle.digest("SHA-256",bytes);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("")}
- const renderArticle=p=>{box.innerHTML=`<div class="share-article-head"><div class="small muted">${esc([p.scenarioTitle,p.runLabel].filter(Boolean).join(" ／ "))}</div><h2>${esc(p.title||"卓記事")}</h2>${p.updatedAt?`<div class="small muted">更新 ${esc(p.updatedAt)}</div>`:""}</div>${p.image?`<img src="${esc(p.image)}" alt="" style="max-width:620px;width:100%;border-radius:10px;border:1px solid var(--line);margin-top:14px">`:""}<div class="share-article-body">${esc(p.body||"")}</div>`};
+ const renderArticle=p=>{box.innerHTML=`<div class="share-article-head"><div class="small muted">${esc([p.scenarioTitle,p.runLabel].filter(Boolean).join(" ／ "))}</div><h2>${esc(p.title||"卓記事")}</h2>${p.updatedAt?`<div class="small muted">更新 ${esc(p.updatedAt)}</div>`:""}</div><div class="share-article-body">${esc(p.body||"")}</div>`};
  const unlockArticle=p=>{
    if(!p.passwordRequired){renderArticle(p);return}
    box.innerHTML=`<div class="share-password"><h2>パスワード保護された卓記事です</h2><p class="small muted">共有者から案内されたパスワードを入力してください。</p><div class="share-password-row"><div><label>パスワード</label><input id="articleSharePassword" type="password" autocomplete="current-password"></div><button id="articleShareUnlock" type="button">開く</button></div><div id="articleShareError" class="share-password-error"></div></div>`;

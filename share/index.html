@@ -170,6 +170,28 @@
 .share-article-viewer-panel img{max-width:100%;max-height:100%;object-fit:contain;border-radius:10px}
 .share-article-viewer-close{position:absolute;right:8px;top:8px;width:38px!important;height:38px;padding:0!important;border-radius:999px!important;background:rgba(0,0,0,.72)!important;color:#fff!important;font-size:22px}
 </style>
+
+<style>
+.shared-article-blocks{display:grid;gap:16px;margin-top:16px}
+.share-article-text{white-space:pre-wrap;line-height:1.9;overflow-wrap:anywhere}
+.shared-article-image{max-width:520px;margin:0 auto;text-align:center}
+.shared-article-image img{display:block;width:auto;max-width:100%;max-height:360px;height:auto;object-fit:contain;margin:auto;border:1px solid var(--line);border-radius:10px;cursor:zoom-in}
+.shared-article-image figcaption{margin-top:6px}
+.shared-youtube-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#000}
+.shared-youtube-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.shared-article-caption{font-weight:700;margin-bottom:6px}
+.shared-article-bgm{border-left:3px solid var(--accent);padding:10px 12px;background:rgba(255,255,255,.018);border-radius:8px}
+.shared-article-bgm-title{font-weight:700}
+.shared-article-bgm audio{width:100%;margin-top:8px}
+.shared-article-note{white-space:pre-wrap;margin-top:7px}
+.shared-conversation{border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:7px}
+.shared-conversation-caption{font-weight:700;margin-bottom:4px}
+.shared-conversation-line{display:grid;grid-template-columns:minmax(130px,190px) 1fr;gap:10px;align-items:start}
+.shared-conversation-speaker{display:flex;align-items:center;gap:7px;font-weight:700}
+.shared-conversation-speaker img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid var(--line)}
+.shared-conversation-text{padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.025);white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:650px){.shared-conversation-line{grid-template-columns:1fr}.shared-conversation-speaker{margin-top:5px}}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav></div></header>
@@ -181,7 +203,93 @@
  const box=document.getElementById("shareContent");
  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  async function sha256Text(text){const bytes=new TextEncoder().encode(String(text||""));const hash=await crypto.subtle.digest("SHA-256",bytes);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("")}
- const renderArticle=p=>{box.innerHTML=`<div class="share-article-head"><div class="small muted">${esc([p.scenarioTitle,p.runLabel].filter(Boolean).join(" ／ "))}</div><h2>${esc(p.title||"卓記事")}</h2>${p.updatedAt?`<div class="small muted">更新 ${esc(p.updatedAt)}</div>`:""}</div><div class="share-article-body">${esc(p.body||"")}</div>`};
+ const youtubeId=url=>{
+   try{
+     const u=new URL(String(url||"").trim());
+     const host=u.hostname.replace(/^www\./,"").toLowerCase();
+     let id="";
+     if(host==="youtu.be")id=u.pathname.split("/").filter(Boolean)[0]||"";
+     else if(host==="youtube.com"||host.endsWith(".youtube.com")){
+       if(u.pathname==="/watch")id=u.searchParams.get("v")||"";
+       else{
+         const m=u.pathname.match(/^\/(?:shorts|embed|live)\/([^/?#]+)/);
+         if(m)id=m[1]||"";
+       }
+     }
+     return id;
+   }catch{return ""}
+ };
+ const renderArticle=p=>{
+   const blocks=Array.isArray(p.blocks)?p.blocks:[];
+   const blocksHtml=blocks.map(b=>{
+     const type=String(b?.type||"").toLowerCase();
+
+     if(type==="text"){
+       return String(b.text||"").trim()
+         ? `<div class="share-article-text">${esc(b.text)}</div>`
+         : "";
+     }
+
+     if(type==="image"){
+       const url=String(b.url||b.src||b.imageUrl||"").trim();
+       if(!url)return "";
+       return `<figure class="shared-article-image">
+         <img src="${esc(url)}" data-shared-article-image alt="${esc(b.alt||b.caption||"")}" loading="lazy">
+         ${b.caption?`<figcaption class="small muted">${esc(b.caption)}</figcaption>`:""}
+       </figure>`;
+     }
+
+     if(type==="youtube"){
+       const id=youtubeId(b.url||"");
+       if(!id)return "";
+       return `<div class="shared-article-youtube">
+         ${b.caption?`<div class="shared-article-caption">${esc(b.caption)}</div>`:""}
+         <div class="shared-youtube-frame"><iframe src="https://www.youtube-nocookie.com/embed/${esc(id)}" title="YouTube video player" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+       </div>`;
+     }
+
+     if(type==="bgm"){
+       const title=String(b.title||"BGM").trim();
+       const artist=String(b.artist||"").trim();
+       const scene=String(b.scene||"").trim();
+       const audio=String(b.audioUrl||"").trim();
+       const source=String(b.sourceUrl||"").trim();
+       return `<section class="shared-article-bgm">
+         <div class="shared-article-bgm-title">🎵 ${esc(title)}</div>
+         ${(artist||scene)?`<div class="small muted">${[artist?`作者：${esc(artist)}`:"",scene?`使用シーン：${esc(scene)}`:""].filter(Boolean).join(" ／ ")}</div>`:""}
+         ${audio?`<audio controls preload="metadata" src="${esc(audio)}"></audio>`:""}
+         ${source?`<div><a class="link" href="${esc(source)}" target="_blank" rel="noopener noreferrer">${esc(b.sourceLabel||"配布元を開く")}</a></div>`:""}
+         ${b.memo?`<div class="shared-article-note">${esc(b.memo)}</div>`:""}
+       </section>`;
+     }
+
+     if(type==="conversation"){
+       const lines=Array.isArray(b.lines)?b.lines:[];
+       if(!lines.length)return "";
+       return `<section class="shared-conversation">
+         ${b.caption?`<div class="shared-conversation-caption">${esc(b.caption)}</div>`:""}
+         ${lines.map(v=>{
+           const name=String(v.pcName||v.speaker||"").trim();
+           const image=String(v.pcImage||"").trim();
+           return `<div class="shared-conversation-line">
+             ${name?`<div class="shared-conversation-speaker">${image?`<img src="${esc(image)}" alt="" loading="lazy">`:""}<span>${esc(name)}</span></div>`:""}
+             <div class="shared-conversation-text">${esc(v.text||"")}</div>
+           </div>`;
+         }).join("")}
+       </section>`;
+     }
+
+     return "";
+   }).join("");
+
+   box.innerHTML=`<div class="share-article-head">
+     <div class="small muted">${esc([p.scenarioTitle,p.runLabel].filter(Boolean).join(" ／ "))}</div>
+     <h2>${esc(p.title||"卓記事")}</h2>
+     ${p.updatedAt?`<div class="small muted">更新 ${esc(p.updatedAt)}</div>`:""}
+   </div>
+   ${p.body?`<div class="share-article-text">${esc(p.body)}</div>`:""}
+   <div class="shared-article-blocks">${blocksHtml}</div>`;
+ };
  const unlockArticle=p=>{
    if(!p.passwordRequired){renderArticle(p);return}
    box.innerHTML=`<div class="share-password"><h2>パスワード保護された卓記事です</h2><p class="small muted">共有者から案内されたパスワードを入力してください。</p><div class="share-password-row"><div><label>パスワード</label><input id="articleSharePassword" type="password" autocomplete="current-password"></div><button id="articleShareUnlock" type="button">開く</button></div><div id="articleShareError" class="share-password-error"></div></div>`;

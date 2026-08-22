@@ -1424,11 +1424,31 @@ function addParticipantRow(v={},opts={}){
  const cfg=facilitatorConfig({});
  row.innerHTML=`<div class="participant-person">
    <div><label>役割</label><select class="partRole">${roleOptions(role,cfg.label)}</select></div>
-   <div class="participant-field-wrap"><label>参加者</label><input class="partPl" value="${esc(pl)}" placeholder="参加者名を検索・選択" autocomplete="off"><div class="participant-picker-results partPlResults"></div></div>
+   <div class="participant-field-wrap"><label>参加者</label><input class="partPl" value="${esc(pl)}" placeholder="参加者名を検索・選択（よく同卓する人を優先）" autocomplete="off"><div class="participant-picker-results partPlResults"></div></div>
    <button type="button" class="danger participant-remove">参加者を削除</button>
  </div><div class="participant-pcs"></div><button type="button" class="participant-pc-add">＋ PC追加</button>`;
  const plInput=row.querySelector(".partPl"),plResults=row.querySelector(".partPlResults"),pcBox=row.querySelector(".participant-pcs");
- function currentPlayers(){return players.filter(p=>!p.excluded&&!p.archived&&p.name).slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ja"))}
+ function participantPlayCount(player){
+   const ids=new Set(),names=new Set(
+     [player?.name,player?.publicName,player?.socialName]
+       .map(v=>String(v||"").normalize("NFKC").trim().toLowerCase()).filter(Boolean)
+   );
+   data.forEach(rec=>{
+     const hit=rowsFromRecord(rec).some(r=>{
+       if(r.playerId&&String(r.playerId)===String(player?.id||""))return true;
+       return names.has(String(r.plName||"").normalize("NFKC").trim().toLowerCase());
+     });
+     if(hit)ids.add(rec.runId?`run:${rec.runId}`:`record:${rec.id}`);
+   });
+   return ids.size;
+ }
+ function currentPlayers(){
+   return players.filter(p=>!p.excluded&&!p.archived&&p.name).slice().sort((a,b)=>{
+     const diff=participantPlayCount(b)-participantPlayCount(a);
+     if(diff)return diff;
+     return String(a.name||"").localeCompare(String(b.name||""),"ja");
+   });
+ }
  function playerPcCandidates(){
    const key=plInput.value.trim().normalize("NFKC").toLowerCase();if(!key)return [];
    const names=new Set();

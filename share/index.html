@@ -97,6 +97,62 @@
 .share-scenario-status{font-size:10px;padding:2px 6px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
 .share-scenario-empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
 </style>
+
+<style>
+.share-scenario-shell{display:grid;gap:14px}
+.share-scenario-toolbar-main{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.share-scenario-toolbar-main>div{min-width:0}
+.share-scenario-search{width:220px}
+.share-scenario-filter-box{width:150px}
+.share-scenario-number-filter{width:92px}
+.share-scenario-tag-filter{width:140px}
+.share-scenario-toolbar-main label{display:block;margin:7px 0 3px}
+.share-scenario-toolbar-main input,.share-scenario-toolbar-main select{width:100%}
+.share-scenario-system-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.share-scenario-system-tab{width:auto!important;padding:5px 10px!important;border-radius:999px!important;font-size:12px!important}
+.share-scenario-system-tab.active{font-weight:700;box-shadow:inset 0 0 0 1px var(--accent)}
+.share-scenario-system-count{opacity:.7;margin-left:4px}
+.share-scenario-summary{margin-top:8px}
+.share-scenario-grid{
+ display:grid;
+ grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+ gap:14px;
+ margin-top:16px
+}
+.share-scenario-card{
+ position:relative;
+ border:1px solid var(--line);
+ border-radius:12px;
+ overflow:hidden;
+ background:var(--panel);
+ min-width:0
+}
+.share-scenario-thumb-wrap{
+ aspect-ratio:16/10;
+ background:linear-gradient(135deg,rgba(255,255,255,.035),rgba(255,255,255,.01));
+ display:flex;align-items:center;justify-content:center;overflow:hidden
+}
+.share-scenario-thumb{width:100%;height:100%;object-fit:cover;display:block}
+.share-scenario-placeholder{font-size:34px;opacity:.38}
+.share-scenario-body{padding:12px;min-width:0}
+.share-scenario-title{font-size:1rem;line-height:1.45;font-weight:700;overflow-wrap:anywhere}
+.share-scenario-system{margin-top:4px}
+.share-scenario-author{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;margin-bottom:7px}
+.share-scenario-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.share-scenario-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.share-scenario-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.share-scenario-actions a{font-size:12px}
+.share-scenario-empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px;margin-top:12px}
+@media(max-width:620px){
+ .share-scenario-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .share-scenario-body{padding:9px}
+ .share-scenario-title{font-size:.92rem}
+ .share-scenario-author{display:none}
+ .share-scenario-toolbar-main{width:100%}
+ .share-scenario-toolbar-main>div{flex:1}
+}
+@media(max-width:390px){.share-scenario-grid{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap"><h1 class="brand brand-392">SAKU+MERU <span class="hibiscus-logo" aria-hidden="true">🌺</span></h1><div class="tagline">探す・遊ぶ・記録・共有<br>TRPG Scenario &amp; Tools</div><nav class="nav"><a href="../index.html">HOME</a><a href="../scenario/index.html?v=0292">SCENARIO</a><a href="../calendar/index.html?v=0292">CALENDAR</a><a href="../library/index.html?v=0292">LIBRARY</a><a href="../pcs/index.html?v=0292">PC</a><a href="../players/index.html?v=0292">PLAYERS</a><a href="../tools/index.html">TOOLS</a><a href="../backup/index.html">BACKUP</a><a href="../help/index.html">HELP</a><a href="../about/index.html">ABOUT</a><a href="../settings/index.html">SETTINGS</a></nav></div></header>
@@ -116,6 +172,7 @@
    const check=async()=>{const hash=await sha256Text(input.value);if(hash===String(p.passwordHash||"")){renderArticle(p)}else{err.textContent="パスワードが違います。";input.select()}};btn.onclick=check;input.onkeydown=e=>{if(e.key==="Enter")check()};input.focus();
  };
 
+
  const SCENARIO_STATUS_LABELS={
    owned:"所持",played:"通過済み",planned:"通過予定",watched:"視聴済み",
    kpDone:"回した",kpPlanned:"回す予定",wish:"気になる",roomReady:"部屋あり"
@@ -129,31 +186,125 @@
    const labels=Array.isArray(x?.statusLabels)?x.statusLabels:(Array.isArray(x?.labels)?x.labels:[]);
    return SCENARIO_STATUS_ORDER.filter(k=>labels.includes(SCENARIO_STATUS_LABELS[k]));
  };
+ const normSharedSystem=v=>{
+   const s=String(v||"").normalize("NFKC").toLowerCase().replace(/\s+/g,"");
+   if(!s)return "unset";
+   if(/(coc6|クトゥルフ神話trpg6版|クトゥルフ6版|6版)/.test(s))return "coc6";
+   if(/(coc7|新クトゥルフ神話trpg|クトゥルフ7版|7版)/.test(s))return "coc7";
+   if(/(エモクロア|emoklore|emokuroa)/.test(s))return "emoklore";
+   return "raw:"+s;
+ };
+ const sharedSystemLabel=(key,items)=>{
+   if(key==="all")return "すべて";
+   if(key==="coc6")return "CoC6";
+   if(key==="coc7")return "CoC7";
+   if(key==="emoklore")return "エモクロア";
+   if(key==="unset")return "未設定";
+   const hit=items.find(x=>normSharedSystem(x.system)===key);
+   return hit?.system||key.replace(/^raw:/,"");
+ };
+ const sharedRange=(a,b,suffix)=>{
+   a=Number(a)||0;b=Number(b)||0;
+   if(a&&b)return a===b?`${a}${suffix}`:`${a}–${b}${suffix}`;
+   if(a)return `${a}${suffix}〜`;
+   if(b)return `〜${b}${suffix}`;
+   return "";
+ };
  const renderScenarioShelf=(p,items)=>{
-   let active="all";
-   const counts=Object.fromEntries(SCENARIO_STATUS_ORDER.map(k=>[k,items.filter(x=>scenarioStatusKeys(x).includes(k)).length]));
+   let activeStatus="all",activeSystem="all";
+   const state={search:"",players:"",hours:"",tag:""};
+
+   const allTags=[...new Set(items.flatMap(x=>Array.isArray(x.tags)?x.tags:[]).filter(Boolean))]
+     .sort((a,b)=>a.localeCompare(b,"ja"));
+
+   const systemCounts=new Map();
+   items.forEach(x=>{
+     const k=normSharedSystem(x.system);
+     systemCounts.set(k,(systemCounts.get(k)||0)+1);
+   });
+
    const render=()=>{
-     const shown=active==="all"?items:items.filter(x=>scenarioStatusKeys(x).includes(active));
-     const toolbar=`<div class="share-scenario-toolbar">
-       <button type="button" class="share-scenario-filter ${active==="all"?"active":""}" data-shelf-filter="all">すべて<span class="share-scenario-filter-count">${items.length}</span></button>
-       ${SCENARIO_STATUS_ORDER.filter(k=>counts[k]>0).map(k=>`<button type="button" class="share-scenario-filter ${active===k?"active":""}" data-shelf-filter="${k}">${esc(SCENARIO_STATUS_LABELS[k])}<span class="share-scenario-filter-count">${counts[k]}</span></button>`).join("")}
-     </div>`;
-     box.innerHTML=`<h2>${esc(p.title||p.label||"SCENARIO")}</h2>${p.updatedAt?`<div class="small muted">更新 ${esc(new Date(p.updatedAt).toLocaleString("ja-JP"))}</div>`:""}${toolbar}
+     let shown=items.slice();
+     const term=String(state.search||"").trim().toLowerCase();
+     const players=Number(state.players)||0;
+     const hours=Number(state.hours)||0;
+
+     if(activeStatus!=="all")shown=shown.filter(x=>scenarioStatusKeys(x).includes(activeStatus));
+     if(activeSystem!=="all")shown=shown.filter(x=>normSharedSystem(x.system)===activeSystem);
+     if(term)shown=shown.filter(x=>[
+       x.title,x.shortTitle,x.system,x.author,(x.tags||[]).join(" ")
+     ].join(" ").toLowerCase().includes(term));
+     if(players)shown=shown.filter(x=>{
+       const lo=Number(x.playersMin)||0,hi=Number(x.playersMax)||0;
+       return (!lo||players>=lo)&&(!hi||players<=hi);
+     });
+     if(hours)shown=shown.filter(x=>{
+       const hi=Number(x.hoursMax)||Number(x.hoursMin)||0;
+       return !hi||hi<=hours;
+     });
+     if(state.tag)shown=shown.filter(x=>Array.isArray(x.tags)&&x.tags.includes(state.tag));
+
+     const statusCounts=Object.fromEntries(
+       SCENARIO_STATUS_ORDER.map(k=>[k,items.filter(x=>scenarioStatusKeys(x).includes(k)).length])
+     );
+     const systemOrder=["coc6","coc7","emoklore"];
+     const otherSystems=[...systemCounts.keys()].filter(k=>!systemOrder.includes(k))
+       .sort((a,b)=>sharedSystemLabel(a,items).localeCompare(sharedSystemLabel(b,items),"ja"));
+     const systemKeys=["all",...systemOrder.filter(k=>systemCounts.has(k)),...otherSystems];
+
+     box.innerHTML=`<div class="share-scenario-shell">
+       <div>
+         <h2>${esc(p.title||p.label||"SCENARIO")}</h2>
+         ${p.updatedAt?`<div class="small muted">更新 ${esc(new Date(p.updatedAt).toLocaleString("ja-JP"))}</div>`:""}
+       </div>
+
+       <div class="share-scenario-toolbar-main">
+         <div class="share-scenario-search"><label>検索</label><input id="sharedScenarioSearch" type="search" placeholder="タイトル・作者・システム" value="${esc(state.search)}"></div>
+         <div class="share-scenario-filter-box"><label>状態</label><select id="sharedScenarioStatus">
+           <option value="all">すべて</option>
+           ${SCENARIO_STATUS_ORDER.filter(k=>statusCounts[k]>0).map(k=>`<option value="${k}" ${activeStatus===k?"selected":""}>${esc(SCENARIO_STATUS_LABELS[k])}</option>`).join("")}
+         </select></div>
+         <div class="share-scenario-number-filter"><label>参加人数</label><input id="sharedScenarioPlayers" type="number" min="1" step="1" placeholder="例 4" value="${esc(state.players)}"></div>
+         <div class="share-scenario-number-filter"><label>遊べる時間</label><input id="sharedScenarioHours" type="number" min="0.5" step="0.5" placeholder="最大h" value="${esc(state.hours)}"></div>
+         <div class="share-scenario-tag-filter"><label>タグ</label><select id="sharedScenarioTag"><option value="">すべて</option>${allTags.map(t=>`<option value="${esc(t)}" ${state.tag===t?"selected":""}>${esc(t)}</option>`).join("")}</select></div>
+       </div>
+
+       <div class="share-scenario-system-tabs">
+         ${systemKeys.map(k=>`<button type="button" class="share-scenario-system-tab ${activeSystem===k?"active":""}" data-shared-system="${esc(k)}">${esc(sharedSystemLabel(k,items))}<span class="share-scenario-system-count">${k==="all"?items.length:(systemCounts.get(k)||0)}</span></button>`).join("")}
+       </div>
+
+       <div class="share-scenario-summary small">登録 ${items.length}件 ／ 表示 ${shown.length}件</div>
+
        ${shown.length?`<div class="share-scenario-grid">${shown.map(x=>{
          const keys=scenarioStatusKeys(x);
-         const image=x.thumbnailUrl||x.image||x.imageUrl||"";
+         const images=Array.isArray(x.trailerUrls)&&x.trailerUrls.length?x.trailerUrls:[x.thumbnailUrl||x.image||x.imageUrl||""].filter(Boolean);
+         const image=images[0]||"";
+         const people=sharedRange(x.playersMin,x.playersMax,"人");
+         const hoursText=sharedRange(x.hoursMin,x.hoursMax,"h");
          return `<article class="share-scenario-card">
-           ${image?`<img class="share-scenario-thumb" src="${esc(image)}" alt="">`:`<div class="share-scenario-placeholder">🌺</div>`}
+           <div class="share-scenario-thumb-wrap">${image?`<img class="share-scenario-thumb" src="${esc(image)}" alt="">`:`<div class="share-scenario-placeholder">🌺</div>`}</div>
            <div class="share-scenario-body">
              <div class="share-scenario-title">${esc(x.title||x.name||"名称未設定")}</div>
-             <div class="share-meta">${x.system?`<span class="badge">${esc(x.system)}</span>`:""}${x.playersMin||x.playersMax?`<span class="badge">${esc(x.playersMin&&x.playersMax?(x.playersMin===x.playersMax?`${x.playersMin}人`:`${x.playersMin}–${x.playersMax}人`):x.playersMin?`${x.playersMin}人〜`:`〜${x.playersMax}人`)}</span>`:""}${x.hoursMin||x.hoursMax?`<span class="badge">${esc(x.hoursMin&&x.hoursMax?(x.hoursMin===x.hoursMax?`${x.hoursMin}h`:`${x.hoursMin}–${x.hoursMax}h`):x.hoursMin?`${x.hoursMin}h〜`:`〜${x.hoursMax}h`)}</span>`:""}</div>
-             ${x.author?`<div class="small muted">${esc(x.author)}</div>`:""}
-             ${keys.length?`<div class="share-scenario-statuses">${keys.map(k=>`<span class="share-scenario-status">${esc(SCENARIO_STATUS_LABELS[k])}</span>`).join("")}</div>`:""}
-             ${(x.tags||[]).length?`<div class="share-tags">${x.tags.map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>`:""}
+             ${x.system?`<div class="small share-scenario-system">${esc(x.system)}</div>`:""}
+             ${x.author?`<div class="small muted share-scenario-author">${esc(x.author)}</div>`:""}
+             <div class="share-scenario-meta">
+               ${people?`<span class="badge">${esc(people)}</span>`:""}
+               ${hoursText?`<span class="badge">${esc(hoursText)}</span>`:""}
+               ${keys.map(k=>`<span class="badge">${esc(SCENARIO_STATUS_LABELS[k])}</span>`).join("")}
+             </div>
+             ${(x.tags||[]).length?`<div class="share-scenario-tags">${x.tags.slice(0,3).map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}</div>`:""}
+             ${x.url?`<div class="share-scenario-actions"><a class="button" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">配布・掲載ページ</a></div>`:""}
            </div>
          </article>`;
-       }).join("")}</div>`:`<div class="share-scenario-empty">この分類に登録されているシナリオはありません。</div>`}`;
-     box.querySelectorAll("[data-shelf-filter]").forEach(b=>b.onclick=()=>{active=b.dataset.shelfFilter||"all";render()});
+       }).join("")}</div>`:`<div class="share-scenario-empty">条件に合うシナリオはありません。</div>`}
+     </div>`;
+
+     q("sharedScenarioSearch")?.addEventListener("input",e=>{state.search=e.target.value;render()});
+     q("sharedScenarioStatus")?.addEventListener("change",e=>{activeStatus=e.target.value||"all";render()});
+     q("sharedScenarioPlayers")?.addEventListener("input",e=>{state.players=e.target.value;render()});
+     q("sharedScenarioHours")?.addEventListener("input",e=>{state.hours=e.target.value;render()});
+     q("sharedScenarioTag")?.addEventListener("change",e=>{state.tag=e.target.value;render()});
+     box.querySelectorAll("[data-shared-system]").forEach(b=>b.onclick=()=>{activeSystem=b.dataset.sharedSystem||"all";render()});
    };
    render();
  };

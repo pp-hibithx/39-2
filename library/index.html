@@ -1001,18 +1001,6 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-year-filter-row label{font-size:12px;color:var(--muted)}
 .lib-year-filter-row select{width:140px}
 </style>
-
-<style>
-#libraryYearFilterHost{
- display:flex;
- align-items:end;
- gap:8px;
- margin:8px 0 0;
- max-width:220px;
-}
-#libraryYearFilterHost label{font-size:12px;color:var(--muted)}
-#libraryYearFilterHost select{width:140px}
-</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -1137,7 +1125,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.19</div></main>
+</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.18</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1394,7 +1382,7 @@ const runCoverY=id=>{
  return Number.isFinite(n)?Math.max(0,Math.min(100,n)):50;
 };
 let libraryView=new URLSearchParams(location.search).get("view")||"scenario";
-let pcs=libProfileMark("loadPCs",()=>TRPG39.loadPCs()),players=libProfileMark("loadPlayers",()=>TRPG39.loadPlayers());
+let pcs=TRPG39.loadPCs(),players=TRPG39.loadPlayers();
 
 const PLAYER_EXTERNAL_PLAYED_KEY="saku_meru_player_external_played_v1";
 function loadPlayerExternalPlayed(){
@@ -1427,7 +1415,7 @@ function migrateScenarioLinks(){
   });
   if(changed)TRPG39.saveAlbum(data);
 }
-libProfileMark("migrateScenarioLinks",()=>migrateScenarioLinks());
+migrateScenarioLinks();
 
 function migrateLibraryCalendarLinks(){
  let changed=false,evs=TRPG39.loadEvents();
@@ -1441,7 +1429,7 @@ function migrateLibraryCalendarLinks(){
  });
  if(changed){TRPG39.saveEvents(evs);TRPG39.saveAlbum(data)}
 }
-libProfileMark("migrateLibraryCalendarLinks",()=>migrateLibraryCalendarLinks());
+migrateLibraryCalendarLinks();
 
 function migrateRunIds(){
  let changed=false;
@@ -1461,7 +1449,7 @@ function migrateRunIds(){
  });
  if(evChanged)TRPG39.saveEvents(evs);
 }
-libProfileMark("migrateRunIds",()=>migrateRunIds());
+migrateRunIds();
 
 const persist=()=>{invalidatePcUsageIndex();TRPG39.saveAlbum(data)};
 
@@ -5075,16 +5063,11 @@ function scheduleLibraryGridBatch(fn){
  if("requestIdleCallback" in window)requestIdleCallback(fn,{timeout:120});
  else setTimeout(fn,16);
 }
-function clearYearFilterHost(){
- const h=q("libraryYearFilterHost");
- if(h)h.remove();
-}
 function render(){
- const endRenderProfile=libProfileStart(`render view=${libraryView}`);
  const gridGeneration=++libraryGridRenderGeneration;
  syncLibraryView();
- if(libraryView==="pc"){clearYearFilterHost();renderPcView();return}
- if(libraryView==="player"){clearYearFilterHost();renderPlayerView();return}
+ if(libraryView==="pc"){renderPcView();return}
+ if(libraryView==="player"){renderPlayerView();return}
  const term=q("search").value.trim().toLowerCase(),role=q("filter").value,params=new URLSearchParams(location.search);
  const player=params.get("player")||"",pc=params.get("pc")||"";
  let xs=data.filter(x=>(!role||x.role===role)&&(!player||(x.participants||[]).some(n=>n===player))&&(!pc||(x.pcName||"")===pc)&&(!term||[x.title,x.system,x.pcName,(x.participants||[]).join(" ")].join(" ").toLowerCase().includes(term)));
@@ -5144,22 +5127,14 @@ function render(){
      libraryYearFilter=years[0]||"all";
    }
 
-   q("list").innerHTML=playFilterTabsHtml();
-   const toolbar=q("toolbar")||q("list")?.parentElement;
-   let yearHost=q("libraryYearFilterHost");
-   if(!yearHost&&toolbar){
-     yearHost=document.createElement("div");
-     yearHost.id="libraryYearFilterHost";
-     yearHost.className="lib-year-filter-row";
-     toolbar.appendChild(yearHost);
-   }
-   if(yearHost){
-     yearHost.innerHTML=`<label for="libraryYearFilter">最新卓年</label>
+   q("list").innerHTML=playFilterTabsHtml()+`
+     <div class="lib-year-filter-row">
+       <label for="libraryYearFilter">最新卓年</label>
        <select id="libraryYearFilter">
          ${years.map(y=>`<option value="${esc(y)}" ${libraryYearFilter===y?"selected":""}>${esc(y==="日付なし"?"日付なし":y+"年")}</option>`).join("")}
          <option value="all" ${libraryYearFilter==="all"?"selected":""}>すべて</option>
-       </select>`;
-   }
+       </select>
+     </div>`;
 
    bindPlayFilterTabs();
 
@@ -5202,7 +5177,6 @@ function render(){
  document.querySelectorAll("[data-report-gallery]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();openXReportGallery(b.dataset.reportGallery)});
  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>edit(b.dataset.edit));
  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>del(b.dataset.del));
- endRenderProfile();
 }
 q("title").addEventListener("input",()=>{
  const s=scenarioById(q("scenarioSelect").value);

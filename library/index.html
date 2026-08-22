@@ -888,6 +888,21 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .conversation-txt-note{margin-top:5px}
 .conversationImportFile{max-width:100%}
 </style>
+
+<style>
+.xreport-image-add{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,1fr) auto auto;gap:7px;align-items:end}
+.xreport-image-add button{width:auto;white-space:nowrap}
+.xreport-image-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:9px}
+.xreport-image-item{position:relative;border:1px solid var(--line);border-radius:9px;padding:6px;min-width:0}
+.xreport-image-item img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:6px;display:block}
+.xreport-image-number{position:absolute;top:9px;left:9px;width:24px;height:24px;display:grid;place-items:center;border-radius:999px;background:rgba(0,0,0,.72);color:#fff;font-size:12px;font-weight:700}
+.xreport-image-actions{display:flex;gap:4px;margin-top:6px}
+.xreport-image-actions button{width:auto;padding:4px 7px;font-size:11px}
+.lib-child-image-strip{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.lib-child-image-strip .lib-child-thumb{width:86px!important;height:54px!important;object-fit:cover}
+@media(max-width:850px){.xreport-image-add{grid-template-columns:1fr 1fr}.xreport-image-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.xreport-image-add{grid-template-columns:1fr}.xreport-image-list{grid-template-columns:1fr 1fr}}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -977,19 +992,23 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="lib-form-section">
     <h3>卓報告</h3>
-    <label>スクリーンショット</label>
-    <div class="lib-form-grid">
-      <div><input id="image" type="url" placeholder="画像URLを貼る"></div>
-      <div><input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif"><button id="uploadImage" type="button">画像をアップロード</button></div>
+    <label>卓報告スクリーンショット <span class="small muted">（最大4枚）</span></label>
+    <input id="image" type="hidden">
+    <div class="xreport-image-add">
+      <input id="imageUrlAdd" type="url" placeholder="画像URLを貼る">
+      <input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+      <button id="addImageUrl" type="button">URLを追加</button>
+      <button id="uploadImage" type="button">画像をアップロード</button>
     </div>
-    <p class="small muted">URL貼り付けと直接アップロードの両方に対応します。</p>
-    <div id="imagePreview" class="image-preview" hidden><img id="imagePreviewImg" alt="スクリーンショットのプレビュー"><div class="small muted">画像URLを貼ると、保存前にここで確認できます。</div></div>
+    <p class="small muted">追加した順が①〜④です。左右ボタンで順番を変更できます。</p>
+    <div id="xReportImageList" class="xreport-image-list"></div>
+    <div id="imagePreview" class="image-preview" hidden><img id="imagePreviewImg" alt="スクリーンショットのプレビュー"></div>
     <label>ひとこと</label><textarea id="comment" placeholder="楽しかった！ など、卓報告に添えるひとこと"></textarea>
     <label>X卓報告URL</label>
     <input id="xReportUrl" type="url" placeholder="https://x.com/.../status/...">
     <label>X卓報告本文の控え <span class="small muted">（任意）</span></label>
     <textarea id="xReportText" rows="4" placeholder="投稿した本文を残しておくと、投稿が消えても記録として残せます。"></textarea>
-    <div class="share-scope-note"><strong>共有ページに表示される内容</strong><br>シナリオ名・開催日・役割／HO／PL／PC・スクリーンショット・ひとこと</div>
+    <div class="share-scope-note"><strong>共有ページに表示される内容</strong><br>シナリオ名・開催日・役割／HO／PL／PC・スクリーンショット（最大4枚）・ひとこと</div>
   </div>
 
   <div class="lib-form-section">
@@ -1008,7 +1027,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02329">build v0.2.35.5.7</div></main>
+</div><div class="wrap small muted" data-build-marker="02330">build v0.2.35.5.10</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1416,7 +1435,11 @@ function addLinkRow(v={label:"",url:"",spoiler:false}){
  wrap.querySelector(".extRemove").onclick=()=>wrap.remove();q("externalLinks").appendChild(wrap);
 }
 function getLinks(){return [...document.querySelectorAll(".ext-row")].map(r=>({label:r.querySelector(".extLabel").value.trim(),url:r.querySelector(".extUrl").value.trim(),spoiler:r.querySelector(".extSpoiler").checked})).filter(x=>x.url)}
-function updateImagePreview(){const u=q("image").value.trim();q("imagePreview").hidden=!u;q("imagePreviewImg").src=u||""}
+function updateImagePreview(){
+ const legacy=String(q("image")?.value||"").trim();
+ if(legacy&&!editingImageUrls.length)editingImageUrls=[legacy];
+ renderReportImages();
+}
 function addParticipantRow(v={},opts={}){
  const row=document.createElement("div");row.className="participant-row";
  row.dataset.placeholder=opts.placeholder?"1":"0";
@@ -1545,7 +1568,7 @@ function recordHasSelfPc(record,name){
  return storedSelfPcRows(record).some(r=>String(r.pcName||"").normalize("NFKC").trim().toLowerCase()===k);
 }
 
-function reset(prefillScenarioId=""){
+function reset(prefillScenarioId=""){editingImageUrls=[];
  q("editId").value="";
  ["title","date","startTime","endTime","system","selfHo","pc","image","comment","xReportUrl","xReportText","spoilerBody","runId","runLabel"].forEach(x=>q(x).value="");setSelfPcRows([]);q("sessionKind").value="main";
  q("status").value="done";q("facilitatorPresence").value="present";q("facilitatorTermMode").value="auto";q("facilitatorTermCustom").value="";q("role").value="PL";q("visibility").value="private";q("spoilerVisibility").value="private";q("formHeading").textContent="開催記録を追加";q("cancel").hidden=true;
@@ -1557,6 +1580,54 @@ function reset(prefillScenarioId=""){
  } else updateFacilitatorControls(false);
 }
 
+
+let editingImageUrls=[];
+function normalizedReportImages(v){
+ const rows=Array.isArray(v)?v:[];
+ return [...new Set(rows.map(x=>String(x||"").trim()).filter(Boolean))].slice(0,4);
+}
+function syncLegacyImageField(){
+ q("image").value=editingImageUrls[0]||"";
+}
+function renderReportImages(){
+ editingImageUrls=normalizedReportImages(editingImageUrls);
+ syncLegacyImageField();
+ const box=q("xReportImageList");
+ if(!box)return;
+ box.innerHTML=editingImageUrls.length?editingImageUrls.map((url,i)=>`
+   <div class="xreport-image-item">
+     <div class="xreport-image-number">${i+1}</div>
+     <img src="${esc(url)}" alt="卓報告スクリーンショット ${i+1}">
+     <div class="xreport-image-actions">
+       <button type="button" data-report-image-left="${i}" ${i===0?"disabled":""}>←</button>
+       <button type="button" data-report-image-right="${i}" ${i===editingImageUrls.length-1?"disabled":""}>→</button>
+       <button type="button" class="danger" data-report-image-remove="${i}">削除</button>
+     </div>
+   </div>`).join(""):'<div class="small muted">スクリーンショットは未登録です。</div>';
+
+ box.querySelectorAll("[data-report-image-left]").forEach(b=>b.onclick=()=>{
+   const i=Number(b.dataset.reportImageLeft);if(i<=0)return;
+   [editingImageUrls[i-1],editingImageUrls[i]]=[editingImageUrls[i],editingImageUrls[i-1]];
+   renderReportImages();
+ });
+ box.querySelectorAll("[data-report-image-right]").forEach(b=>b.onclick=()=>{
+   const i=Number(b.dataset.reportImageRight);if(i<0||i>=editingImageUrls.length-1)return;
+   [editingImageUrls[i+1],editingImageUrls[i]]=[editingImageUrls[i],editingImageUrls[i+1]];
+   renderReportImages();
+ });
+ box.querySelectorAll("[data-report-image-remove]").forEach(b=>b.onclick=()=>{
+   editingImageUrls.splice(Number(b.dataset.reportImageRemove),1);renderReportImages();
+ });
+ q("imagePreview").hidden=!editingImageUrls.length;
+ q("imagePreviewImg").src=editingImageUrls[0]||"";
+}
+function addReportImageUrl(url){
+ url=String(url||"").trim();
+ if(!url)return false;
+ if(editingImageUrls.includes(url))return true;
+ if(editingImageUrls.length>=4){alert("卓報告スクリーンショットは最大4枚です。");return false}
+ editingImageUrls.push(url);renderReportImages();return true;
+}
 async function uploadLibraryImage(){
   const file=q("imageFile")?.files?.[0];
   if(!file)return alert("画像ファイルを選んでください。");
@@ -1570,7 +1641,10 @@ async function uploadLibraryImage(){
   const r=await fetch(base.replace(/\/$/,"")+"/functions/v1/image-upload",{method:"POST",headers:{apikey:key},body:fd});
   const body=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(body.error||("アップロードエラー "+r.status));
-  q("image").value=body.publicUrl||""; updateImagePreview(); q("imageFile").value=""; return body.publicUrl;
+  const url=body.publicUrl||"";
+  if(url)addReportImageUrl(url);
+  q("imageFile").value="";
+  return url;
 }
 function combineLibraryDateTime(date,time){
  if(!date)return "";
@@ -1620,7 +1694,7 @@ function save(){
    articleBody:old?.articleBody||"",
    spoilerBody:q("spoilerBody")?.value.trim()||"",spoiler:"",system:q("system").value.trim(),facilitatorLabel:facilitatorConfig({}).label,facilitatorless:q("facilitatorPresence").value==="less",role:q("role").value,selfHo:primarySelf.ho||"",pcName:ownPcName,pcId:ownPcId,
    participants,participantIds,participantRows:rows,
-   imageUrls:q("image").value.trim()?[q("image").value.trim()]:[],visibility:q("visibility").value,comment:q("comment").value.trim(),
+   imageUrls:normalizedReportImages(editingImageUrls),visibility:q("visibility").value,comment:q("comment").value.trim(),
    xReportUrl:q("xReportUrl").value.trim(),xReportText:q("xReportText").value.trim(),
    spoilerVisibility:q("spoilerVisibility").value,externalLinks:getLinks()});
  let i=data.findIndex(x=>x.id===id);if(i>=0)data[i]=item;else data.unshift(item);setStoredSelfPcRows(item.id,selfPcRows);
@@ -1649,7 +1723,7 @@ function save(){
 }
 function edit(id){
  let x=data.find(v=>v.id===id);if(!x)return;fillScenarioSelect();
- q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";const st=splitLibraryDateTime(x.start||x.date||""),en=splitLibraryDateTime(x.end||"");q("date").value=x.date||st.date||"";q("startTime").value=st.time||"";q("endTime").value=en.time||"";q("sessionKind").value=sessionKindForRecord(x);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setSelfPcRows(storedSelfPcRows(x));setParticipantRows(rowsFromRecord(x));q("rememberParticipantHo").checked=getParticipantHoTemplate(x.scenarioId,x.title).length>0;q("image").value=(x.imageUrls||[])[0]||"";updateImagePreview();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";const xr=getXReport(x.id);q("xReportUrl").value=xr.url||x.xReportUrl||"";q("xReportText").value=xr.text||x.xReportText||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
+ q("editId").value=x.id;q("runId").value=x.runId||"";q("runLabel").value=x.runLabel||"";q("scenarioSelect").value=x.scenarioId||"";syncScenarioSearchLabel();q("title").value=x.title||"";const st=splitLibraryDateTime(x.start||x.date||""),en=splitLibraryDateTime(x.end||"");q("date").value=x.date||st.date||"";q("startTime").value=st.time||"";q("endTime").value=en.time||"";q("sessionKind").value=sessionKindForRecord(x);q("status").value=x.status||"done";q("system").value=x.system||"";const sc=scenarioById(x.scenarioId||"")||{};q("facilitatorPresence").value=x.facilitatorless?"less":(sc.facilitatorPresence||"present");q("facilitatorTermMode").value=sc.facilitatorTermMode||"auto";q("facilitatorTermCustom").value=sc.facilitatorTermCustom||"";updateFacilitatorControls(false);q("role").value=x.role||"PL";q("selfHo").value=x.selfHo||"";q("pc").value=x.pcName||"";fillPCSelect(x.pcId||"");setSelfPcRows(storedSelfPcRows(x));setParticipantRows(rowsFromRecord(x));q("rememberParticipantHo").checked=getParticipantHoTemplate(x.scenarioId,x.title).length>0;editingImageUrls=normalizedReportImages(x.imageUrls||[]);renderReportImages();q("visibility").value=x.visibility||"private";q("comment").value=x.comment||"";const xr=getXReport(x.id);q("xReportUrl").value=xr.url||x.xReportUrl||"";q("xReportText").value=xr.text||x.xReportText||"";q("spoilerBody").value=x.spoilerBody||x.spoiler||"";q("spoilerVisibility").value=x.spoilerVisibility||"private";
  q("externalLinks").innerHTML="";(x.externalLinks||[]).forEach(addLinkRow);if(!(x.externalLinks||[]).length)addLinkRow();
  q("formHeading").textContent="開催記録を編集";q("cancel").hidden=false;showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -1809,7 +1883,7 @@ async function prepareShareUrl(id){
  if(!(TRPG39Cloud&&TRPG39Cloud.configured()))throw new Error("共有機能の設定がありません。");
 
  const ogVersion=Date.now();
- const payload={kind:"library-session",version:5,ogVersion,title:x.title,date:x.date,start:x.start||"",end:x.end||"",status:x.status||"done",system:x.system,facilitatorLabel:facilitatorConfig(x).label,facilitatorless:facilitatorConfig(x).less,selfRole:x.role||"",selfHo:x.selfHo||"",selfPcName:x.pcName||"",participantRows:rowsFromRecord(x),image:(x.imageUrls||[])[0]||"",comment:x.comment||"",spoiler:x.spoilerVisibility==="link"?(x.spoilerBody||x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
+ const payload={kind:"library-session",version:5,ogVersion,title:x.title,date:x.date,start:x.start||"",end:x.end||"",status:x.status||"done",system:x.system,facilitatorLabel:facilitatorConfig(x).label,facilitatorless:facilitatorConfig(x).less,selfRole:x.role||"",selfHo:x.selfHo||"",selfPcName:x.pcName||"",participantRows:rowsFromRecord(x),image:(x.imageUrls||[])[0]||"",images:normalizedReportImages(x.imageUrls||[]),comment:x.comment||"",spoiler:x.spoilerVisibility==="link"?(x.spoilerBody||x.spoiler||""):"",externalLinks:x.externalLinks||[],visibility:x.visibility||"link"};
 
  let shareId=x.shareId||"";
  if(shareId)await TRPG39Cloud.updateSharedPage(shareId,payload);
@@ -2732,7 +2806,7 @@ function bindArticlePageButtons(){
 function sessionRecordHtml(x,i){
  return `<article class="lib-child" id="record-${esc(x.id)}">
    <div class="lib-child-date">${esc(x.date||`記録 ${i+1}`)}${x.start&&String(x.start).slice(11,16)?` ${esc(String(x.start).slice(11,16))}`:""}<br><span class="badge">${esc(sessionKindLabel[sessionKindForRecord(x)]||"本編")}</span> <span class="badge">${esc(statusLabel[x.status]||"完了")}</span></div>
-   <div>${(x.imageUrls||[])[0]?`<img class="lib-child-thumb" src="${esc((x.imageUrls||[])[0])}" alt="" loading="lazy">`:""}
+   <div>${(x.imageUrls||[]).length?`<div class="lib-child-image-strip">${normalizedReportImages(x.imageUrls).map((u,i)=>`<img class="lib-child-thumb" src="${esc(u)}" alt="スクリーンショット ${i+1}" loading="lazy">`).join("")}</div>`:""}
      <div class="lib-child-title">${esc(x.pcName?`PC：${x.pcName}`:(displayRoleForRecord(x)||"開催記録"))}${x.selfHo?` <span class="badge">${esc(x.selfHo)}</span>`:""}</div>${x.articleBody?`<div class="lib-article-body">${esc(x.articleBody).replace(/\n/g,"<br>")}</div>`:""}${x.spoilerBody?`<details class="lib-spoiler"><summary>ネタバレを表示</summary><div class="spoiler-body">${esc(x.spoilerBody).replace(/\n/g,"<br>")}</div></details>`:""}
      <div class="lib-child-meta">${participantHtml(x)}<span class="badge lib-visibility">公開設定：${esc(vis[x.visibility]||"自分のみ")}</span></div>
      ${x.comment?`<div class="lib-child-note">${esc(x.comment)}</div>`:""}${diceAnalysisHtml(x)}${linksHtml(x)}
@@ -4595,11 +4669,19 @@ q("scenarioSearch").addEventListener("keydown",e=>{
 document.addEventListener("click",e=>{
   if(!e.target.closest(".scenario-picker"))q("scenarioSearchResults")?.classList.remove("open");
 });
-q("uploadImage").onclick=async()=>{try{q("uploadImage").disabled=true;q("uploadImage").textContent="アップロード中…";await uploadLibraryImage()}catch(e){console.error(e);alert(e.message||e)}finally{q("uploadImage").disabled=false;q("uploadImage").textContent="画像をアップロード"}};
+q("addImageUrl").onclick=()=>{
+ const inp=q("imageUrlAdd"),url=inp.value.trim();
+ if(!url)return alert("画像URLを入力してください。");
+ if(addReportImageUrl(url))inp.value="";
+};
+q("uploadImage").onclick=async()=>{try{
+ if(editingImageUrls.length>=4)return alert("卓報告スクリーンショットは最大4枚です。");
+ q("uploadImage").disabled=true;q("uploadImage").textContent="アップロード中…";await uploadLibraryImage()
+}catch(e){console.error(e);alert(e.message||e)}finally{q("uploadImage").disabled=false;q("uploadImage").textContent="画像をアップロード"}};
 q("system").addEventListener("input",()=>updateFacilitatorControls(false));q("facilitatorPresence").onchange=()=>updateFacilitatorControls(false);q("facilitatorTermMode").onchange=()=>updateFacilitatorControls(false);q("facilitatorTermCustom").addEventListener("input",()=>updateFacilitatorControls(false));
 q("save").onclick=save;
 q("cancel").onclick=()=>{reset();hideEditor()};
-q("image").oninput=updateImagePreview;
+
 q("openLibraryEditor").onclick=()=>{reset();showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"})};q("xPreviewText").oninput=updateXPreviewCount;q("xPreviewCancel").onclick=()=>q("xPreviewDialog").close();q("xPreviewPost").onclick=confirmPostAlbumToX;
 q("search").oninput=()=>{focusedScenarioKey="";focusedRunId="";focusedPlayerId="";render()};
 q("playerListSort").onchange=()=>{playerListSort=q("playerListSort").value;render()};

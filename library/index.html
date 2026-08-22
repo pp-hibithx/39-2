@@ -919,6 +919,11 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .xreport-gallery-grid figcaption{text-align:center;font-size:11px;color:var(--muted);margin-top:4px}
 @media(max-width:650px){.xreport-gallery-grid{grid-template-columns:1fr}}
 </style>
+
+<style>
+.lib-grid-thumb-wrap{position:relative}
+.lib-grid-thumb-source{position:absolute;right:6px;bottom:6px;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.68);color:#fff;font-size:10px;line-height:1.4}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -1043,7 +1048,7 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 
   <div class="album-actions"><button id="save" type="button">保存</button><button id="cancel" type="button" hidden>編集をやめる</button></div>
 </section>
-</div><div class="wrap small muted" data-build-marker="02331">build v0.2.35.5.11</div></main>
+</div><div class="wrap small muted" data-build-marker="02332">build v0.2.35.5.12</div></main>
 <div id="coverEditor" class="lib-cover-editor" hidden><div class="lib-cover-panel">
 <strong>カード画像の位置を調整</strong>
 <div class="lib-cover-help">画像を上下にドラッグして、カードに見せたい位置を合わせます。元画像は変更されません。位置はこのブラウザに保存されます。</div>
@@ -1812,10 +1817,18 @@ function groupData(xs){
      else r.label=`${++displayKpNo}陣目`;
    });
    const s=scenarioById(g.scenarioId);
-   if(s){g.title=s.title||g.title;g.system=s.system||"";g.thumbnailUrl=s.thumbnailUrl||((g.items.find(x=>(x.imageUrls||[])[0])?.imageUrls||[])[0]||"")}
-   else{
+   const screenshotItem=[...g.items].sort((a,b)=>bySessionStart(b,a)).find(x=>(x.imageUrls||[])[0]);
+   const screenshotThumb=(screenshotItem?.imageUrls||[])[0]||"";
+   if(s){
+     g.title=s.title||g.title;
+     g.system=s.system||"";
+     // LIBRARYは「遊んだ記録」が主役。卓スクショがあれば最優先、なければSCENARIO画像。
+     g.thumbnailUrl=screenshotThumb||s.thumbnailUrl||"";
+     g.thumbnailSource=screenshotThumb?"session":"scenario";
+   }else{
      g.system=g.items.find(x=>x.system)?.system||"";
-     g.thumbnailUrl=(g.items.find(x=>(x.imageUrls||[])[0])?.imageUrls||[])[0]||"";
+     g.thumbnailUrl=screenshotThumb;
+     g.thumbnailSource=screenshotThumb?"session":"none";
    }
    g.people=[...new Set(g.items.flatMap(x=>x.participants||[]))];
    g.pcs=[...new Set(g.items.map(x=>x.pcName).filter(Boolean))];
@@ -2174,7 +2187,7 @@ function libraryGridCard(g){
    g.lastDate?`最終 ${g.lastDate}`:""
  ].filter(Boolean).join(" ／ ");
  return `<article class="lib-grid-card" data-library-focus="${esc(g.key)}" tabindex="0">
-   <div class="lib-grid-thumb-wrap">${g.thumbnailUrl?`<img class="lib-grid-thumb" src="${esc(g.thumbnailUrl)}" alt="" loading="lazy">`:`<div class="lib-grid-placeholder">🌺</div>`}</div>
+   <div class="lib-grid-thumb-wrap">${g.thumbnailUrl?`<img class="lib-grid-thumb" src="${esc(g.thumbnailUrl)}" alt="" loading="lazy">${g.thumbnailSource==="session"?`<span class="lib-grid-thumb-source">卓SS</span>`:""}`:`<div class="lib-grid-placeholder">🌺</div>`}</div>
    <div class="lib-grid-body">
      <div class="lib-grid-title">${esc(g.title)}</div>
      <div class="lib-grid-meta">${g.system?`<span class="badge">${esc(g.system)}</span>`:""}<span class="badge">${runCountForGroup(g)}陣</span><span class="badge">${g.items.length}記録</span></div>

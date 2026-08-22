@@ -262,7 +262,8 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 @media(max-width:760px){.lib-article-share-row{grid-template-columns:1fr}}
 .lib-article-render{padding:0 12px 12px;display:grid;gap:14px}
 .lib-article-text{line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere}
-.lib-article-media img{display:block;max-width:100%;height:auto;border-radius:10px;border:1px solid var(--line);margin:auto}
+.lib-article-media{margin:8px auto;max-width:520px;text-align:center}
+.lib-article-media img{display:block;width:auto;max-width:100%;max-height:360px;height:auto;object-fit:contain;border-radius:10px;border:1px solid var(--line);margin:auto;cursor:zoom-in}
 .lib-article-caption{font-size:12px;color:var(--muted);margin-top:6px;text-align:center}
 .lib-article-youtube{position:relative;width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#000}
 .lib-article-youtube iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
@@ -938,6 +939,14 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 .lib-run-card-title-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .lib-run-label-edit{width:auto!important;font-size:10px;padding:4px 7px}
 </style>
+
+<style>
+.article-image-viewer{border:0;padding:0;background:transparent;max-width:none;max-height:none}
+.article-image-viewer::backdrop{background:rgba(0,0,0,.82)}
+.article-image-viewer-panel{position:relative;width:min(96vw,1500px);height:min(92vh,1100px);display:grid;place-items:center}
+.article-image-viewer-panel img{max-width:100%;max-height:100%;object-fit:contain;border-radius:10px}
+.article-image-viewer-close{position:absolute;right:8px;top:8px;z-index:2;width:38px!important;height:38px;padding:0!important;border-radius:999px!important;background:rgba(0,0,0,.72)!important;color:#fff!important;font-size:22px}
+</style>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
@@ -1071,6 +1080,12 @@ textarea{width:100%;min-height:76px}input,select{width:100%}label{display:block;
 </div></div>
 
 <dialog id="xReportGallery" class="xreport-gallery"><div class="xreport-gallery-panel"><div class="xreport-gallery-head"><strong>卓報告スクリーンショット</strong><button id="xReportGalleryClose" type="button">閉じる</button></div><div id="xReportGalleryGrid" class="xreport-gallery-grid"></div></div></dialog>
+<dialog id="articleImageViewer" class="article-image-viewer">
+  <div class="article-image-viewer-panel">
+    <button type="button" id="articleImageViewerClose" class="article-image-viewer-close">×</button>
+    <img id="articleImageViewerImg" alt="拡大画像">
+  </div>
+</dialog>
 <dialog id="xPreviewDialog" class="x-preview"><h2>X卓報告プレビュー</h2><p class="small muted">投稿前に自由に編集できます。SNS表示名が設定されている人は短縮名で表示します。</p><textarea id="xPreviewText"></textarea><div class="x-preview-actions"><span id="xPreviewCount" class="small muted"></span><div class="row"><button id="xPreviewCancel" type="button">戻る</button><button id="xPreviewPost" type="button">X投稿画面へ</button></div></div></dialog>
 
 <dialog id="bgmLibraryDialog" class="bgm-library-dialog"><div class="bgm-library-panel">
@@ -1443,9 +1458,80 @@ function setXReport(id,url,text){
 const showEditor=()=>q("libraryEditor").hidden=false;
 const hideEditor=()=>q("libraryEditor").hidden=true;
 
+
+function librarySystemFamily(value){
+ const s=String(value||"").normalize("NFKC").toLowerCase().replace(/[\s　]+/g,"");
+ if(!s)return "";
+ if(/(エモクロア|emoklore|emokuroa)/.test(s))return "emoklore";
+ if(/(coc|クトゥルフ|新クトゥルフ|6版|7版|6th|7th)/.test(s))return "coc";
+ return s;
+}
+function pcHistorySystems(pc){
+ const names=new Set([pc?.name].map(v=>String(v||"").normalize("NFKC").trim().toLowerCase()).filter(Boolean));
+ const out=new Set();
+ data.forEach(rec=>{
+   const own=storedSelfPcRows(rec).some(r=>{
+     if(pc?.id&&r.pcId&&String(r.pcId)===String(pc.id))return true;
+     return names.has(String(r.pcName||"").normalize("NFKC").trim().toLowerCase());
+   });
+   if(own&&rec.system)out.add(librarySystemFamily(rec.system));
+ });
+ return out;
+}
+function pcMatchesCurrentSystem(pc,systemValue=q("system")?.value||""){
+ const target=librarySystemFamily(systemValue);
+ if(!target)return true;
+ const direct=librarySystemFamily(pc?.system||"");
+ if(direct)return direct===target;
+ const history=pcHistorySystems(pc);
+ return !history.size||history.has(target);
+}
+function pcContinuationCount(pc,systemValue=q("system")?.value||""){
+ const target=librarySystemFamily(systemValue),runs=new Set();
+ data.forEach(rec=>{
+   if(target&&librarySystemFamily(rec.system)!==target)return;
+   const rows=storedSelfPcRows(rec);
+   const hit=rows.some(r=>{
+     if(pc?.id&&r.pcId&&String(r.pcId)===String(pc.id))return true;
+     return String(r.pcName||"").normalize("NFKC").trim().toLowerCase()===String(pc?.name||"").normalize("NFKC").trim().toLowerCase();
+   });
+   if(hit)runs.add(rec.runId?`run:${rec.runId}`:`record:${rec.id}`);
+ });
+ return runs.size;
+}
+function sortedSelfPcCandidates(selectedId=""){
+ const all=TRPG39.loadPCs?TRPG39.loadPCs():pcs;
+ const selected=all.find(p=>String(p.id)===String(selectedId||""));
+ let rows=all.filter(p=>pcMatchesCurrentSystem(p));
+ if(selected&&!rows.some(p=>p.id===selected.id))rows.unshift(selected);
+ return rows.slice().sort((a,b)=>{
+   if(selectedId){
+     const as=String(a.id)===String(selectedId),bs=String(b.id)===String(selectedId);
+     if(as!==bs)return as?-1:1;
+   }
+   const diff=pcContinuationCount(b)-pcContinuationCount(a);
+   if(diff)return diff;
+   return String(a.name||"").localeCompare(String(b.name||""),"ja",{numeric:true,sensitivity:"base"});
+ });
+}
+function refreshSelfPcSelectOptions(){
+ q("selfPcRows")?.querySelectorAll(".self-pc-row").forEach(row=>{
+   const sel=row.querySelector(".selfPcSelect"),inp=row.querySelector(".selfPcName");
+   const current=sel?.value||"";
+   const rows=sortedSelfPcCandidates(current);
+   if(sel){
+     sel.innerHTML='<option value="">直接入力</option>'+rows.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+     if(current&&rows.some(p=>String(p.id)===String(current)))sel.value=current;
+   }
+   if(inp&&current){
+     const p=rows.find(p=>String(p.id)===String(current));
+     if(p&&!inp.value)inp.value=p.name||"";
+   }
+ });
+}
 function fillPCSelect(selectedId=""){
- const pcs=TRPG39.loadPCs?TRPG39.loadPCs():[];
- q("pcSelect").innerHTML='<option value="">直接入力</option>'+pcs.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ja")).map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+ const rows=sortedSelfPcCandidates(selectedId);
+ q("pcSelect").innerHTML='<option value="">直接入力</option>'+rows.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
  q("pcSelect").value=selectedId||"";
 }
 function fillScenarioSelect(selectedId=""){
@@ -1473,6 +1559,8 @@ function chooseScenario(id){
     q("title").value=s.title||"";
     q("system").value=s.system||"";
     updateFacilitatorControls(true);
+    fillPCSelect(q("pcSelect")?.value||"");
+    refreshSelfPcSelectOptions();
   }else{
     q("scenarioSearch").value="";
   }
@@ -1626,7 +1714,8 @@ function addSelfPcRow(v={}){
  <button type="button" class="danger self-pc-remove">削除</button>`;
  q("selfPcRows").appendChild(row);
  const own=TRPG39.loadPCs?TRPG39.loadPCs():pcs,sel=row.querySelector(".selfPcSelect"),inp=row.querySelector(".selfPcName");
- sel.innerHTML='<option value="">直接入力</option>'+own.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ja")).map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+ const candidates=sortedSelfPcCandidates(v.pcId||"");
+ sel.innerHTML='<option value="">直接入力</option>'+candidates.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
  if(v.pcId&&own.some(p=>p.id===v.pcId)){sel.value=v.pcId;const p=own.find(p=>p.id===v.pcId);if(p)inp.value=p.name||inp.value}
  sel.onchange=()=>{const p=own.find(p=>p.id===sel.value);if(p)inp.value=p.name||""};
  row.querySelector(".self-pc-remove").onclick=()=>row.remove();
@@ -2436,7 +2525,7 @@ function articleBlocksHtml(page){
    if(b.type==="image"){
      const url=String(b.url||"").trim();
      if(!url)return `<div class="lib-article-image-placeholder">🖼 画像未設定</div>`;
-     return `<figure class="lib-article-media"><img src="${esc(url)}" alt="${esc(b.alt||b.caption||"")}" loading="lazy">${b.caption?`<figcaption class="lib-article-caption">${esc(b.caption)}</figcaption>`:""}</figure>`;
+     return `<figure class="lib-article-media"><img src="${esc(url)}" data-article-image-expand="${esc(url)}" alt="${esc(b.alt||b.caption||"")}" loading="lazy">${b.caption?`<figcaption class="lib-article-caption">${esc(b.caption)}</figcaption>`:""}</figure>`;
    }
    if(b.type==="bgm"){
      if(!bgmBlockHasContent(b))return "";
@@ -4844,11 +4933,21 @@ q("uploadImage").onclick=async()=>{try{
  if(editingImageUrls.length>=4)return alert("卓報告スクリーンショットは最大4枚です。");
  q("uploadImage").disabled=true;q("uploadImage").textContent="アップロード中…";await uploadLibraryImage()
 }catch(e){console.error(e);alert(e.message||e)}finally{q("uploadImage").disabled=false;q("uploadImage").textContent="画像をアップロード"}};
-q("system").addEventListener("input",()=>updateFacilitatorControls(false));q("facilitatorPresence").onchange=()=>updateFacilitatorControls(false);q("facilitatorTermMode").onchange=()=>updateFacilitatorControls(false);q("facilitatorTermCustom").addEventListener("input",()=>updateFacilitatorControls(false));
+q("system").addEventListener("input",()=>{updateFacilitatorControls(false);fillPCSelect(q("pcSelect")?.value||"");refreshSelfPcSelectOptions()});q("facilitatorPresence").onchange=()=>updateFacilitatorControls(false);q("facilitatorTermMode").onchange=()=>updateFacilitatorControls(false);q("facilitatorTermCustom").addEventListener("input",()=>updateFacilitatorControls(false));
 q("save").onclick=save;
 q("cancel").onclick=()=>{reset();hideEditor()};
 
 q("openLibraryEditor").onclick=()=>{reset();showEditor();q("libraryEditor").scrollIntoView({behavior:"smooth",block:"start"})};q("xReportGalleryClose").onclick=()=>q("xReportGallery").close();q("xReportGallery").addEventListener("click",e=>{if(e.target===q("xReportGallery"))q("xReportGallery").close()});
+document.addEventListener("click",e=>{
+ const img=e.target.closest("[data-article-image-expand]");
+ if(!img)return;
+ const url=img.dataset.articleImageExpand||img.src||"";
+ if(!url)return;
+ q("articleImageViewerImg").src=url;
+ q("articleImageViewer").showModal();
+});
+q("articleImageViewerClose").onclick=()=>q("articleImageViewer").close();
+q("articleImageViewer").addEventListener("click",e=>{if(e.target===q("articleImageViewer"))q("articleImageViewer").close()});
 q("xPreviewText").oninput=updateXPreviewCount;q("xPreviewCancel").onclick=()=>q("xPreviewDialog").close();q("xPreviewPost").onclick=confirmPostAlbumToX;
 q("search").oninput=()=>{focusedScenarioKey="";focusedRunId="";focusedPlayerId="";render()};
 q("playerListSort").onchange=()=>{playerListSort=q("playerListSort").value;render()};

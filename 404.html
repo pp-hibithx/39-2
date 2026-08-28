@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SAKU+MERU へ転送します</title>
+  <meta name="robots" content="noindex">
+  <script>
+  (function () {
+    var OLD_BASE = "/39-2";
+    var NEW_BASE = "/sakumeru";
+
+    var path = location.pathname || "/";
+    var suffix = path.indexOf(OLD_BASE) === 0 ? path.slice(OLD_BASE.length) : "/";
+    if (!suffix.startsWith("/")) suffix = "/" + suffix;
+
+    var target = NEW_BASE + suffix + (location.search || "") + (location.hash || "");
+    location.replace(target);
+  })();
+  </script>
+</head>
+<body>
+  <p>SAKU+MERU の新しいURLへ移動しています…</p>
+  <p><a id="fallback" href="/sakumeru/">移動しない場合はこちら</a></p>
+  <script>
+    try {
+      var a = document.getElementById("fallback");
+      var OLD_BASE = "/39-2";
+      var NEW_BASE = "/sakumeru";
+      var path = location.pathname || "/";
+      var suffix = path.indexOf(OLD_BASE) === 0 ? path.slice(OLD_BASE.length) : "/";
+      if (!suffix.startsWith("/")) suffix = "/" + suffix;
+      a.href = NEW_BASE + suffix + (location.search || "") + (location.hash || "");
+    } catch(e) {}
+  </script>
+</body>
+</html>
